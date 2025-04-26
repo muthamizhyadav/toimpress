@@ -52,3 +52,4 @@ export default tseslint.config({
   },
 })
 ```
+<!-- https://www.figma.com/design/9fbsyrarxbN8s7hXeLDvUu/To-Impress?node-id=1-3&t=uED8OfdTAhaaOAI1-0 -->
