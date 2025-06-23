@@ -1,12 +1,32 @@
 // import React from "react";
 import Header from "../components/Header";
 import SmallHeader from "../components/SmallHeader";
+import CategorySlider from "./Home/CategorySlider";
+import FindYourFitt from "./Home/FindYourFit";
+import Footer from "./Home/Footer";
+import FooterCourier from "./Home/FooterCourier";
+import HomeBanner from "./Home/HomeBanner";
+import ShopBySize from "./Home/ShopBySize";
+import SubscriptionBanner from "./Home/SuscriptionBanner";
+import Testimonials from "./Home/Testimonials";
+import TopCategories from "./Home/TopCategories";
+import MobileBottomNavbar from "./MobileBottomBar";
 
 const Home = () => {
   return (
     <div className="w-full h-[100vh]">
       <SmallHeader />
-      <Header/>
+      <Header />
+      <HomeBanner />
+      <TopCategories />
+      <ShopBySize />
+      <CategorySlider />
+      <FindYourFitt />
+      <Testimonials />
+      <FooterCourier />
+      <SubscriptionBanner />
+      <Footer />
+      <MobileBottomNavbar />
     </div>
   );
 };
