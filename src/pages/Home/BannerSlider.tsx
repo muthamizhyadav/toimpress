@@ -61,15 +61,12 @@ const BannerSlider = () => {
       <Carousel
         slideSize="33.333%"
         slideGap="md"
-        align="start"
         withIndicators={dummyImages.length > 3}
         withControls={dummyImages.length > 3}
         controlSize={40}
         previousControlIcon={<IconChevronLeft />}
         nextControlIcon={<IconChevronRight />}
-        loop
         height={450}
-        slidesToScroll={3}
         styles={{
           control: {
             backgroundColor: "white",

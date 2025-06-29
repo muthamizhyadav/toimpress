@@ -1,6 +1,5 @@
 // import { Search, Package, Heart, ShoppingCart } from "lucide-react";
 
-import React, { Component } from "react";
 import { useNavigate } from "react-router-dom";
 
 export default function Header() {

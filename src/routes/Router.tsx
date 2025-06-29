@@ -8,8 +8,13 @@ import Product from "../pages/Product/Product";
 import NotFound from "../pages/NotFound";
 import { AuthProvider, useAuth } from "../pages/AuthContext";
 import Login from "../pages/Login/login";
+import { ReactNode } from "react";
 
-const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
+interface ProtectedRouteProps {
+  children: ReactNode;
+}
+
+const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
@@ -19,13 +24,14 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   return (
     <AppShell
       header={{ height: 60 }}
-      navbar={{ width: 200, breakpoint: 'sm' }}
+      navbar={{ width: 200, breakpoint: "sm" }}
       padding="md"
     >
       {children}
     </AppShell>
   );
 };
+
 
 const customTheme = createTheme({
   colors: {

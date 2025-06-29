@@ -1,4 +1,3 @@
-import React from "react";
 import { Container, Stack, Text, Title, Button, Group } from "@mantine/core";
 import { IconSearchOff, IconArrowLeft } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
@@ -17,7 +16,7 @@ export default function NotFoundPage() {
       <SmallHeader />
       <Header />
       <Container size="sm" py={80} style={{ textAlign: "center" }}>
-        <Stack align="center" spacing="md">
+        <Stack align="center">
           <IconSearchOff size={64} stroke={1.5} color="#868e96" />
           <Title order={1} size="3rem">
             404

@@ -1,7 +1,7 @@
 // src/components/MobileBottomNavbar.tsx
 import React from "react";
 import { AppShell, Anchor, Box, Text } from "@mantine/core";
-import { IconApps, IconTag, IconHelp, IconUser } from "@tabler/icons-react";
+import { IconApps, IconTag, IconUser } from "@tabler/icons-react";
 
 // Define the props interface for NavLinkItem
 interface NavLinkItemProps {

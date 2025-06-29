@@ -29,7 +29,6 @@ import BraDescp6 from "../../assets/svg/bradescription/descp6.svg";
 import BraDescp7 from "../../assets/svg/bradescription/descp7.svg";
 import BraDescp8 from "../../assets/svg/bradescription/descp8.svg";
 import ProductCard from "../Home/PorductCard";
-import BraModel from "../../assets/svg/braModel.svg";
 import { useMediaQuery } from "@mantine/hooks";
 
 const images = [BraThumbnail, BraThumbnail1, BraThumbnail2, BraThumbnail3];
@@ -147,7 +146,6 @@ export default function ProductPage() {
                   bg={color}
                   w={20}
                   h={20}
-                  radius="xl"
                   style={{
                     border:
                       selectedColor === color
@@ -167,19 +165,19 @@ export default function ProductPage() {
           </Group>
 
           <Group mt="md">
-            <Group spacing={8}>
+            <Group>
               <ThemeIcon variant="light" color="green">
                 <IconTruck />
               </ThemeIcon>
               <Text>Fast & Free Delivery</Text>
             </Group>
-            <Group spacing={8}>
+            <Group>
               <ThemeIcon variant="light" color="green">
                 <IconPackage />
               </ThemeIcon>
               <Text>Discreet Packaging</Text>
             </Group>
-            <Group spacing={8}>
+            <Group>
               <ThemeIcon variant="light" color="green">
                 <IconExchange />
               </ThemeIcon>
@@ -240,7 +238,7 @@ export default function ProductPage() {
         <Tabs.Panel value="reviews" pt="xs">
           <Box mt="sm">
             <Text fw={600}>Customer Reviews:</Text>
-            <Stack spacing="sm" mt="sm">
+            <Stack mt="sm">
               <Box>
                 <Text fw={500}>Aarti R.</Text>
                 <Text size="sm" c="dimmed">
