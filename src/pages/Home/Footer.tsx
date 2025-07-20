@@ -12,7 +12,7 @@ export default function Footer() {
   const endYear = currentYear > 2025 ? currentYear : 2026;
 
   return (
-    <Box bg="gray.1" pt="xl" pb="md">
+    <Box bg="gray.1" pt="xl" pb="70px">
       <Container size="xl">
         {/* Top section with logo & contact */}
         <Grid gutter="xl">

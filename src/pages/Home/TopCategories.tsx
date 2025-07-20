@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { Tabs, Button, Text, Container } from "@mantine/core";
+import { Tabs, Button, Container } from "@mantine/core";
 import BraModel from "../../assets/svg/braModel.svg";
 import ProductCard from "./PorductCard";
-import { SimpleGrid } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 
 const categories = ["Brassiere", "Panties", "Shimmer Leggings"];
 
-const products = new Array(4).fill({
+const products = new Array(10).fill({
   title: "Susie Multicolor Secret Side...",
   price: 999,
   originalPrice: 1999,
@@ -19,6 +19,7 @@ const products = new Array(4).fill({
 
 export default function TopCategories() {
   const [selectedTab, setSelectedTab] = useState<string | null>("Brassiere");
+  const isMobile = useMediaQuery("(max-width: 760px)");
 
   useEffect(() => {
     console.log(selectedTab);
@@ -30,73 +31,106 @@ export default function TopCategories() {
       px="md"
       style={{ paddingTop: "2rem", paddingBottom: "2rem" }}
     >
-      <Text
-        ta="center"
-        size="3xl"
-        fw={700}
-        mb="xl"
-        style={{ fontSize: "40px", marginBottom: "2rem" }}
-      >
+      <p className="text-[20px] md:text-[40px] text-center font-bold mb-8">
         Top Categories
-      </Text>
+      </p>
 
-      <Tabs
-        value={selectedTab}
-        onChange={setSelectedTab}
-        style={{ width: "100%" }}
-      >
-        <Tabs.List justify="center" className="!bg-transparent mb-6">
-          {categories.map((cat) => (
-            <Tabs.Tab
-              key={cat}
-              value={cat}
-              className="rounded-full font-semibold px-4 py-2 transition-all duration-300 mx-2"
-            >
-              <Button
-                radius="xl"
-                size="lg"
-                styles={{
-                  root: {
-                    backgroundColor:
-                      selectedTab === cat ? "#133215" : "#ffffff",
-                    color: selectedTab === cat ? "#ffffff" : "#000000",
-                    fontWeight: 700,
-                    paddingLeft: 40,
-                    paddingRight: 40,
-                    height: 60,
-                    fontSize: 20,
-                    border:
-                      selectedTab === cat
-                        ? "2px solid #2196f3"
-                        : "1px solid #ccc",
-                    boxShadow: "none",
-                    transition: "all 0.3s ease",
-                  },
-                }}
-              >
-                BraModel
-                {cat}
-              </Button>
-            </Tabs.Tab>
-          ))}
-        </Tabs.List>
+      <Tabs value={selectedTab} onChange={setSelectedTab}>
+        {/* Scrollable Category Tabs */}
+        <div className="overflow-x-auto no-scrollbar mb-6">
+          <Tabs.List
+            className="flex-nowrap inline-flex gap-4 px-1 min-w-max no-scrollbar"
+            style={{
+              // Mobile view: align left
+              ["--tabs-justify"]: "start",
+            }}
+          >
+            <div className="w-full flex md:justify-around justify-start">
+              {categories.map((cat) => (
+                <Tabs.Tab key={cat} value={cat} className="p-0 m-0 border-none">
 
+                { isMobile ? 
+
+                  <Button
+                    radius="xl"
+                    size="lg"
+                    styles={{
+                      root: {
+                        backgroundColor:
+                          selectedTab === cat ? "#133215" : "#ffffff",
+                        color: selectedTab === cat ? "#ffffff" : "#000000",
+                        fontWeight: 700,
+                        paddingLeft: 32,
+                        paddingRight: 32,
+                        height: 34,
+                        fontSize: "14px", 
+                        border:
+                          selectedTab === cat
+                            ? "2px solid #2196f3"
+                            : "1px solid #ccc",
+                        boxShadow: "none",
+                        whiteSpace: "nowrap",
+                      },
+                    }}
+                  >
+                    {cat}
+                  </Button>
+
+                  :
+
+                  <Button
+                    radius="xl"
+                    size="lg"
+                    styles={{
+                      root: {
+                        backgroundColor:
+                          selectedTab === cat ? "#133215" : "#ffffff",
+                        color: selectedTab === cat ? "#ffffff" : "#000000",
+                        fontWeight: 700,
+                        paddingLeft: 32,
+                        paddingRight: 32,
+                        height: 52,
+                        fontSize: "18px", // Desktop default
+                        border:
+                          selectedTab === cat
+                            ? "2px solid #2196f3"
+                            : "1px solid #ccc",
+                        boxShadow: "none",
+                        whiteSpace: "nowrap",
+                      },
+                    }}
+                  >
+                    {cat}
+                  </Button>
+
+                  }
+
+                </Tabs.Tab>
+              ))}
+            </div>
+          </Tabs.List>
+        </div>
+
+        {/* Scrollable Product List */}
         {categories.map((cat) => (
           <Tabs.Panel key={cat} value={cat} pt="md">
-            <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing="lg">
-              {products.map((product, i) => (
-                <ProductCard
-                  key={i}
-                  imageUrl={BraModel}
-                  productName={product.title}
-                  price={product.price}
-                  originalPrice={product.originalPrice}
-                  rating={product.rating}
-                  isNew={product.isNew}
-                  isOnSale={product.isSale}
-                />
-              ))}
-            </SimpleGrid>
+            <div className="overflow-x-auto no-scrollbar pb-4">
+              <div className="flex gap-4 min-w-max">
+                {products.map((product, i) => (
+                  <div key={i} className="min-w-[250px] h-full flex flex-col">
+                    <ProductCard
+                      imageUrl={BraModel}
+                      productName={product.title}
+                      price={product.price}
+                      originalPrice={product.originalPrice}
+                      rating={product.rating}
+                      isNew={product.isNew}
+                      isOnSale={product.isSale}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
           </Tabs.Panel>
         ))}
       </Tabs>

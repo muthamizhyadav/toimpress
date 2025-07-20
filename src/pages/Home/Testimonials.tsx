@@ -1,6 +1,14 @@
 "use client";
 
-import { Avatar, Badge, Card, Flex, Group, Text, Title } from "@mantine/core";
+import {
+  Avatar,
+  Badge,
+  Card,
+  Flex,
+  Group,
+  Text,
+  Title,
+} from "@mantine/core";
 import { Carousel } from "@mantine/carousel";
 import { useMediaQuery } from "@mantine/hooks";
 import { IconStar } from "@tabler/icons-react";
@@ -61,7 +69,7 @@ function RatingStars({ rating }: { rating: number }) {
 }
 
 export default function Testimonials() {
-  const isMobile = useMediaQuery("(max-width: 600px)");
+  const isMobile = useMediaQuery("(max-width: 768px)");
 
   return (
     <Flex
@@ -69,75 +77,45 @@ export default function Testimonials() {
       py="xl"
       style={{
         background: `url(${TestimonialBg}) center/cover no-repeat`,
-        minHeight: "45vh", // allows the section to grow if content needs more space
+        minHeight: "45vh",
       }}
       justify="center"
       align="center"
       direction="column"
     >
-      <section
-        style={{
-          overflow: "hidden",
-          width: "100%",
-          textAlign: "center",
-        }}
-      >
-        <Badge
-          color="dark"
-          radius="md"
-          size="xl"
-          fz="lg"
-          mb="xs"
-          px="md"
-          py={6}
-        >
+      <section style={{ overflow: "hidden", width: "80%", textAlign: "center" }}>
+        <Badge color="dark" radius="md" size="xl" fz="lg" mb="xs" px="md" py={6}>
           Testimonials
         </Badge>
         <Title order={2} mb="xl">
           What People Are Saying
         </Title>
 
-        {isMobile ? (
-          <Carousel
-            slideSize="70%"
-            height={200}
-            slideGap="lg"
-            controlsOffset="sm"
-            controlSize={24}
-            withControls
-            withIndicators
-          >
-            {testimonials.map((t, i) => (
-              <Carousel.Slide key={i} m="10px">
-                <Card
-                  shadow="md"
-                  radius="md"
-                  withBorder
-                  p="lg"
-                  style={{ minHeight: 250, maxWidth: 320, width: "100%" }}
-                >
-                  <Group mb="xs">
-                    <Avatar src={t.avatar} radius="xl" size="lg" />
-                    <div>
-                      <Text fw={600}>{t.name}</Text>
-                      <RatingStars rating={t.rating} />
-                    </div>
-                  </Group>
-                  <Text mt="sm">“ {t.text} ”</Text>
-                </Card>
-              </Carousel.Slide>
-            ))}
-          </Carousel>
-        ) : (
-          <Group mt="md" style={{ display: "flex", justifyContent: "center" }}>
-            {testimonials.map((t, i) => (
+        <Carousel
+          slideSize={isMobile ? "70%" : "33.3333%"}
+          height={260}
+          slideGap="md"
+          controlsOffset="sm"
+          controlSize={24}
+          withControls
+          withIndicators={false}
+          styles={{
+            viewport: { overflow: "hidden", paddingBottom: "1rem" },
+          }}
+        >
+          {testimonials.map((t, i) => (
+            <Carousel.Slide key={i}>
               <Card
-                key={i}
                 shadow="md"
                 radius="md"
                 withBorder
                 p="lg"
-                style={{ minHeight: 250, maxWidth: 300 }}
+                style={{
+                  minHeight: 250,
+                  maxWidth: 300,
+                  width: "100%",
+                  margin: "0 auto",
+                }}
               >
                 <Group mb="xs">
                   <Avatar src={t.avatar} radius="xl" size="lg" />
@@ -148,9 +126,9 @@ export default function Testimonials() {
                 </Group>
                 <Text mt="sm">“ {t.text} ”</Text>
               </Card>
-            ))}
-          </Group>
-        )}
+            </Carousel.Slide>
+          ))}
+        </Carousel>
       </section>
     </Flex>
   );

@@ -1,14 +1,15 @@
 import { Box, Button, Text, Title, rem } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
+import { useState } from "react";
 
 const braSizes = Array(20).fill("30A");
 
 export default function ShopBySize() {
-  // Use media query to detect screen width
   const isMobile = useMediaQuery("(max-width: 768px)");
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
 
   return (
-    <Box bg="#f3e7cf" h={"50vh"}>
+    <Box bg="#f3e7cf" h={isMobile ? "auto" : "50vh"}>
       <Title
         order={2}
         c="dark"
@@ -17,7 +18,7 @@ export default function ShopBySize() {
           display: "flex",
           paddingTop: "40px",
           justifyContent: "center",
-          fontSize: "40px",
+          fontSize: isMobile ? "20px" : "40px",
           marginBottom: "40px",
         }}
       >
@@ -34,69 +35,37 @@ export default function ShopBySize() {
           marginTop: "20px",
         }}
       >
-        {!isMobile ? (
-          <Box
-            style={{
-              display: "grid",
-              gridTemplateColumns: isMobile
-                ? "repeat(auto-fit, minmax(60px, 1fr))"
-                : "repeat(10, 1fr)",
-              gap: rem(20),
-              width: "70%",
-              margin: "0 auto",
-            }}
-          >
-            {braSizes.map((size, index) => (
+        <Box
+          style={{
+            display: "grid",
+            gridTemplateColumns: isMobile
+              ? "repeat(auto-fit, minmax(60px, 1fr))"
+              : "repeat(10, 1fr)",
+            gap: rem(isMobile ? 12 : 20),
+            width: isMobile ? "100%" : "70%",
+            maxWidth: isMobile ? "500px" : undefined,
+            margin: "0 auto",
+          }}
+        >
+          {braSizes.map((size, index) => {
+            const isSelected = selectedSize === `${size}-${index}`; // unique key
+            return (
               <Button
-                key={index}
-                variant="outline"
-                radius="70px"
-                size="md"
-                color="dark"
-                styles={{
-                  root: {
-                    height: "70px",
-                    width: "70px",
-                    padding: 0,
-                    borderRadius: "100px",
-                    borderColor: "white",
-                    borderWidth: "3px",
-                  },
-                  label: {
-                    fontWeight: 500,
-                  },
-                }}
-              >
-                {size}
-              </Button>
-            ))}
-          </Box>
-        ) : (
-          <Box
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(60px, 1fr))", // was 70px
-              gap: rem(12), // reduce gap
-              width: "100%", // make it full width
-              maxWidth: "500px", // optional cap
-              margin: "0 auto",
-            }}
-          >
-            {braSizes.map((size, index) => (
-              <Button
-                key={index}
-                variant="outline"
+                key={`${size}-${index}`}
+                onClick={() => setSelectedSize(`${size}-${index}`)}
+                variant="filled"
                 radius="70px"
                 size={isMobile ? "xs" : "md"}
-                color="dark"
                 styles={{
                   root: {
                     height: isMobile ? "50px" : "70px",
                     width: isMobile ? "50px" : "70px",
                     padding: 0,
                     borderRadius: "100px",
-                    borderColor: "white",
                     borderWidth: "3px",
+                    borderColor: isSelected ? "#133215" : "white",
+                    backgroundColor: isSelected ? "#133215" : "transparent",
+                    color: isSelected ? "#ffffff" : "#000000",
                   },
                   label: {
                     fontWeight: 500,
@@ -105,9 +74,9 @@ export default function ShopBySize() {
               >
                 {size}
               </Button>
-            ))}
-          </Box>
-        )}
+            );
+          })}
+        </Box>
 
         <Text
           size="lg"

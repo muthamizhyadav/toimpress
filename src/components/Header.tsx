@@ -1,22 +1,70 @@
-// import { Search, Package, Heart, ShoppingCart } from "lucide-react";
-
+import { Burger, Drawer, ScrollArea } from "@mantine/core";
+import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import { useNavigate } from "react-router-dom";
 
 export default function Header() {
   const navigate = useNavigate();
+  const [opened, { open, close }] = useDisclosure(false);
+  const isMobile = useMediaQuery("(max-width: 768px)");
 
   const handleNavigation = (str?: string) => {
     navigate(`/${str}`);
+    close(); // close drawer after navigation
   };
 
   return (
-    <header className="bg-sandle w-full h-[80px] md:h-[112px] flex items-center px-14">
+    <header className="bg-sandle w-full h-[80px] md:h-[112px] flex items-center px-14 sm:px-3  ">
       <img
         src="logo.png"
         alt=""
         srcSet=""
         className="md:w-[106px] md:h-[65px] w-[80px] h-[50px]"
       />
+
+      {/* Show mobile burger icon */}
+      {isMobile && (
+        <Burger opened={opened} onClick={open} aria-label="Open menu" className="ml-auto"  />
+      )}
+
+      {/* Mobile Drawer */}
+      {isMobile && (
+        <Drawer
+          opened={opened}
+          onClose={close}
+          position="right"
+          title=""
+          size="70%"
+          padding="md"
+          overlayProps={{ blur: 2 }}
+        >
+          <ScrollArea>
+            <ul className="flex flex-col gap-4 text-base font-medium text-gray-700">
+              {[
+                "Brassiere",
+                "Panties",
+                "Shimmer Leggings",
+                "New Arrivals",
+                "Offers Zone",
+              ].map((item) => (
+                <li
+                  key={item}
+                  className="cursor-pointer"
+                  onClick={() => handleNavigation("product")}
+                >
+                  {item}
+                </li>
+              ))}
+              <li
+                className="mt-6 text-green-700 cursor-pointer"
+                onClick={() => handleNavigation("login")}
+              >
+                Sign In
+              </li>
+            </ul>
+          </ScrollArea>
+        </Drawer>
+      )}
+
       <div className="hidden lg:flex ml-5 flex-col gap-5 w-full md:flex md:flex-col md:gap-5 md:w-full">
         <div className="hidden lg:w-full lg:flex md:flex md:w-full ">
           <div className="hidden  md:flex md:w-full lg:w-full lg:flex  ">
