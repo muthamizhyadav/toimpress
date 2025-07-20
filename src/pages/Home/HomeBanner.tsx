@@ -39,7 +39,7 @@ const HomeBanner: React.FC = () => {
           {isMobile ? (
             <>
               {/* Mobile Text */}
-              <p className="text-[12px] font-semibold text-gray-800 mb-3 leading-snug">
+              <p className="text-[12px] font-semibold text-gray-800 mb-3 leading-snug" style={{  fontFamily: "cursive", }} >
                 Finding the <span className="text-green-500">Perfect Fit</span>{" "}
                 Has <br />
                 Never Been This Simple!
@@ -53,7 +53,7 @@ const HomeBanner: React.FC = () => {
           ) : (
             <>
               {/* Desktop Text */}
-              <p className="text-xl md:text-2xl font-semibold text-gray-800 mb-4 leading-tight">
+              <p className="text-[40px] font-semibold text-gray-800 mb-4 leading-tight" style={{  fontFamily: "cursive", }} >
                 Finding the <span className="text-green-500">Perfect Fit</span>{" "}
                 Has <br />
                 Never Been This Simple!

@@ -1,3 +1,4 @@
+import { useMediaQuery } from "@mantine/hooks";
 import React from "react";
 
 interface ProductCardProps {
@@ -19,14 +20,17 @@ const ProductCard: React.FC<ProductCardProps> = ({
   isNew = false,
   isOnSale = false,
 }) => {
+
+  const isMobile = useMediaQuery('(max-width: 600px)');
+
   return (
-    <div className="rounded-xl shadow p-2 bg-white h-[450px] flex flex-col w-full">
+    <div className="rounded-xl shadow p-2 bg-white h-[400px] flex flex-col w-full">
       {/* Image Section with responsive aspect ratio */}
       <div className="relative w-full aspect-[4/4] overflow-hidden rounded-lg">
         <img
           src={imageUrl}
           alt={productName}
-          className="w-full h-full object-cover"
+          className={` ${isMobile ? `w-[250px]` : `w-full`  } h-full object-cover`}
         />
 
         <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">

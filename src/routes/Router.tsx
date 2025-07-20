@@ -9,6 +9,9 @@ import NotFound from "../pages/NotFound";
 import { AuthProvider, useAuth } from "../pages/AuthContext";
 import Login from "../pages/Login/login";
 import { ReactNode } from "react";
+import Profile from "../pages/Profile/Profile";
+import Orders from "../pages/Orders/Orders";
+import FindYourFitPage from "../pages/FindYourFit/FindYourFit";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -18,7 +21,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/" />;
   }
 
   return (
@@ -32,16 +35,31 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   );
 };
 
-
 const customTheme = createTheme({
   colors: {
     darkGreen: [
-      "#e0e4e0", "#c2c9c2", "#a3ad9f", "#859280", "#667664",
-      "#475b47", "#29402a", "#1e351f", "#152916", "#133215"
+      "#e0e4e0",
+      "#c2c9c2",
+      "#a3ad9f",
+      "#859280",
+      "#667664",
+      "#475b47",
+      "#29402a",
+      "#1e351f",
+      "#152916",
+      "#133215",
     ],
     lightGreen: [
-      "#f0f5ec", "#e0eadd", "#d1e0ce", "#c1d6bf", "#b2ccb0",
-      "#a3c1a1", "#92b775", "#7aa15f", "#638b49", "#4c7533"
+      "#f0f5ec",
+      "#e0eadd",
+      "#d1e0ce",
+      "#c1d6bf",
+      "#b2ccb0",
+      "#a3c1a1",
+      "#92b775",
+      "#7aa15f",
+      "#638b49",
+      "#4c7533",
     ],
   },
 });
@@ -71,6 +89,34 @@ const AppRoutes = () => {
                   </ProtectedRoute>
                 }
               />
+
+              <Route
+                path="/account"
+                element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/orders"
+                element={
+                  <ProtectedRoute>
+                    <Orders />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/fit"
+                element={
+                  <ProtectedRoute>
+                    <FindYourFitPage />
+                  </ProtectedRoute>
+                }
+              />
+
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

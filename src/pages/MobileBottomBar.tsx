@@ -1,61 +1,94 @@
-// src/components/MobileBottomNavbar.tsx
 import React from "react";
-import { AppShell, Anchor, Box, Text } from "@mantine/core";
-import { IconApps, IconTag, IconUser } from "@tabler/icons-react";
+import { Box, Text } from "@mantine/core";
+import {
+  IconHome,
+  IconTag,
+  IconUser,
+  IconSearch,
+} from "@tabler/icons-react";
+import { useNavigate } from "react-router-dom";
 
 // Define the props interface for NavLinkItem
 interface NavLinkItemProps {
-  icon: React.ReactNode; // React.ReactNode is good for any valid JSX element (like an icon component)
+  icon: React.ReactNode;
   label: string;
-  href: string;
+  path: string;
+  onClick: (path: string) => void;
 }
 
 const MobileBottomNavbar: React.FC = () => {
+  const navigate = useNavigate();
+
+  const handleNavigation = (path: string) => {
+    navigate(path);
+  };
+
   return (
-    <AppShell.Footer
+    <Box
       hiddenFrom="md"
       p="xs"
-      withBorder
       style={{
         display: "flex",
         justifyContent: "space-around",
         alignItems: "center",
         height: "60px",
-        backgroundColor: "white", // Keeping background white as in your image
+        backgroundColor: "white",
+        borderTop: "1px solid #e0e0e0",
+        position: "fixed",
+        bottom: 0,
+        left: 0,
+        right: 0,
         zIndex: 1000,
       }}
     >
-      <NavLinkItem icon={<IconApps size={22} />} label="Products" href="#" />
-      <NavLinkItem icon={<IconTag size={22} />} label="Offers" href="#" />
-      {/* Assuming IconUser is a placeholder, you might want a more specific icon for "Find your fit" */}
       <NavLinkItem
-        icon={<IconUser size={22} />} // Consider changing this icon to something more descriptive if available
-        label="Find your fit"
-        href="#"
+        icon={<IconHome size={22} />}
+        label="Home"
+        path="/"
+        onClick={handleNavigation}
       />
-      <NavLinkItem icon={<IconUser size={22} />} label="Account" href="#" />
-    </AppShell.Footer>
+      <NavLinkItem
+        icon={<IconTag size={22} />}
+        label="Categories"
+        path="/product"
+        onClick={handleNavigation}
+      />
+      <NavLinkItem
+        icon={<IconSearch size={22} />}
+        label="Find your fit"
+        path="/fit"
+        onClick={handleNavigation}
+      />
+      <NavLinkItem
+        icon={<IconUser size={22} />}
+        label="Account"
+        path="/account"
+        onClick={handleNavigation}
+      />
+    </Box>
   );
 };
 
-// Helper component for each navigation item with TypeScript props
-const NavLinkItem: React.FC<NavLinkItemProps> = ({ icon, label, href }) => {
+// Helper component for each navigation item
+const NavLinkItem: React.FC<NavLinkItemProps> = ({ icon, label, path, onClick }) => {
   return (
-    <Anchor
-      href={href}
-      fz="xs"
-      c="darkGreen.9" // Using the darkest shade of our custom 'darkGreen' color
+    <div
+      onClick={() => onClick(path)}
       style={{
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         textDecoration: "none",
         padding: "5px",
+        color: "#006400", // dark green
+        cursor: "pointer",
       }}
     >
       <Box mb={2}>{icon}</Box>
-      <Text style={{ whiteSpace: "nowrap" }}>{label}</Text>
-    </Anchor>
+      <Text fz="xs" style={{ whiteSpace: "nowrap" }}>
+        {label}
+      </Text>
+    </div>
   );
 };
 

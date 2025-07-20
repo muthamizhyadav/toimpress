@@ -1,0 +1,11 @@
+/* Remove Mantine Tabs bottom border */
+.mantine-Tabs-list {
+    border-bottom: none !important;
+  }
+  
+  /* Remove active tab default blue border and shadow */
+  .mantine-Tabs-tab[data-active="true"] {
+    border: none !important;
+    box-shadow: none !important;
+  }
+  

@@ -61,8 +61,6 @@ const BannerSlider = () => {
       <Carousel
         slideSize="33.333%"
         slideGap="md"
-        withIndicators={dummyImages.length > 3}
-        withControls={dummyImages.length > 3}
         controlSize={40}
         previousControlIcon={<IconChevronLeft />}
         nextControlIcon={<IconChevronRight />}

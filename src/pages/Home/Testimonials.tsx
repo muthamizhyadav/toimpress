@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  Avatar,
-  Badge,
-  Card,
-  Flex,
-  Group,
-  Text,
-  Title,
-} from "@mantine/core";
+import { Avatar, Card, Flex, Group, Text, Title } from "@mantine/core";
 import { Carousel } from "@mantine/carousel";
 import { useMediaQuery } from "@mantine/hooks";
 import { IconStar } from "@tabler/icons-react";
@@ -19,7 +11,7 @@ const testimonials = [
     name: "Dean D.",
     avatar: "https://i.pravatar.cc/100?img=1",
     rating: 5,
-    text: "Great quality products - Flags, programs for exceptional capacities, birthday, and occasion welcome are largely still mainstream on paper.",
+    text: "Great quality products - Flags, programs for exceptional capacities, birthday.",
   },
   {
     name: "Cristian L.",
@@ -37,7 +29,7 @@ const testimonials = [
     name: "Dean D.",
     avatar: "https://i.pravatar.cc/100?img=1",
     rating: 5,
-    text: "Great quality products - Flags, programs for exceptional capacities, birthday, and occasion welcome are largely still mainstream on paper.",
+    text: "Great quality products - Flags, programs for exceptional capacities, birthday, and occasion welcome are largely still mainstream.",
   },
   {
     name: "Cristian L.",
@@ -83,24 +75,24 @@ export default function Testimonials() {
       align="center"
       direction="column"
     >
-      <section style={{ overflow: "hidden", width: "80%", textAlign: "center" }}>
-        <Badge color="dark" radius="md" size="xl" fz="lg" mb="xs" px="md" py={6}>
-          Testimonials
-        </Badge>
+      <section
+        style={{ overflow: "hidden", width: "80%", textAlign: "center" }}
+      >
         <Title order={2} mb="xl">
           What People Are Saying
         </Title>
 
         <Carousel
-          slideSize={isMobile ? "70%" : "33.3333%"}
+          slideSize={isMobile ? "85%" : "33.3333%"} // increased slide size on mobile
           height={260}
           slideGap="md"
+          align="start" // Ensures first slide aligns to the left
           controlsOffset="sm"
           controlSize={24}
-          withControls
+          withControls={false}
           withIndicators={false}
           styles={{
-            viewport: { overflow: "hidden", paddingBottom: "1rem" },
+            viewport: { overflow: "visible", paddingBottom: "1rem" },
           }}
         >
           {testimonials.map((t, i) => (
@@ -112,8 +104,7 @@ export default function Testimonials() {
                 p="lg"
                 style={{
                   minHeight: 250,
-                  maxWidth: 300,
-                  width: "100%",
+                  width: "100%", // fill slide
                   margin: "0 auto",
                 }}
               >

@@ -41,7 +41,7 @@ const CategorySlider: React.FC = () => {
           slideGap="md"
           controlsOffset="sm"
           controlSize={26}
-          withControls
+          withControls={false}
           withIndicators={false}
           styles={{
             viewport: { overflow: "hidden" },

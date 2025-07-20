@@ -9,17 +9,35 @@ export default function ShopBySize() {
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
 
   return (
-    <Box bg="#f3e7cf" h={isMobile ? "auto" : "50vh"}>
+    <Box bg="#f3e7cf" h={isMobile ? "auto" : "55vh"} style={{  paddingBottom: isMobile ? "20px" : "50px",  }} >
+      <Text
+        size="lg"
+        fw={600}
+        style={{
+          fontFamily: "cursive",
+          display: "flex",
+          color: "#1b3611",
+          width: "70%",
+          margin: isMobile ? "20px 0 0 10px" : "0 auto",
+          paddingTop: isMobile ? "20px" : "50px",
+          marginBottom: isMobile ? "20px" : "50px",
+         
+          fontSize: isMobile ? "20px" : "40px",
+        }}
+      >
+        Find Your Perfect Fit
+      </Text>
+
       <Title
         order={2}
         c="dark"
         fw={500}
         style={{
           display: "flex",
-          paddingTop: "40px",
+          paddingTop: "5px",
           justifyContent: "center",
           fontSize: isMobile ? "20px" : "40px",
-          marginBottom: "40px",
+          marginBottom: "5px",
         }}
       >
         SHOP BY BRA SIZE
@@ -77,22 +95,6 @@ export default function ShopBySize() {
             );
           })}
         </Box>
-
-        <Text
-          size="lg"
-          fw={600}
-          style={{
-            fontFamily: "cursive",
-            display: "flex",
-            color: "#1b3611",
-            width: "70%",
-            margin: isMobile ? "20px 0 0 10px" : "0 auto",
-            marginTop: isMobile ? "25px" : "50px",
-            fontSize: isMobile ? "20px" : "40px",
-          }}
-        >
-          Find Your Perfect Fit
-        </Text>
       </Box>
     </Box>
   );
