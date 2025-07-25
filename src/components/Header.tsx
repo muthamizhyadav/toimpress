@@ -1,11 +1,17 @@
-import { Burger, Drawer, ScrollArea } from "@mantine/core";
-import { useDisclosure, useMediaQuery } from "@mantine/hooks";
+import { Burger } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 import { useNavigate } from "react-router-dom";
 import { MobileMenuDrawer, UseMobileMenuDrawer } from "./MobileMenuDrawer";
 import { MobileCartDrawer, UseMobileCartDrawer } from "./MobileCartDrawer";
+import { useSearchParams } from "react-router-dom";
 
 export default function Header() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const selectedId = searchParams.get("id");
+
+  const isSelected = (id: string) =>
+    selectedId === id ? "font-bold underline text-[#122F15]" : "text-[#252C32]";
 
   const handleNavigation = (str?: string) => {
     navigate(`/${str}`);
@@ -24,6 +30,9 @@ export default function Header() {
         alt=""
         srcSet=""
         className="md:w-[106px] md:h-[65px] w-[80px] h-[50px]"
+        onClick={() => {
+          handleNavigation("");
+        }}
       />
 
       {/* Show mobile burger icon */}
@@ -48,7 +57,11 @@ export default function Header() {
           </div>
 
           {/* Burger Icon */}
-          <Burger opened={menu.opened} onClick={menu.open} aria-label="Open menu" />
+          <Burger
+            opened={menu.opened}
+            onClick={menu.open}
+            aria-label="Open menu"
+          />
         </div>
       )}
 
@@ -59,6 +72,7 @@ export default function Header() {
         <div className="hidden lg:w-full lg:flex md:flex md:w-full ">
           <div className="hidden  md:flex md:w-full lg:w-full lg:flex  ">
             <input
+              type="search"
               placeholder="Search"
               className="lg:w-[100%]  h-[40px] rounded-full bg-white pl-3"
             />
@@ -81,7 +95,10 @@ export default function Header() {
           </div>
           <div className="hidden  md:flex md:w-full lg:w-full lg:flex ">
             <div className=" hidden lg:w-[100%] lg:flex lg:justify-around lg:items-center ">
-              <div className="flex cursor-pointer "  onClick={() => handleNavigation("orders")}  >
+              <div
+                className="flex cursor-pointer "
+                onClick={() => handleNavigation("orders")}
+              >
                 <svg
                   width="24"
                   height="24"
@@ -114,7 +131,7 @@ export default function Header() {
 
                 <span className="ml-2 text-[#252C32] "> Favorites </span>
               </div>
-              <div className="flex" onClick={cart.open} >
+              <div className="flex" onClick={cart.open}>
                 <svg
                   width="24"
                   height="24"
@@ -132,7 +149,7 @@ export default function Header() {
                   Cart{" "}
                 </span>
               </div>
-              <button className="bg-lightgreen h-[40px] cursor-pointer text-[#fff]  ml-[-30px] rounded-3xl px-5 z-50">
+              <button className="bg-lightgreen h-[40px] cursor-pointer text-[#fff]  ml-[-30px] rounded-3xl px-5 z-50"  onClick={() => handleNavigation("account")}  >
                 Sign In
               </button>
             </div>
@@ -142,34 +159,40 @@ export default function Header() {
         <div className="hidden md:flex gap-5 w-full">
           <ul className="flex justify-center w-[50%] gap-10">
             <li
-              className="text-sm cursor-pointer"
-              onClick={() => handleNavigation("product")}
+              className={`text-sm cursor-pointer ${isSelected("1")}`}
+              onClick={() => handleNavigation("category?id=1")}
             >
               Brassiere
             </li>
             <li
-              className="text-sm cursor-pointer"
-              onClick={() => handleNavigation("product")}
+              className={`text-sm cursor-pointer ${isSelected("2")}`}
+              onClick={() => handleNavigation("category?id=2")}
             >
               Panties
             </li>
             <li
-              className="text-sm cursor-pointer"
-              onClick={() => handleNavigation("product")}
+              className={`text-sm cursor-pointer ${isSelected("3")}`}
+              onClick={() => handleNavigation("category?id=3")}
             >
               Shimmer Leggings
             </li>
             <li
-              className="text-sm cursor-pointer"
-              onClick={() => handleNavigation("product")}
+              className={`text-sm cursor-pointer ${isSelected("4")}`}
+              onClick={() => handleNavigation("category?id=4")}
             >
               New Arrivals
             </li>
             <li
-              className="text-sm cursor-pointer"
-              onClick={() => handleNavigation("product")}
+              className={`text-sm cursor-pointer ${isSelected("5")}`}
+              onClick={() => handleNavigation("category?id=5")}
             >
               Offers Zone
+            </li>
+            <li
+              className={`text-sm cursor-pointer ${isSelected("6")}`}
+              onClick={() => handleNavigation("category?id=6")}
+            >
+              Combo Offer
             </li>
           </ul>
         </div>

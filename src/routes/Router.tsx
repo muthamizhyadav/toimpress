@@ -12,6 +12,7 @@ import { ReactNode } from "react";
 import Profile from "../pages/Profile/Profile";
 import Orders from "../pages/Orders/Orders";
 import FindYourFitPage from "../pages/FindYourFit/FindYourFit";
+import CategoryPage from "../pages/Category/CategoryPage";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -113,6 +114,15 @@ const AppRoutes = () => {
                 element={
                   <ProtectedRoute>
                     <FindYourFitPage />
+                  </ProtectedRoute>
+                }
+              />
+
+               <Route
+                path="/category"
+                element={
+                  <ProtectedRoute>
+                    <CategoryPage />
                   </ProtectedRoute>
                 }
               />

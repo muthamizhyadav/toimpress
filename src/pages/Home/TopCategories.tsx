@@ -3,26 +3,41 @@ import { Tabs, Button, Container } from "@mantine/core";
 import BraModel from "../../assets/svg/braModel.svg";
 import ProductCard from "./PorductCard";
 import { useMediaQuery } from "@mantine/hooks";
+import axiosInstance from "../../api/axiosInstance";
+import { GET_PRODUCTS } from "../../api/api";
 
 const categories = ["Brassiere", "Panties", "Shimmer Leggings"];
 
-const products = new Array(10).fill({
-  title: "Susie Multicolor Secret Side...",
-  price: 999,
-  originalPrice: 1999,
-  discount: 26,
-  rating: 4.5,
-  image: "/bra.jpg",
-  isNew: true,
-  isSale: true,
-});
+// Category mapping to backend ID
+const categoryIdMap: Record<string, number> = {
+  Brassiere: 1,
+  Panties: 2,
+  "Shimmer Leggings": 3,
+};
 
 export default function TopCategories() {
   const [selectedTab, setSelectedTab] = useState<string | null>("Brassiere");
-  const isMobile = useMediaQuery("(max-width: 760px)");
+  const [products, setProducts] = useState<any[]>([]);
+  const isMobile = useMediaQuery("(max-width: 640px)");
+
+  const getAllProducts = async (categoryName: string) => {
+    const categoryId = categoryIdMap[categoryName];
+    try {
+      const response = await axiosInstance.get(
+        `${GET_PRODUCTS}${categoryId}?page=1&limit=10`
+      );
+      const fetchedProducts = response.data.data;
+      setProducts(fetchedProducts);
+    } catch (error: any) {
+      console.error("Failed to fetch products:", error);
+      setProducts([]);
+    }
+  };
 
   useEffect(() => {
-    console.log(selectedTab);
+    if (selectedTab) {
+      getAllProducts(selectedTab);
+    }
   }, [selectedTab]);
 
   return (
@@ -38,19 +53,10 @@ export default function TopCategories() {
       <Tabs value={selectedTab} onChange={setSelectedTab}>
         {/* Scrollable Category Tabs */}
         <div className="overflow-x-auto no-scrollbar mb-6">
-          <Tabs.List
-            className="flex-nowrap inline-flex gap-4 px-1 min-w-max no-scrollbar"
-            style={{
-              // Mobile view: align left
-              ["--tabs-justify"]: "start",
-            }}
-          >
+          <Tabs.List className="flex-nowrap inline-flex gap-4 px-1 min-w-max no-scrollbar">
             <div className="w-full flex md:justify-around justify-start">
               {categories.map((cat) => (
                 <Tabs.Tab key={cat} value={cat} className="p-0 m-0 border-none">
-
-                { isMobile ? 
-
                   <Button
                     radius="xl"
                     size="lg"
@@ -62,8 +68,8 @@ export default function TopCategories() {
                         fontWeight: 700,
                         paddingLeft: 32,
                         paddingRight: 32,
-                        height: 34,
-                        fontSize: "14px", 
+                        height: isMobile ? 34 : 52,
+                        fontSize: isMobile ? "14px" : "18px",
                         border:
                           selectedTab === cat
                             ? "2px solid #2196f3"
@@ -75,62 +81,47 @@ export default function TopCategories() {
                   >
                     {cat}
                   </Button>
-
-                  :
-
-                  <Button
-                    radius="xl"
-                    size="lg"
-                    styles={{
-                      root: {
-                        backgroundColor:
-                          selectedTab === cat ? "#133215" : "#ffffff",
-                        color: selectedTab === cat ? "#ffffff" : "#000000",
-                        fontWeight: 700,
-                        paddingLeft: 32,
-                        paddingRight: 32,
-                        height: 52,
-                        fontSize: "18px", // Desktop default
-                        border:
-                          selectedTab === cat
-                            ? "2px solid #2196f3"
-                            : "1px solid #ccc",
-                        boxShadow: "none",
-                        whiteSpace: "nowrap",
-                      },
-                    }}
-                  >
-                    {cat}
-                  </Button>
-
-                  }
-
                 </Tabs.Tab>
               ))}
             </div>
           </Tabs.List>
         </div>
 
-        {/* Scrollable Product List */}
+        {/* Product List or No Products Message */}
         {categories.map((cat) => (
           <Tabs.Panel key={cat} value={cat} pt="md">
-            <div className="overflow-x-auto no-scrollbar pb-4">
-              <div className="flex gap-4 min-w-max">
-                {products.map((product, i) => (
-                  <div key={i} className="min-w-[250px] h-full flex flex-col">
-                    <ProductCard
-                      imageUrl={BraModel}
-                      productName={product.title}
-                      price={product.price}
-                      originalPrice={product.originalPrice}
-                      rating={product.rating}
-                      isNew={product.isNew}
-                      isOnSale={product.isSale}
-                    />
-                  </div>
-                ))}
+            {selectedTab === cat && products.length === 0 ? (
+              <div className="text-center text-gray-600 font-semibold text-lg py-10">
+                No products available
               </div>
-            </div>
+            ) : (
+              <div className="overflow-x-auto no-scrollbar pb-4">
+                <div
+                  className="flex gap-4"
+                  style={{
+                    minWidth: isMobile ? "100%" : `${products.length * 260}px`,
+                  }}
+                >
+                  {selectedTab === cat &&
+                    products.map((product, i) => (
+                      <div
+                        key={product._id || i}
+                        className="min-w-[240px] max-w-[240px] flex-shrink-0"
+                      >
+                        <ProductCard
+                          imageUrl={product.images?.[0] || BraModel}
+                          productName={product.productTitle}
+                          price={product.salePrice}
+                          originalPrice={product.price}
+                          rating={4.5}
+                          isNew={false}
+                          isOnSale={product.salePrice < product.price}
+                        />
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
           </Tabs.Panel>
         ))}
       </Tabs>
