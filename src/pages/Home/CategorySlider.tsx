@@ -34,10 +34,10 @@ const CategorySlider: React.FC = () => {
 
   if (isMobile) {
     return (
-      <div className="my-8 px-4">
+      <div className={` ${ isMobile && 'h-[400px]' }  my-4 px-2`}>
         <Carousel
           slideSize="70%"
-          height={200}
+          height={ isMobile ? "auto" : 200}
           slideGap="md"
           controlsOffset="sm"
           controlSize={26}

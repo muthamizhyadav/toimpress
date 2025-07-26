@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Tabs, Button, Container } from "@mantine/core";
 import BraModel from "../../assets/svg/braModel.svg";
 import ProductCard from "./PorductCard";
@@ -8,7 +8,6 @@ import { GET_PRODUCTS } from "../../api/api";
 
 const categories = ["Brassiere", "Panties", "Shimmer Leggings"];
 
-// Category mapping to backend ID
 const categoryIdMap: Record<string, number> = {
   Brassiere: 1,
   Panties: 2,
@@ -19,6 +18,7 @@ export default function TopCategories() {
   const [selectedTab, setSelectedTab] = useState<string | null>("Brassiere");
   const [products, setProducts] = useState<any[]>([]);
   const isMobile = useMediaQuery("(max-width: 640px)");
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const getAllProducts = async (categoryName: string) => {
     const categoryId = categoryIdMap[categoryName];
@@ -35,6 +35,14 @@ export default function TopCategories() {
   };
 
   useEffect(() => {
+    if (selectedTab && isMobile && tabRefs.current[selectedTab]) {
+      tabRefs.current[selectedTab]?.scrollIntoView({
+        behavior: "smooth",
+        inline: "center",
+        block: "nearest",
+      });
+    }
+
     if (selectedTab) {
       getAllProducts(selectedTab);
     }
@@ -43,8 +51,8 @@ export default function TopCategories() {
   return (
     <Container
       size="xl"
-      px="md"
-      style={{ paddingTop: "2rem", paddingBottom: "2rem" }}
+      px="sm"
+      style={{ paddingTop: "1rem", paddingBottom: "1rem" }}
     >
       <p className="text-[20px] md:text-[40px] text-center font-bold mb-8">
         Top Categories
@@ -60,6 +68,7 @@ export default function TopCategories() {
                   <Button
                     radius="xl"
                     size="lg"
+                    ref={(el) => (tabRefs.current[cat] = el)}
                     styles={{
                       root: {
                         backgroundColor:
@@ -109,6 +118,7 @@ export default function TopCategories() {
                         className="min-w-[240px] max-w-[240px] flex-shrink-0"
                       >
                         <ProductCard
+                          id={product._id}
                           imageUrl={product.images?.[0] || BraModel}
                           productName={product.productTitle}
                           price={product.salePrice}

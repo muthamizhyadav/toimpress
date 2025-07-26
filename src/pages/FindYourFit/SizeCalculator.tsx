@@ -79,40 +79,78 @@ export default function SizeCalculator() {
         />
       </Box>
 
-      <Group
-        align="start"
-        wrap="nowrap"
-        direction={isMobile ? "column" : "row"}
-        spacing={isMobile ? "md" : "lg"}
-      >
-        <Image
-          src={BodySize}
-          alt="Body Measurement Guide"
-          width={100}
-          height={160}
-          fit="contain"
-          mr={isMobile ? 0 : "md"}
-        />
+      {isMobile ? (
+        <div>
+          <div>
+            <Image
+              src={BodySize}
+              alt="Body Measurement Guide"
+              width={100}
+              height={160}
+              fit="contain"
+              mr={isMobile ? 0 : "md"}
+            />
+          </div>
 
-        <Stack gap="xs" mt={isMobile ? "sm" : 0}>
-          <Text size="sm">• Stand upright and breathe naturally.</Text>
-          <Text size="sm">
-            • Wrap the measuring tape around your torso, just below your bust.
-          </Text>
-          <Text size="sm">
-            • Make sure the tape is snug—not too tight and not too loose.
-          </Text>
-          <Text size="sm">
-            • Wrap the tape around the fullest part of your hips and buttocks.
-          </Text>
-          <Text size="sm">
-            • Ensure the tape is level with the floor and fits comfortably.
-          </Text>
-          <Text size="sm">
-            • Note the measurements in centimeters and enter them above.
-          </Text>
-        </Stack>
-      </Group>
+          <div>
+            <Stack gap="xs" mt={isMobile ? "sm" : 0}>
+              <Text size="sm">• Stand upright and breathe naturally.</Text>
+              <Text size="sm">
+                • Wrap the measuring tape around your torso, just below your
+                bust.
+              </Text>
+              <Text size="sm">
+                • Make sure the tape is snug—not too tight and not too loose.
+              </Text>
+              <Text size="sm">
+                • Wrap the tape around the fullest part of your hips and
+                buttocks.
+              </Text>
+              <Text size="sm">
+                • Ensure the tape is level with the floor and fits comfortably.
+              </Text>
+              <Text size="sm">
+                • Note the measurements in centimeters and enter them above.
+              </Text>
+            </Stack>
+          </div>
+        </div>
+      ) : (
+        <Group
+          align="start"
+          wrap="nowrap"
+          direction={isMobile ? "column" : "row"}
+          spacing={isMobile ? "md" : "lg"}
+        >
+          <Image
+            src={BodySize}
+            alt="Body Measurement Guide"
+            width={100}
+            height={160}
+            fit="contain"
+            mr={isMobile ? 0 : "md"}
+          />
+
+          <Stack gap="xs" mt={isMobile ? "sm" : 0}>
+            <Text size="sm">• Stand upright and breathe naturally.</Text>
+            <Text size="sm">
+              • Wrap the measuring tape around your torso, just below your bust.
+            </Text>
+            <Text size="sm">
+              • Make sure the tape is snug—not too tight and not too loose.
+            </Text>
+            <Text size="sm">
+              • Wrap the tape around the fullest part of your hips and buttocks.
+            </Text>
+            <Text size="sm">
+              • Ensure the tape is level with the floor and fits comfortably.
+            </Text>
+            <Text size="sm">
+              • Note the measurements in centimeters and enter them above.
+            </Text>
+          </Stack>
+        </Group>
+      )}
     </Box>
   );
 }

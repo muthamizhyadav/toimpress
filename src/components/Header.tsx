@@ -113,7 +113,7 @@ export default function Header() {
                 </svg>
                 <span className="ml-2 text-[#252C32]"> Orders </span>
               </div>
-              <div className="flex cursor-pointer">
+              <div className="flex cursor-pointer" onClick={() => handleNavigation("category?id=1")} >
                 <svg
                   width="24"
                   height="24"

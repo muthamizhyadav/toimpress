@@ -8,9 +8,9 @@ const FindYourFitt: React.FC = () => {
 
   return (
     <div
-      className="relative w-[99%] overflow-hidden px-4 sm:px-6 py-6 mr-4"
+      className="relative w-[99%] overflow-hidden px-2 sm:px-2 mr-4"
       style={{ margin: "0 auto" }}
-      onClick={()=>{ navigate('/fit') }}
+    onClick={()=>{ navigate('/fit') }}
     >
       <img
         src={FindYourFit}

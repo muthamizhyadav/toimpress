@@ -25,7 +25,7 @@ export default function CategoryPage() {
     <>
      <SmallHeader />
       <Header />
-      <ProductGrid category="panties" fetchProducts={mockFetchProducts} />
+      <ProductGrid fetchProducts={mockFetchProducts} />
       <Footer />
       <MobileBottomNavbar />      
     </>

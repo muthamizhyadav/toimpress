@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 
 interface HomeBannerCardProps {
   imageUrl: string;
@@ -13,12 +14,21 @@ const HomeBannerCard: React.FC<HomeBannerCardProps> = ({
   imageUrl,
   title,
 }) => {
+
+  const navigate = useNavigate();
+
+  const handleNavigation = (str?: string) => {
+    navigate(`/${str}`);
+  };
+
+  
   return (
-    <div className="relative rounded-md overflow-hidden">
+    <div className="relative rounded-md overflow-hidden"  onClick={() => handleNavigation("category?id=1")}>
       <img
         src={imageUrl}
         alt={title}
         className="w-full h-full object-contain"
+        
       />
       <div className="absolute inset-0 bg-black/20" />
       {/* <div className="absolute inset-0 flex flex-col justify-between p-4 text-white">

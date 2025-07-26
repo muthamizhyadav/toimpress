@@ -1,12 +1,20 @@
 import { Box, Button, Text, Title, rem } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
 
 const braSizes = Array(20).fill("30A");
 
 export default function ShopBySize() {
+  const navigate = useNavigate();
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
+
+   const handleNavigation = (str?: string) => {
+    navigate(`/${str}`);
+  };
+
 
   return (
     <Box bg="#f3e7cf" h={isMobile ? "auto" : "55vh"} style={{  paddingBottom: isMobile ? "20px" : "50px",  }} >
@@ -70,7 +78,12 @@ export default function ShopBySize() {
             return (
               <Button
                 key={`${size}-${index}`}
-                onClick={() => setSelectedSize(`${size}-${index}`)}
+                onClick={() => {
+                   setSelectedSize(`${size}-${index}`)
+                   setTimeout(() => {
+                       handleNavigation("category?id=1")
+                   }, 500);
+               } }
                 variant="filled"
                 radius="70px"
                 size={isMobile ? "xs" : "md"}
