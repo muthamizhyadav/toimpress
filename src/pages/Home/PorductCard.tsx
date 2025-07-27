@@ -1,7 +1,5 @@
 import { useMediaQuery } from "@mantine/hooks";
-import React, { useEffect, useState } from "react";
-import axiosInstance from "../../api/axiosInstance";
-import { GET_PRODUCTS_DETAILS } from "../../api/api";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 interface ProductCardProps {
@@ -25,17 +23,32 @@ const ProductCard: React.FC<ProductCardProps> = ({
   isNew = false,
   isOnSale = false,
 }) => {
-  const isMobile = useMediaQuery('(max-width: 600px)');
+  const isMobile = useMediaQuery("(max-width: 600px)");
   const [quantity, setQuantity] = useState<number>(0);
-  const navigate = useNavigate()
+  const navigate = useNavigate();
+
+  const updateLocalStorage = (newQty: number) => {
+    const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+    const existingItemIndex = cart.findIndex((item: any) => item.id === id);
+    if (existingItemIndex >= 0) {
+      cart[existingItemIndex].quantity = newQty;
+      if (newQty === 0) {
+        cart.splice(existingItemIndex, 1); // remove
+      }
+      localStorage.setItem("cart", JSON.stringify(cart));
+    }
+  };
 
   const handleDecrease = () => {
-    if (quantity > 1) setQuantity(prev => prev - 1);
-    else setQuantity(0); // Set to 0 to show "Add to Cart"
+    const newQty = quantity > 1 ? quantity - 1 : 0;
+    setQuantity(newQty);
+    updateLocalStorage(newQty);
   };
 
   const handleIncrease = () => {
-    setQuantity(prev => prev + 1);
+    const newQty = quantity + 1;
+    setQuantity(newQty);
+    updateLocalStorage(newQty);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -48,14 +61,22 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const handleNavigation = () => {
     navigate(`/product/?id=${id}`);
   };
-  
 
   console.log(id, "product_id");
 
   return (
-    <div className={`${isMobile ? 'h-[350px]' : 'h-[375px]'} rounded-xl shadow p-2 bg-white flex flex-col w-full`}>
+    <div
+      className={`${
+        isMobile ? "h-[350px]" : "h-[375px]"
+      } rounded-xl shadow p-2 bg-white flex flex-col w-full`}
+    >
       {/* Image Section */}
-      <div className="relative w-full aspect-[4/4] overflow-hidden rounded-lg" onClick={()=>{ handleNavigation()}} >
+      <div
+        className="relative w-full aspect-[4/4] overflow-hidden rounded-lg"
+        onClick={() => {
+          handleNavigation();
+        }}
+      >
         <img
           src={imageUrl}
           alt={productName}
@@ -99,8 +120,30 @@ const ProductCard: React.FC<ProductCardProps> = ({
         {/* Add to Cart OR Quantity Controller */}
         {quantity === 0 ? (
           <button
-            onClick={() => setQuantity(1)}
-            className="w-full mt-[-10px] bg-[#96BD75] text-white py-2 font-bold rounded-full flex justify-center items-center gap-2 shadow-sm"
+            onClick={() => {
+              setQuantity(1);
+              const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+              const existingItemIndex = cart.findIndex(
+                (item: any) => item.id === id
+              );
+
+              if (existingItemIndex >= 0) {
+                cart[existingItemIndex].quantity += 1;
+              } else {
+                cart.push({
+                  id,
+                  imageUrl,
+                  productName,
+                  price,
+                  originalPrice,
+                  rating,
+                  quantity: 1,
+                });
+              }
+
+              localStorage.setItem("cart", JSON.stringify(cart));
+            }}
+            className="w-full bg-[#96BD75] text-white py-2 font-bold rounded-full flex justify-center items-center gap-2 shadow-sm"
           >
             Add to cart
           </button>

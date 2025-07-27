@@ -1,33 +1,53 @@
-import Header from '../../components/Header';
-import ProductGrid, { Product } from '../../components/ProductGrid';
-import SmallHeader from '../../components/SmallHeader';
+import Header from "../../components/Header";
+import ProductGrid, { Product } from "../../components/ProductGrid";
+import SmallHeader from "../../components/SmallHeader";
+import Footer from "../Home/Footer";
+import MobileBottomNavbar from "../MobileBottomBar";
 import BraModel from "../../../src/assets/svg/braModel.svg";
-import Footer from '../Home/Footer';
-import MobileBottomNavbar from '../MobileBottomBar';
+import axiosInstance from "../../api/axiosInstance";
+import { GET_PRODUCTS } from "../../api/api";
 
+// Real API fetch function
+const fetchProducts = async (
+  offset: number,
+  limit: number,
+  categoryId: string
+): Promise<Product[]> => {
+  try {
+    const response = await axiosInstance.get(
+      `${GET_PRODUCTS}${categoryId}?page=${offset / limit + 1}&limit=${limit}`
+    );
+    const fetchedProducts = response.data.data;
 
-const mockFetchProducts = async (offset: number, limit: number): Promise<Product[]> => {
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  return Array.from({ length: limit }, (_, i) => ({
-    id: offset + i,
-    title: 'Susie Secret Side Bra',
-    price: 999,
-    originalPrice: 1349,
-    imageUrl: BraModel,
-    discount: 26,
-    isNew: (offset + i) % 2 === 0,
-  }));
+    // Map the API response to ProductGrid's expected Product[] shape
+    return fetchedProducts.map((product: any, index: number) => ({
+      id: product._id || index,
+      title: product.productTitle,
+      price: product.salePrice,
+      originalPrice: product.price,
+      imageUrl: product.images?.[0] || BraModel,
+      isNew: product.isNew || false,
+      discount:
+        product.price && product.salePrice
+          ? Math.round(
+              ((product.price - product.salePrice) / product.price) * 100
+            )
+          : 0,
+    }));
+  } catch (error) {
+    console.error("Failed to fetch products:", error);
+    return [];
+  }
 };
 
 export default function CategoryPage() {
-  return(
+  return (
     <>
-     <SmallHeader />
+      <SmallHeader />
       <Header />
-      <ProductGrid fetchProducts={mockFetchProducts} />
+      <ProductGrid fetchProducts={fetchProducts} />
       <Footer />
-      <MobileBottomNavbar />      
+      <MobileBottomNavbar />
     </>
-  )
+  );
 }

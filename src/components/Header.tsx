@@ -1,9 +1,10 @@
 import { Burger } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { MobileMenuDrawer, UseMobileMenuDrawer } from "./MobileMenuDrawer";
 import { MobileCartDrawer, UseMobileCartDrawer } from "./MobileCartDrawer";
-import { useSearchParams } from "react-router-dom";
+import Logo from "../../public/logo.png";
 
 export default function Header() {
   const navigate = useNavigate();
@@ -23,48 +24,61 @@ export default function Header() {
   const menu = UseMobileMenuDrawer();
   const cart = UseMobileCartDrawer();
 
+  const [cartCount, setCartCount] = useState(0);
+
+  const updateCartCount = () => {
+    const cartData = JSON.parse(localStorage.getItem("cart") || "[]");
+    const total = cartData.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0);
+    setCartCount(total);
+  };
+
+  useEffect(() => {
+    updateCartCount();
+    window.addEventListener("storage", updateCartCount);
+
+    return () => {
+      window.removeEventListener("storage", updateCartCount);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!cart.opened) {
+      updateCartCount();
+    }
+  }, [cart.opened]);
+
   return (
-    <header className="bg-sandle w-full h-[80px] md:h-[112px] flex items-center px-10 sm:px-12 md:px-14 lg:px-14 ">
+    <header className="bg-sandle w-full h-[80px] md:h-[112px] flex items-center px-10 sm:px-12 md:px-14 lg:px-14">
       <img
-        src="logo.png"
-        alt=""
-        srcSet=""
-        className="md:w-[106px] md:h-[65px] w-[80px] h-[50px]"
-        onClick={() => {
-          handleNavigation("");
-        }}
+        src={Logo}
+        alt="Logo"
+        className="md:w-[106px] md:h-[65px] w-[80px] h-[50px] cursor-pointer"
+        onClick={() => handleNavigation("")}
       />
 
-      {/* Show mobile burger icon */}
-
-      {/* Mobile Right Side Actions */}
       {isMobile && (
         <div className="ml-auto flex items-center">
-          {/* Cart Icon */}
-          <div className="mr-4 cursor-pointer" onClick={cart.open}>
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
+          {/* Cart Icon with Badge */}
+          <div className="relative mr-4 cursor-pointer" onClick={cart.open}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
               <path
-                d="M5 3C4.73478 3 4.48043 3.10536 4.29289 3.29289C4.10536 3.48043 4 3.73478 4 4C4 4.26522 4.10536 4.51957 4.29289 4.70711C4.48043 4.89464 4.73478 5 5 5H6.22L6.525 6.222C6.52803 6.23607 6.53136 6.25007 6.535 6.264L7.893 11.694L7 12.586C5.74 13.846 6.632 16 8.414 16H17C17.2652 16 17.5196 15.8946 17.7071 15.7071C17.8946 15.5196 18 15.2652 18 15C18 14.7348 17.8946 14.4804 17.7071 14.2929C17.5196 14.1054 17.2652 14 17 14H8.414L9.414 13H16C16.1857 12.9999 16.3676 12.9481 16.5255 12.8504C16.6834 12.7528 16.811 12.6131 16.894 12.447L19.894 6.447C19.9702 6.29458 20.0061 6.12522 19.9985 5.95501C19.9908 5.78479 19.9398 5.61935 19.8502 5.47439C19.7606 5.32944 19.6355 5.20977 19.4867 5.12674C19.3379 5.04372 19.1704 5.00009 19 5H8.28L7.97 3.757C7.91583 3.54075 7.79095 3.34881 7.61521 3.21166C7.43946 3.0745 7.22293 3.00001 7 3H5ZM18 18.5C18 18.8978 17.842 19.2794 17.5607 19.5607C17.2794 19.842 16.8978 20 16.5 20C16.1022 20 15.7206 19.842 15.4393 19.5607C15.158 19.2794 15 18.8978 15 18.5C15 18.1022 15.158 17.7206 15.4393 17.4393C15.7206 17.158 16.1022 17 16.5 17C16.8978 17 17.2794 17.158 17.5607 17.4393C17.842 17.7206 18 18.1022 18 18.5ZM8.5 20C8.89782 20 9.27936 19.842 9.56066 19.5607C9.84196 19.2794 10 18.8978 10 18.5C10 18.1022 9.84196 17.7206 9.56066 17.4393C9.27936 17.158 8.89782 17 8.5 17C8.10218 17 7.72064 17.158 7.43934 17.4393C7.15804 17.7206 7 18.1022 7 18.5C7 18.8978 7.15804 19.2794 7.43934 19.5607C7.72064 19.842 8.10218 20 8.5 20Z"
+                d="M5 3C4.73478 3 4.48043 3.10536 4.29289 3.29289C4.10536 3.48043 4 3.73478 4 4C4 4.26522 4.10536 4.51957 4.29289 4.70711C4.48043 4.89464 4.73478 5 5 5H6.22L6.525 6.222L7.893 11.694L7 12.586C5.74 13.846 6.632 16 8.414 16H17C17.2652 16 17.5196 15.8946 17.7071 15.7071C17.8946 15.5196 18 15.2652 18 15C18 14.7348 17.8946 14.4804 17.7071 14.2929C17.5196 14.1054 17.2652 14 17 14H8.414L9.414 13H16C16.1857 13 16.3676 12.9481 16.5255 12.8504C16.6834 12.7528 16.811 12.6131 16.894 12.447L19.894 6.447C19.9702 6.29458 20.0061 6.12522 19.9985 5.95501C19.9908 5.78479 19.9398 5.61935 19.8502 5.47439C19.7606 5.32944 19.6355 5.20977 19.4867 5.12674C19.3379 5.04372 19.1704 5.00009 19 5H8.28L7.97 3.757C7.91583 3.54075 7.79095 3.34881 7.61521 3.21166C7.43946 3.0745 7.22293 3.00001 7 3H5ZM18 18.5C18 18.8978 17.842 19.2794 17.5607 19.5607C17.2794 19.842 16.8978 20 16.5 20C16.1022 20 15.7206 19.842 15.4393 19.5607C15.158 19.2794 15 18.8978 15 18.5C15 18.1022 15.158 17.7206 15.4393 17.4393C15.7206 17.158 16.1022 17 16.5 17C16.8978 17 17.2794 17.158 17.5607 17.4393C17.842 17.7206 18 18.1022 18 18.5ZM8.5 20C8.89782 20 9.27936 19.842 9.56066 19.5607C9.84196 19.2794 10 18.8978 10 18.5C10 18.1022 9.84196 17.7206 9.56066 17.4393C9.27936 17.158 8.89782 17 8.5 17C8.10218 17 7.72064 17.158 7.43934 17.4393C7.15804 17.7206 7 18.1022 7 18.5C7 18.8978 7.15804 19.2794 7.43934 19.5607C7.72064 19.842 8.10218 20 8.5 20Z"
                 fill="#122F15"
               />
             </svg>
+            {cartCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-[#8BB06E] text-white text-[10px] px-1.5 py-[2px] rounded-full">
+                {cartCount}
+              </span>
+            )}
           </div>
 
-          {/* Burger Icon */}
-          <Burger
-            opened={menu.opened}
-            onClick={menu.open}
-            aria-label="Open menu"
-          />
+          {/* Burger */}
+          <Burger opened={menu.opened} onClick={menu.open} aria-label="Open menu" />
         </div>
       )}
 
+      {/* Mobile Drawers */}
       <MobileMenuDrawer opened={menu.opened} onClose={menu.close} />
       <MobileCartDrawer opened={cart.opened} onClose={cart.close} />
 
@@ -131,7 +145,8 @@ export default function Header() {
 
                 <span className="ml-2 text-[#252C32] "> Favorites </span>
               </div>
-              <div className="flex" onClick={cart.open}>
+              <div className="relative flex cursor-pointer" onClick={cart.open}>
+
                 <svg
                   width="24"
                   height="24"
@@ -143,11 +158,13 @@ export default function Header() {
                     d="M5 3C4.73478 3 4.48043 3.10536 4.29289 3.29289C4.10536 3.48043 4 3.73478 4 4C4 4.26522 4.10536 4.51957 4.29289 4.70711C4.48043 4.89464 4.73478 5 5 5H6.22L6.525 6.222C6.52803 6.23607 6.53136 6.25007 6.535 6.264L7.893 11.694L7 12.586C5.74 13.846 6.632 16 8.414 16H17C17.2652 16 17.5196 15.8946 17.7071 15.7071C17.8946 15.5196 18 15.2652 18 15C18 14.7348 17.8946 14.4804 17.7071 14.2929C17.5196 14.1054 17.2652 14 17 14H8.414L9.414 13H16C16.1857 12.9999 16.3676 12.9481 16.5255 12.8504C16.6834 12.7528 16.811 12.6131 16.894 12.447L19.894 6.447C19.9702 6.29458 20.0061 6.12522 19.9985 5.95501C19.9908 5.78479 19.9398 5.61935 19.8502 5.47439C19.7606 5.32944 19.6355 5.20977 19.4867 5.12674C19.3379 5.04372 19.1704 5.00009 19 5H8.28L7.97 3.757C7.91583 3.54075 7.79095 3.34881 7.61521 3.21166C7.43946 3.0745 7.22293 3.00001 7 3H5ZM18 18.5C18 18.8978 17.842 19.2794 17.5607 19.5607C17.2794 19.842 16.8978 20 16.5 20C16.1022 20 15.7206 19.842 15.4393 19.5607C15.158 19.2794 15 18.8978 15 18.5C15 18.1022 15.158 17.7206 15.4393 17.4393C15.7206 17.158 16.1022 17 16.5 17C16.8978 17 17.2794 17.158 17.5607 17.4393C17.842 17.7206 18 18.1022 18 18.5ZM8.5 20C8.89782 20 9.27936 19.842 9.56066 19.5607C9.84196 19.2794 10 18.8978 10 18.5C10 18.1022 9.84196 17.7206 9.56066 17.4393C9.27936 17.158 8.89782 17 8.5 17C8.10218 17 7.72064 17.158 7.43934 17.4393C7.15804 17.7206 7 18.1022 7 18.5C7 18.8978 7.15804 19.2794 7.43934 19.5607C7.72064 19.842 8.10218 20 8.5 20Z"
                     fill="#122F15"
                   />
-                </svg>
-                <span className="ml-2 text-[#252C32] cursor-pointer ">
-                  {" "}
-                  Cart{" "}
-                </span>
+                              </svg>
+                            {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-[#8BB06E] text-white text-[10px] px-1.5 py-[2px] rounded-full">
+                    {cartCount}
+                  </span>
+                )}
+                <span className="ml-2 text-[#252C32]">Cart</span>
               </div>
               <button className="bg-lightgreen h-[40px] cursor-pointer text-[#fff]  ml-[-30px] rounded-3xl px-5 z-50"  onClick={() => handleNavigation("account")}  >
                 Sign In

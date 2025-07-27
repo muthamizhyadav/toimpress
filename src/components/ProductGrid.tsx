@@ -2,15 +2,12 @@ import React, { useState, useEffect } from "react";
 import InfiniteScroll from "react-infinite-scroll-component";
 import {
   Card,
-  Image,
-  Text,
-  Button,
-  Badge,
   Skeleton,
-  Group,
+  Text,
 } from "@mantine/core";
 import { useSearchParams } from "react-router-dom";
 import { useMediaQuery } from "@mantine/hooks";
+import ProductCard from "../pages/Home/PorductCard";
 
 export interface Product {
   id: number;
@@ -83,8 +80,8 @@ const ProductGrid: React.FC<ProductGridProps> = ({ fetchProducts }) => {
         hasMore={hasMore}
         loader={<SkeletonGrid count={limit} isMobile={isMobile} />}
         endMessage={
-          <p style={{ textAlign: "center" }}>
-            <b>You have seen it all!</b>
+          <p style={{ textAlign: "center", padding: "40px" }}>
+            <b>That's all folks !</b>
           </p>
         }
       >
@@ -98,80 +95,22 @@ const ProductGrid: React.FC<ProductGridProps> = ({ fetchProducts }) => {
               gap: "20px",
             }}
           >
-            {items.map((item) =>
-              isMobile ? (
-                <MobileProductCard key={item.id} item={item} />
-              ) : (
-                <DesktopProductCard key={item.id} item={item} />
-              )
-            )}
+            {items.map((item) => (
+              <div key={item.id}>
+                <ProductCard
+                  id={item.id}
+                  imageUrl={item.imageUrl}
+                  productName={item.title}
+                  price={item.price}
+                  originalPrice={item.originalPrice}
+                  isNew={item.isNew}
+                  isOnSale={item.price < item.originalPrice} rating={0}                />
+              </div>
+            ))}
           </div>
         </div>
       </InfiniteScroll>
     </div>
-  );
-};
-
-const DesktopProductCard = ({ item }: { item: Product }) => {
-  return (
-    <Card shadow="sm" padding="lg" radius="md" withBorder>
-      <Card.Section>
-        <Image src={item.imageUrl} height={220} alt={item.title} />
-      </Card.Section>
-
-      <Group position="apart" mb="xs">
-        <Text weight={500} size="sm" lineClamp={2}>
-          {item.title}
-        </Text>
-        {item.isNew && (
-          <Badge color="blue" variant="light">
-            New
-          </Badge>
-        )}
-      </Group>
-
-      <Text size="sm">
-        ₹{item.price}{" "}
-        <Text span td="line-through" c="dimmed" size="xs">
-          ₹{item.originalPrice}
-        </Text>
-      </Text>
-
-      <Button fullWidth color="#8BB06E" radius="xl">
-        Add to cart
-      </Button>
-    </Card>
-  );
-};
-
-const MobileProductCard = ({ item }: { item: Product }) => {
-  return (
-    <Card shadow="sm" padding="md" radius="md" withBorder>
-      <Card.Section>
-        <Image src={item.imageUrl} height={150} alt={item.title} />
-      </Card.Section>
-
-      <Text weight={600} size="sm" mt={8} lineClamp={2}>
-        {item.title}
-      </Text>
-
-      {item.isNew && (
-        <Badge color="blue" variant="light" size="xs" mt={4}>
-          New
-        </Badge>
-      )}
-
-      <Text size="sm" mt={4}>
-        ₹{item.price}{" "}
-        <Text span td="line-through" c="dimmed" size="xs">
-          ₹{item.originalPrice}
-        </Text>
-      </Text>
-
-      <Button fullWidth color="#8BB06E" radius="xl" size="xs">
-        Add to cart
-      </Button>
-    </Card>
   );
 };
 

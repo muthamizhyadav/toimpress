@@ -8,87 +8,110 @@ import {
   Divider,
   ActionIcon,
 } from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
+import { useEffect, useState } from "react";
 import { IconTrash, IconMinus, IconPlus } from "@tabler/icons-react";
-import BraModel from "../../src/assets/svg/braModel.svg";
+import { useDisclosure } from "@mantine/hooks";
 
-
-export function UseMobileCartDrawer() {
-  const [opened, { open, close }] = useDisclosure(false);
-  return { opened, open, close };
+interface CartItemType {
+  id: string | number;
+  imageUrl: string;
+  productName: string;
+  price: number;
+  originalPrice: number;
+  rating: number;
+  quantity: number;
 }
 
-function CartItem() {
+function CartItem({
+  item,
+  onUpdate,
+}: {
+  item: CartItemType;
+  onUpdate: () => void;
+}) {
+  const [quantity, setQuantity] = useState(item.quantity);
+
+  const updateCart = (newQty: number) => {
+    let cart = JSON.parse(localStorage.getItem("cart") || "[]");
+    if (newQty <= 0) {
+      cart = cart.filter((c: any) => c.id !== item.id);
+    } else {
+      cart = cart.map((c: any) =>
+        c.id === item.id ? { ...c, quantity: newQty } : c
+      );
+    }
+    localStorage.setItem("cart", JSON.stringify(cart));
+    setQuantity(newQty);
+    onUpdate();
+  };
+
+  const removeItem = () => {
+    const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+    const updatedCart = cart.filter((c: any) => c.id !== item.id);
+    localStorage.setItem("cart", JSON.stringify(updatedCart));
+    onUpdate();
+  };
+
   return (
     <Box w="100%">
-      <Group
-        align="flex-start"
-        position="apart"
-        spacing="md"
-        noWrap
-        style={{ flexWrap: "nowrap" }}
-      >
-        {/* Product Image */}
+      <Group align="flex-start" position="apart" spacing="md" noWrap>
         <Box
           w={70}
           h={90}
-          style={{
-            borderRadius: 8,
-            overflow: "hidden",
-            flexShrink: 0,
-          }}
+          style={{ borderRadius: 8, overflow: "hidden", flexShrink: 0 }}
         >
           <img
-            src={BraModel}
-            alt="Product"
+            src={item.imageUrl}
+            alt={item.productName}
             style={{ width: "100%", height: "100%", objectFit: "cover" }}
           />
         </Box>
 
-        {/* Product Info */}
         <Stack spacing={4} sx={{ flex: 1, minWidth: 0 }}>
           <Text size="sm" fw={500} lineClamp={2}>
-            Susie Multicolor Secret Side Shaper Basic Moulded Bra
-          </Text>
-          <Text size="xs" c="dimmed">
-            Size : 34C
+            {item.productName}
           </Text>
           <Group spacing="xs">
             <Text size="sm" fw={600}>
-              ₹999
+              ₹{item.price}
             </Text>
             <Text size="xs" c="dimmed" td="line-through">
-              ₹1999
+              ₹{item.originalPrice}
             </Text>
           </Group>
         </Stack>
 
-        {/* Delete Icon */}
-        <ActionIcon variant="subtle" color="gray" mt={4}>
+        <ActionIcon variant="subtle" color="gray" mt={4} onClick={removeItem}>
           <IconTrash size={16} />
         </ActionIcon>
       </Group>
 
-      {/* Quantity Control - below the row */}
-      <Group mt="xs" position="right" spacing={0}>
-        <Button
-          variant="light"
+      <Group mt="xs" position="right" spacing="xs">
+        <ActionIcon
+          variant="outline"
+          size="sm"
           color="green"
-          radius="xl"
-          px="xs"
-          size="xs"
-          leftIcon={<IconMinus size={14} />}
-          rightIcon={<IconPlus size={14} />}
+          onClick={() => updateCart(quantity - 1)}
         >
-          1
+          <IconMinus size={14} />
+        </ActionIcon>
+        <Button variant="light" size="sm" radius="xl" disabled>
+          {quantity}
         </Button>
+        <ActionIcon
+          variant="outline"
+          size="sm"
+          color="green"
+          onClick={() => updateCart(quantity + 1)}
+        >
+          <IconPlus size={14} />
+        </ActionIcon>
       </Group>
 
       <Divider mt="sm" />
     </Box>
   );
 }
-
 
 
 export function MobileCartDrawer({
@@ -98,6 +121,19 @@ export function MobileCartDrawer({
   opened: boolean;
   onClose: () => void;
 }) {
+  const [cartItems, setCartItems] = useState<CartItemType[]>([]);
+
+  const fetchCartItems = () => {
+    const storedCart = JSON.parse(localStorage.getItem("cart") || "[]");
+    setCartItems(storedCart);
+  };
+
+  useEffect(() => {
+    if (opened) {
+      fetchCartItems();
+    }
+  }, [opened]);
+
   return (
     <Drawer
       opened={opened}
@@ -106,6 +142,18 @@ export function MobileCartDrawer({
       padding="md"
       size="100%"
       transitionProps={{ transition: "slide-left", duration: 250 }}
+      styles={{
+        content: {
+          width: "100%",
+          maxWidth: "100vw",
+          margin: "0 auto",
+          [`@media (min-width: 768px)`]: {
+            width: "60vw",
+            maxWidth: "60vw",
+            margin: "0 auto",
+          },
+        },
+      }}
     >
       <div className="flex flex-col h-full p-4">
         {/* Header */}
@@ -115,17 +163,31 @@ export function MobileCartDrawer({
 
         {/* Cart Items */}
         <div className="flex-grow overflow-y-auto space-y-6">
-          <CartItem />
-          <CartItem />
+          {cartItems.length === 0 ? (
+            <Text align="center" color="dimmed">
+              Your cart is empty
+            </Text>
+          ) : (
+            cartItems.map((item, index) => (
+              <CartItem key={index} item={item} onUpdate={fetchCartItems} />
+            ))
+          )}
         </div>
 
-        {/* Optional: Add checkout button at bottom */}
-        <div className="mt-6">
-          <Button fullWidth color="dark" radius="xl">
-            Proceed to Checkout
-          </Button>
-        </div>
+        {/* Checkout Button */}
+        {cartItems.length > 0 && (
+          <div className="mt-6">
+            <Button fullWidth color="dark" radius="xl">
+              Proceed to Checkout
+            </Button>
+          </div>
+        )}
       </div>
     </Drawer>
   );
+}
+
+export function UseMobileCartDrawer() {
+  const [opened, { open, close }] = useDisclosure(false);
+  return { opened, open, close };
 }
