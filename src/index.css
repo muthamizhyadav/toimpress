@@ -1,12 +1,11 @@
-@import url("https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap");
-
+@import "tailwindcss/preflight";
 @import "tailwindcss";
 
-
 @tailwind utilities;
-@import "tailwindcss/preflight";
 
-@theme {
+@import url("https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap");
+
+:root {
   --font-roboto: "Roboto", sans-serif;
   --font-lato: "Lato", sans-serif;
   --color-darkgreen: #122f15;

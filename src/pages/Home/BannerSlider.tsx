@@ -37,7 +37,7 @@ const ImageCard = ({ title, subtitle, offer, imageUrl }: ImageCardProps) => {
   return (
     <Card radius="md" shadow="sm" withBorder p="lg">
       <Card.Section>
-        <Image src={imageUrl} height={300} alt={title} />
+        <Image src={imageUrl} height={300} alt={title} style={{objectFit:'cover'}}/>
       </Card.Section>
       <Stack mt="md" gap={4}>
         <Text fw={700} size="lg">
