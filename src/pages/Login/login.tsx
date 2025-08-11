@@ -13,10 +13,6 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import { useState } from "react";
-import {
-  IconBrandGoogleFilled,
-  IconBrandFacebookFilled,
-} from "@tabler/icons-react";
 import { useMediaQuery } from "@mantine/hooks";
 import ToImpressLogo from "../../assets/svg/ToImpressLogo.svg";
 import GoogleLogo from "../../assets/svg/GoogleLogo.tsx";

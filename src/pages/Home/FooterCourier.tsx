@@ -14,9 +14,10 @@ export default function FoodCourier() {
       p="xl"
       style={{
         width: '90%',
-        margin: '0 auto',
+        margin: '20px auto',
         borderRadius: '16px',
         boxShadow: '0 8px 30px rgba(0, 0, 0, 0.05)',
+
       }}
     >
       <Group

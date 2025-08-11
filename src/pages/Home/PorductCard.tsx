@@ -66,9 +66,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
   return (
     <div
-      className={`${
-        isMobile ? "h-[350px]" : "h-[375px]"
-      } rounded-xl shadow p-2 bg-white flex flex-col w-full`}
+      className={`rounded-xl shadow p-2 bg-white flex flex-col w-full`}
     >
       {/* Image Section */}
       <div
@@ -95,25 +93,26 @@ const ProductCard: React.FC<ProductCardProps> = ({
             </span>
           )}
         </div>
-        <div className="absolute top-2 right-2 z-10">
+        {/* <div className="absolute top-2 right-2 z-10">
           <button className="text-gray-600">❤️</button>
-        </div>
+        </div> */}
       </div>
 
       {/* Product Content */}
       <div className="mt-1 px-1 flex flex-col justify-between flex-grow gap-1">
         <div>
-          <p className="text-sm font-medium line-clamp-2">{productName}</p>
+          <p className="text-sm line-clamp-2">{productName}</p>
           <div className="flex">
-            <div className="flex items-center gap-1">
-              <span className="text-black font-bold text-sm">₹{price}</span>
-              <span className="line-through text-gray-400 text-sm">
-                ₹{originalPrice}
+           <div className="flex items-center gap-1">
+              <span className="text-black font-bold text-xs">₹{price}</span>
+              <span className="line-through text-gray-400 text-sm">₹{originalPrice}</span>
+              <span className="text-xs text-[#96BD75] font-bold " >
+                (SAVE {Math.round(((originalPrice - price) / originalPrice) * 100)}%)
               </span>
             </div>
-            <div className="flex items-center text-yellow-500 text-sm ml-auto">
+            {/* <div className="flex items-center text-yellow-500 text-sm ml-auto">
               ⭐ {rating}
-            </div>
+            </div> */}
           </div>
         </div>
 

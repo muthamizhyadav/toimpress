@@ -1,7 +1,6 @@
 // src/components/AuthModal.tsx
-import { Button, TextInput, Divider, Text } from "@mantine/core";
+import { Button, TextInput, Text } from "@mantine/core";
 import { useState } from "react";
-import { IconBrandGoogle } from "@tabler/icons-react";
 
 export default function AuthModal() {
   const [useEmail, setUseEmail] = useState(false);
@@ -48,7 +47,7 @@ export default function AuthModal() {
             SEND OTP
           </Button>
 
-          <Text size="xs" align="center" className="mt-4 text-gray-500">
+          <Text size="xs" className="mt-4 text-gray-500 text-center">
             By Signing, I agree to ToImpress’s T&C
           </Text>
         </div>

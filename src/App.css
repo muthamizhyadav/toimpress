@@ -9,3 +9,19 @@
     box-shadow: none !important;
   }
   
+  .mantine-Tabs-list::before{
+    border: none !important;
+  }
+
+  button.mantine-focus-auto{
+    border: none !important;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;     /* Firefox */
+}

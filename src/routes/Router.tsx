@@ -1,41 +1,29 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AppShell, MantineProvider, createTheme } from "@mantine/core";
+import { MantineProvider, createTheme } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
 import { ModalsProvider } from "@mantine/modals";
 
 import Home from "../pages/Home";
 import Product from "../pages/Product/Product";
 import NotFound from "../pages/NotFound";
-import { AuthProvider, useAuth } from "../pages/AuthContext";
 import Login from "../pages/Login/login";
-import { ReactNode } from "react";
 import Profile from "../pages/Profile/Profile";
 import Orders from "../pages/Orders/Orders";
 import FindYourFitPage from "../pages/FindYourFit/FindYourFit";
 import CategoryPage from "../pages/Category/CategoryPage";
 
-interface ProtectedRouteProps {
-  children: ReactNode;
-}
+import { AuthProvider, useAuth } from "../pages/AuthContext";
+import { ReactNode } from "react";
+import ScrollToTop from "../components/ScrollToTop";
 
-const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
+// ProtectedRoute component
+const ProtectedRoute = ({ children }: { children: ReactNode }) => {
   const { isAuthenticated } = useAuth();
 
-  if (!isAuthenticated) {
-    return <Navigate to="/" />;
-  }
-
-  return (
-    <AppShell
-      header={{ height: 60 }}
-      navbar={{ width: 200, breakpoint: "sm" }}
-      padding="md"
-    >
-      {children}
-    </AppShell>
-  );
+  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
 };
 
+// Custom theme
 const customTheme = createTheme({
   colors: {
     darkGreen: [
@@ -72,6 +60,7 @@ const AppRoutes = () => {
       <ModalsProvider>
         <AuthProvider>
           <BrowserRouter>
+            <ScrollToTop />
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route
@@ -90,7 +79,6 @@ const AppRoutes = () => {
                   </ProtectedRoute>
                 }
               />
-
               <Route
                 path="/account"
                 element={
@@ -99,7 +87,6 @@ const AppRoutes = () => {
                   </ProtectedRoute>
                 }
               />
-
               <Route
                 path="/orders"
                 element={
@@ -108,7 +95,6 @@ const AppRoutes = () => {
                   </ProtectedRoute>
                 }
               />
-
               <Route
                 path="/fit"
                 element={
@@ -117,8 +103,7 @@ const AppRoutes = () => {
                   </ProtectedRoute>
                 }
               />
-
-               <Route
+              <Route
                 path="/category"
                 element={
                   <ProtectedRoute>
@@ -126,7 +111,6 @@ const AppRoutes = () => {
                   </ProtectedRoute>
                 }
               />
-
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

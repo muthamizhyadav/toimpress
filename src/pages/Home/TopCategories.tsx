@@ -54,43 +54,54 @@ export default function TopCategories() {
       px="sm"
       style={{ paddingTop: "1rem", paddingBottom: "1rem" }}
     >
-      <p className="text-[20px] md:text-[40px] text-center font-bold mb-8">
+     <p className={`text-[20px] md:text-[40px] text-center font-bold ${isMobile ? "mb-4" : "mb-8"}`}>
         Top Categories
       </p>
 
       <Tabs value={selectedTab} onChange={setSelectedTab}>
         {/* Scrollable Category Tabs */}
-        <div className="overflow-x-auto no-scrollbar mb-6">
-          <Tabs.List className="flex-nowrap inline-flex gap-4 px-1 min-w-max no-scrollbar">
+       <div className="overflow-x-auto no-scrollbar">
+          <Tabs.List className="flex-nowrap inline-flex gap-4 px-1 min-w-max tc-tab-list">
             <div className="w-full flex md:justify-around justify-start">
               {categories.map((cat) => (
-                <Tabs.Tab key={cat} value={cat} className="p-0 m-0 border-none">
+                <Tabs.Tab
+                  key={cat}
+                  value={cat}
+                  className="p-0 m-0"
+                  styles={{
+                    root: {
+                      border: 'none',
+                      boxShadow: 'none',
+                      background: 'transparent',
+                      '&[data-active]': {
+                        border: 'none',
+                        boxShadow: 'none',
+                      }
+                    }
+                  }}
+                >
                   <Button
                     radius="xl"
                     size="lg"
-                    ref={(el) => (tabRefs.current[cat] = el)}
                     styles={{
                       root: {
-                        backgroundColor:
-                          selectedTab === cat ? "#133215" : "#ffffff",
+                        backgroundColor: selectedTab === cat ? "#133215" : "#ffffff",
                         color: selectedTab === cat ? "#ffffff" : "#000000",
                         fontWeight: 700,
                         paddingLeft: 32,
                         paddingRight: 32,
                         height: isMobile ? 34 : 52,
                         fontSize: isMobile ? "14px" : "18px",
-                        border:
-                          selectedTab === cat
-                            ? "2px solid #2196f3"
-                            : "1px solid #ccc",
                         boxShadow: "none",
                         whiteSpace: "nowrap",
+                        border: "none",
                       },
                     }}
                   >
                     {cat}
                   </Button>
                 </Tabs.Tab>
+
               ))}
             </div>
           </Tabs.List>
@@ -104,7 +115,7 @@ export default function TopCategories() {
                 No products available
               </div>
             ) : (
-              <div className="overflow-x-auto no-scrollbar pb-4">
+              <div className="overflow-x-auto pb-4">
                 <div
                   className="flex gap-4"
                   style={{

@@ -226,7 +226,7 @@ const ProductPage = () => {
         </Tabs.Panel>
 
         <Tabs.Panel value="reviews" pt="xs">
-          <Stack spacing="sm" mt="sm">
+          <Stack mt="sm">
             <Box>
               <Text fw={500}>Aarti R.</Text>
               <Text size="sm" c="dimmed">“Very comfortable and fits perfectly…”</Text>

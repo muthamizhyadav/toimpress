@@ -54,7 +54,7 @@ function CartItem({
 
   return (
     <Box w="100%">
-      <Group align="flex-start" position="apart" spacing="md" noWrap>
+      <Group align="flex-start" justify="center">
         <Box
           w={70}
           h={90}
@@ -67,11 +67,11 @@ function CartItem({
           />
         </Box>
 
-        <Stack spacing={4} sx={{ flex: 1, minWidth: 0 }}>
+        <Stack style={{ flex: 1, minWidth: 0 }}>
           <Text size="sm" fw={500} lineClamp={2}>
             {item.productName}
           </Text>
-          <Group spacing="xs">
+          <Group >
             <Text size="sm" fw={600}>
               ₹{item.price}
             </Text>
@@ -86,7 +86,7 @@ function CartItem({
         </ActionIcon>
       </Group>
 
-      <Group mt="xs" position="right" spacing="xs">
+      <Group mt="xs" justify="right" >
         <ActionIcon
           variant="outline"
           size="sm"
@@ -157,14 +157,14 @@ export function MobileCartDrawer({
     >
       <div className="flex flex-col h-full p-4">
         {/* Header */}
-        <Text align="center" size="lg" fw={600} mb="lg">
+        <Text className="text-center" size="lg" fw={600} mb="lg">
           Your Cart
         </Text>
 
         {/* Cart Items */}
         <div className="flex-grow overflow-y-auto space-y-6">
           {cartItems.length === 0 ? (
-            <Text align="center" color="dimmed">
+            <Text className="text-center" color="dimmed">
               Your cart is empty
             </Text>
           ) : (
