@@ -1,27 +1,41 @@
 /* Remove Mantine Tabs bottom border */
 .mantine-Tabs-list {
-    border-bottom: none !important;
-  }
-  
-  /* Remove active tab default blue border and shadow */
-  .mantine-Tabs-tab[data-active="true"] {
-    border: none !important;
-    box-shadow: none !important;
-  }
-  
-  .mantine-Tabs-list::before{
-    border: none !important;
-  }
+  border-bottom: none !important;
+}
 
-  button.mantine-focus-auto{
-    border: none !important;
-  }
+/* Remove active tab default blue border and shadow */
+.mantine-Tabs-tab[data-active="true"] {
+  border: none !important;
+  box-shadow: none !important;
+}
 
-  .no-scrollbar::-webkit-scrollbar {
+.mantine-Tabs-list::before {
+  border: none !important;
+}
+
+.no-scrollbar::-webkit-scrollbar {
   display: none; /* Chrome, Safari, Opera */
 }
 
 .no-scrollbar {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;     /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.mantine-Tabs-tab:active {
+  background-color: none !important;
+}
+
+div.tc-tab-list::before {
+  content: "" !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+div.tc-tab-list button:hover {
+  background: transparent;
+}
+
+div.tc-tab-list button.mantine-focus-auto {
+  border: none !important;
 }

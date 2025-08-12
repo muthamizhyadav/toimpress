@@ -66,7 +66,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
   return (
     <div
-      className={`rounded-xl shadow p-2 bg-white flex flex-col w-full`}
+      className={`rounded-xl shadow p-2 bg-white flex flex-col w-full  `}
     >
       {/* Image Section */}
       <div
@@ -100,22 +100,23 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
       {/* Product Content */}
       <div className="mt-1 px-1 flex flex-col justify-between flex-grow gap-1">
-        <div>
-          <p className="text-sm line-clamp-2">{productName}</p>
-          <div className="flex">
-           <div className="flex items-center gap-1">
-              <span className="text-black font-bold text-xs">₹{price}</span>
-              <span className="line-through text-gray-400 text-sm">₹{originalPrice}</span>
-              <span className="text-xs text-[#96BD75] font-bold " >
-                (SAVE {Math.round(((originalPrice - price) / originalPrice) * 100)}%)
-              </span>
-            </div>
-            {/* <div className="flex items-center text-yellow-500 text-sm ml-auto">
-              ⭐ {rating}
-            </div> */}
+       <div>
+        <p className="text-sm md:text-base line-clamp-2 font-medium">{productName}</p>
+        <div className="flex mt-1 mb-1">
+          <div className="flex items-center gap-1">
+            <span className="text-black font-bold text-sm md:text-base">₹{price}</span>
+            <span className="line-through text-gray-400 font-bold text-sm md:text-base">
+              ₹{originalPrice}
+            </span>
+            <span className="text-xs md:text-base text-[#96BD75] font-bold">
+              (SAVE {Math.round(((originalPrice - price) / originalPrice) * 100)}%)
+            </span>
           </div>
+          {/* <div className="flex items-center text-yellow-500 text-sm ml-auto">
+            ⭐ {rating}
+          </div> */}
         </div>
-
+      </div>
         {/* Add to Cart OR Quantity Controller */}
         {quantity === 0 ? (
           <button
@@ -142,12 +143,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
               localStorage.setItem("cart", JSON.stringify(cart));
             }}
-            className="w-full bg-[#96BD75] text-white py-2 font-bold rounded-full flex justify-center items-center gap-2 shadow-sm"
+            className="w-full bg-[#96BD75] text-white py-2 font-bold rounded-full flex justify-center items-center gap-2 shadow-sm mb-2"
           >
             Add to cart
           </button>
         ) : (
-          <div className="w-full mt-[-10px] flex items-center justify-between bg-[#96BD75] text-white rounded-full px-2 py-1 shadow-sm">
+          <div className="w-full flex items-center justify-between bg-[#96BD75] text-white rounded-full px-2 py-2 shadow-sm mb-2 ">
             <button onClick={handleDecrease} className="text-xl font-bold px-2">
               −
             </button>

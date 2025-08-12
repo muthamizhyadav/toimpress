@@ -1,21 +1,13 @@
 import { Grid, Card, Text, rem } from '@mantine/core';
 import { 
-  IconGift, IconShirt, IconBriefcase, IconStar, IconSportBillard, IconBrandAppleArcade, 
-  IconMoon, IconBabyCarriage, IconShoppingBag, IconPackages 
-} from '@tabler/icons-react';
+  IconGift, IconShirt, IconStar
+  } from '@tabler/icons-react';
 
 const categories = [
   { label: 'ELITE', icon: IconStar },
   { label: 'BRA', icon: IconShirt },
   { label: 'PANTIES', icon: IconShirt },
-  { label: 'SPORTSWEAR', icon: IconSportBillard },
-  { label: 'LINGERIE SET', icon: IconBrandAppleArcade },
-  { label: 'NIGHTWEAR', icon: IconMoon },
-  { label: 'CAMISOLE & SLIP', icon: IconBriefcase },
-  { label: 'SHAPEWEAR', icon: IconShoppingBag },
-  { label: 'TEENS', icon: IconBabyCarriage },
-  { label: 'ACCESSORIES', icon: IconPackages },
-  { label: 'BRANDS', icon: IconShirt },
+  { label: 'COMBO', icon: IconShirt },
   { label: 'NEW ARRIVALS', icon: IconGift },
 ];
 

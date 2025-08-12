@@ -8,7 +8,7 @@ const FindYourFitt: React.FC = () => {
 
   return (
     <div
-      className="relative w-[99%] overflow-hidden px-2 sm:px-2 mr-4"
+      className="relative w-[99%] overflow-hidden px-2 sm:px-2 mr-4 !mt-[15px] "
       style={{ margin: "0 auto" }}
     onClick={()=>{ navigate('/fit') }}
     >

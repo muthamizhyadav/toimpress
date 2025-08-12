@@ -60,25 +60,29 @@ const HomeBanner: React.FC = () => {
   }, [currentSlide]);
 
   return (
-    <Carousel
-      withIndicators={false}
-      withControls={false}
-      loop
-      slideSize="100%"
-      slideGap={0}
-      getEmblaApi={(api) => (emblaRef.current = api)}
-      className={`${isMobile ? "h-[200px]" : "h-[50vh]"} w-full rounded-2xl overflow-hidden`}
-    >
-      {banners.map((banner) => (
-        <Carousel.Slide key={banner._id} onClick={() => handleNavigation("category?id=1")}  >
-          <img
-            src={banner.url}
-            alt={banner.title}
-            className="w-full h-full object-cover"
-          />
-        </Carousel.Slide>
-      ))}
-    </Carousel>
+  <Carousel
+    withIndicators={false}
+    withControls={false}
+    loop
+    slideSize="100%"
+    slideGap={0}
+    getEmblaApi={(api) => (emblaRef.current = api)}
+    className={`${isMobile ? "h-[200px]" : "h-[741px]"} w-full rounded-2xl overflow-hidden`}
+  >
+    {banners.map((banner) => (
+      <Carousel.Slide
+        key={banner._id}
+        onClick={() => handleNavigation("category?id=1")}
+      >
+        <img
+          src={banner.url}
+          alt={banner.title}
+          className="w-full h-full max-h-[741px] object-cover"
+        />
+      </Carousel.Slide>
+    ))}
+  </Carousel>
+
   );
 };
 

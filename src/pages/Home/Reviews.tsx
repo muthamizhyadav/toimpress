@@ -26,7 +26,8 @@ export default function Reviews() {
     <div
       style={{
         width: isMobile ? 'calc(100% - 30px)' : '70vw',
-        margin: isMobile ? '15px' : '0 auto',
+        margin: isMobile ? '15px' : '15px auto',
+
       }}
     >
       {/* Header */}

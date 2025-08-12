@@ -24,8 +24,8 @@ const Home = () => {
       <HomeBanner />
       {isMobile && <CategoriesHomeMobile />}
       <TopCategories />
-      <ShopBySize />
       <CategorySlider />
+      <ShopBySize />
       <FindYourFitt />
       <Reviews/>
       {/* <Testimonials /> */}
