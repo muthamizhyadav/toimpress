@@ -31,28 +31,28 @@ export default function Footer() {
                 elit, sed do eiusmod tempor incididunt ut labore exercitation
                 ullamco laboris nisi ut aliquip ex ea commodo consequat.
               </Text>
-              <Group gap="md" mt="sm">
-                <Group gap={6}>
+              <Group style={{ gap: '1rem', marginTop: '0.75rem' }}>
+                <Group style={{ gap: '0.375rem' }}>
                   <IconPhone size={18} />
                   <Text size="sm">
                     <strong>310–437–2766</strong>
                   </Text>
                 </Group>
-                <Group gap={6}>
+                <Group style={{ gap: '0.375rem' }}>
                   <IconMail size={18} />
                   <Text size="sm">
                     <strong>unreal@outlook.com</strong>
                   </Text>
                 </Group>
               </Group>
-              <Group gap="md">
-                <Group gap={6}>
+              <Group style={{ gap: '1rem' }}>
+                <Group style={{ gap: '0.375rem' }}>
                   <IconMapPin size={18} />
                   <Text size="sm">
                     <strong>706 Campfire Ave. Meriden, CT 06450</strong>
                   </Text>
                 </Group>
-                <Group gap={6}>
+                <Group style={{ gap: '0.375rem' }}>
                   <IconPrinter size={18} />
                   <Text size="sm">
                     <strong>+1–000–0000</strong>
@@ -74,7 +74,7 @@ export default function Footer() {
           pt="md"
           style={{ borderTop: "1px solid #e9ecef" }}
         >
-          <Group gap="lg" mt="sm">
+          <Group style={{ gap: '1.5rem', marginTop: '0.75rem' }}>
             <Text size="xs" c="dimmed">
               <Link to="/about">About us</Link>
             </Text>

@@ -26,7 +26,7 @@ export default function SubscriptionBanner() {
       }}
     >
       {isMobile ? (
-        <Stack spacing="md" align="center">
+  <Stack align="center" style={{ gap: 'var(--mantine-spacing-md)' }}>
           <Text
             c="white"
             size="sm"

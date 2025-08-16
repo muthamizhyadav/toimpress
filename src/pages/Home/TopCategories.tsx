@@ -65,18 +65,12 @@ export default function TopCategories() {
                 <Tabs.Tab
                   key={cat.name}
                   value={cat.name}
-                  ref={(el) => (tabRefs.current[cat.name] = el)}
+                  ref={(el) => { tabRefs.current[cat.name] = el; return undefined; }}
                   className="p-0 m-0"
-                  styles={{
-                    root: {
-                      border: "none",
-                      boxShadow: "none",
-                      background: "transparent",
-                      "&[data-active]": {
-                        border: "none", // ensures tab itself has no border
-                        boxShadow: "none",
-                      },
-                    },
+                  style={{
+                    border: "none",
+                    boxShadow: "none",
+                    background: "transparent",
                   }}
                 >
                   <Button

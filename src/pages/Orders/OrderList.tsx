@@ -1,19 +1,18 @@
 import {
-    Box,
-    Button,
-    Drawer,
-    Group,
-    Image,
-    Stack,
-    Text,
-    useMantineTheme,
-    Badge,
-    Tabs,
-    ScrollArea,
-    AspectRatio,
-    Paper,
-    Center,
-    rem,
+  Box,
+  Button,
+  Drawer,
+  Group,
+  Image,
+  Stack,
+  Text,
+  useMantineTheme,
+  Badge,
+  Tabs,
+  ScrollArea,
+  AspectRatio,
+  Center,
+  rem,
   } from "@mantine/core";
   import { useDisclosure, useMediaQuery } from "@mantine/hooks";
   import { useState } from "react";
@@ -74,15 +73,15 @@ import {
       <Box p="md">
         {/* Wrap with center & card only on desktop */}
         <Center>
-          <Box
-            w={isMobile ? "100%" : rem("1200px")} // 200% feel on desktop (based on default ~600px)
-            bg={isMobile ? "transparent" : "white"}
-            p={isMobile ? 0 : "md"}
-            sx={{
-              borderRadius: isMobile ? 0 : theme.radius.md,
-              boxShadow: isMobile ? "none" : theme.shadows.md,
-            }}
-          >
+            <Box
+              w={isMobile ? "100%" : rem("1200px")} // 200% feel on desktop (based on default ~600px)
+              bg={isMobile ? "transparent" : "white"}
+              p={isMobile ? 0 : "md"}
+              style={{
+                borderRadius: isMobile ? 0 : theme.radius.md,
+                boxShadow: isMobile ? "none" : theme.shadows.md,
+              }}
+            >
             <Tabs defaultValue="All">
               <Tabs.List>
                 <Tabs.Tab value="All">All</Tabs.Tab>
@@ -98,15 +97,15 @@ import {
                     p="md"
                     my="sm"
                     bg="white"
-                    sx={{
+                    style={{
                       borderRadius: 10,
                       boxShadow: theme.shadows.sm,
                       cursor: "pointer",
                     }}
                     onClick={() => handleClick(order)}
                   >
-                    <Group position="apart" align="center">
-                      <Group spacing="xs">
+                    <Group style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Group style={{ gap: 'var(--mantine-spacing-xs)' }}>
                         <Badge color={order.statusColor} variant="light">
                           {order.status}
                         </Badge>
@@ -154,7 +153,7 @@ import {
           size={isMobile ? "100%" : "400px"}
         >
           {selectedOrder && (
-            <Stack spacing="md">
+            <Stack style={{ gap: 'var(--mantine-spacing-md)' }}>
               <Image
                 src={selectedOrder.image}
                 radius="md"

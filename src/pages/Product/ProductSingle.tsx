@@ -19,7 +19,6 @@ import { useMediaQuery } from "@mantine/hooks";
 import { useSearchParams } from "react-router-dom";
 import { GET_PRODUCTS_DETAILS } from "../../api/api";
 import axiosInstance from "../../api/axiosInstance";
-import ProductCard from "../Home/PorductCard";
 
 // Static description tags
 import BraDescp1 from "../../assets/svg/bradescription/descp1.svg";
@@ -163,7 +162,7 @@ const ProductPage = () => {
             <Button variant="outline">Buy Now</Button>
           </Group>
 
-          <Group mt="md" spacing="lg">
+          <Group mt="md" style={{ gap: 'var(--mantine-spacing-lg)' }}>
             <Group>
               <ThemeIcon variant="light" color="green"><IconTruck /></ThemeIcon>
               <Text>Fast & Free Delivery</Text>

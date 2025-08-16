@@ -32,13 +32,13 @@ export default function Reviews() {
     >
       {/* Header */}
       <Card radius="md" p="md" mb="md" shadow="sm" style={{ backgroundColor: '#F5F5F5' }}>
-        <Group position="apart" mb="xs">
+  <Group style={{ justifyContent: 'space-between', marginBottom: '0.75rem' }}>
           <Text size="xl" fw={700} color="#EA4335">Google</Text>
           <Text size="md" fw={600}>Rating</Text>
         </Group>
         <Group>
           <Text fw={700} size="lg">4.6</Text>
-          <Group spacing={2}>
+          <Group>
             {[...Array(4)].map((_, i) => (
               <IconStarFilled key={i} size={18} color="#EA4335" />
             ))}
@@ -54,7 +54,7 @@ export default function Reviews() {
           <Grid.Col span={{ base: 6, md: 3 }} key={index}>
             <Card radius="lg" shadow="sm" p="sm" style={{ backgroundColor: '#F5F5F5', position: 'relative' }}>
               {/* Stars */}
-              <Group spacing={2} mb="xs">
+              <Group>
                 {[...Array(5)].map((_, i) => (
                   <IconStarFilled key={i} size={16} color="#133215" />
                 ))}
@@ -64,7 +64,7 @@ export default function Reviews() {
               <Text size="sm" mb="md">{item.review}</Text>
 
               {/* Cloud Bubble Name */}
-              <Group spacing="xs">
+              <Group>
                 <Avatar radius="xl" color="green" style={{ backgroundColor: '#133215', color: 'white' }}>
                   {item.initials}
                 </Avatar>

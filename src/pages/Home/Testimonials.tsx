@@ -83,17 +83,14 @@ export default function Testimonials() {
         </Title>
 
         <Carousel
-          slideSize={isMobile ? "85%" : "33.3333%"} // increased slide size on mobile
+          slideSize={isMobile ? "85%" : "33.3333%"}
           height={260}
           slideGap="md"
-          align="start" // Ensures first slide aligns to the left
           controlsOffset="sm"
           controlSize={24}
           withControls={false}
           withIndicators={false}
-          styles={{
-            viewport: { overflow: "visible", paddingBottom: "1rem" },
-          }}
+          styles={{ viewport: { overflow: "visible", paddingBottom: "1rem" } }}
         >
           {testimonials.map((t, i) => (
             <Carousel.Slide key={i}>

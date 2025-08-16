@@ -22,7 +22,7 @@ export default function SizeCalculator() {
 
   return (
     <Box w={isMobile ? "100%" : "50vw"} mx="auto" p="md">
-      <Text align="center" fw={500} size="lg" mb="md">
+  <Text fw={500} size="lg" mb="md" style={{ textAlign: 'center' }}>
         Calculate your size here
       </Text>
 
@@ -38,11 +38,11 @@ export default function SizeCalculator() {
         mb="xl"
       />
 
-      <Stack gap="xs">
+  <Stack>
         <Text fw={600} size="sm">
           FOR BRAS
         </Text>
-        <Group grow>
+  <Group>
           <TextInput
             placeholder="Enter band size eg: 80 (cm)"
             value={braBand}
@@ -93,7 +93,7 @@ export default function SizeCalculator() {
           </div>
 
           <div>
-            <Stack gap="xs" mt={isMobile ? "sm" : 0}>
+            <Stack mt={isMobile ? "sm" : 0}>
               <Text size="sm">• Stand upright and breathe naturally.</Text>
               <Text size="sm">
                 • Wrap the measuring tape around your torso, just below your
@@ -116,12 +116,7 @@ export default function SizeCalculator() {
           </div>
         </div>
       ) : (
-        <Group
-          align="start"
-          wrap="nowrap"
-          direction={isMobile ? "column" : "row"}
-          spacing={isMobile ? "md" : "lg"}
-        >
+  <Group>
           <Image
             src={BodySize}
             alt="Body Measurement Guide"
@@ -131,7 +126,7 @@ export default function SizeCalculator() {
             mr={isMobile ? 0 : "md"}
           />
 
-          <Stack gap="xs" mt={isMobile ? "sm" : 0}>
+          <Stack mt={isMobile ? "sm" : 0}>
             <Text size="sm">• Stand upright and breathe naturally.</Text>
             <Text size="sm">
               • Wrap the measuring tape around your torso, just below your bust.

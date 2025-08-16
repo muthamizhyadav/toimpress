@@ -21,11 +21,9 @@ export default function FoodCourier() {
       }}
     >
       <Group
-        direction={isMobile ? 'column' : 'row'}
         justify="space-between"
         align="center"
-        spacing={isMobile ? 'lg' : 'xl'}
-        wrap="nowrap"
+        style={{ flexDirection: isMobile ? 'column' : 'row', flexWrap: 'nowrap', gap: isMobile ? 'var(--mantine-spacing-lg)' : 'var(--mantine-spacing-xl)' }}
       >
         <Feature icon={<FastAndFree />} label="Fast & Free Delivery" size={iconSize} isMobile={isMobile} />
         {!isMobile && <Divider orientation="vertical" />}

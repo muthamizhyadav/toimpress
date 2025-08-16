@@ -40,10 +40,7 @@ const Login = () => {
           p="xl"
           radius="lg"
           w="100%"
-          sx={{
-            maxWidth: 480,
-            width: "100%",
-          }}
+          style={{ maxWidth: 480, width: "100%" }}
         >
           <Stack>
             <Text ta="center" fw={600} size="xl">

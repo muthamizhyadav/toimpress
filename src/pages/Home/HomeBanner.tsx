@@ -18,7 +18,7 @@ const HomeBanner: React.FC = () => {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);
   const emblaRef = useRef<any>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<number | null>(null);
   const navigate = useNavigate()
 
   const getAllProducts = async () => {
@@ -63,11 +63,11 @@ const HomeBanner: React.FC = () => {
   <Carousel
     withIndicators={false}
     withControls={false}
-    loop
     slideSize="100%"
     slideGap={0}
     getEmblaApi={(api) => (emblaRef.current = api)}
     className={`${isMobile ? "h-[200px]" : "h-[741px]"} w-full rounded-2xl overflow-hidden`}
+  // loop prop removed (not supported by Mantine Carousel)
   >
     {banners.map((banner) => (
       <Carousel.Slide

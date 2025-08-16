@@ -38,14 +38,6 @@ const CategorySlider: React.FC = () => {
         <Carousel
           slideSize="70%"
           height={ isMobile ? "auto" : 200}
-          slideGap="md"
-          controlsOffset="sm"
-          controlSize={26}
-          withControls={false}
-          withIndicators={false}
-          styles={{
-            viewport: { overflow: "hidden" },
-          }}
         >
           {bannerData.map((banner, index) => (
             <Carousel.Slide key={index}>
