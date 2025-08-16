@@ -1,4 +1,5 @@
 import { Box, Container, Flex, Grid, Group, Stack, Text } from "@mantine/core";
+import { Link } from "react-router-dom";
 import {
   IconPhone,
   IconMail,
@@ -74,17 +75,21 @@ export default function Footer() {
           style={{ borderTop: "1px solid #e9ecef" }}
         >
           <Group gap="lg" mt="sm">
-            {[
-              "About us",
-              "Contact",
-              "Privacy policy",
-              "Sitemap",
-              "Terms of Use",
-            ].map((link, i) => (
-              <Text size="xs" c="dimmed" key={i}>
-                {link}
-              </Text>
-            ))}
+            <Text size="xs" c="dimmed">
+              <Link to="/about">About us</Link>
+            </Text>
+            <Text size="xs" c="dimmed">
+              <Link to="/contact">Contact</Link>
+            </Text>
+            <Text size="xs" c="dimmed">
+              <Link to="/privacy-policy">Privacy Policy</Link>
+            </Text>
+            <Text size="xs" c="dimmed">
+              <Link to="/sitemap">Sitemap</Link>
+            </Text>
+            <Text size="xs" c="dimmed">
+              <Link to="/terms-and-conditions">Terms & Conditions</Link>
+            </Text>
           </Group>
           <Text size="xs" c="dimmed" mt="sm">
             © {startYear}–{endYear}, All Rights Reserved

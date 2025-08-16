@@ -11,6 +11,8 @@ import Profile from "../pages/Profile/Profile";
 import Orders from "../pages/Orders/Orders";
 import FindYourFitPage from "../pages/FindYourFit/FindYourFit";
 import CategoryPage from "../pages/Category/CategoryPage";
+import TermsAndConditions from "../pages/TermsAndConditions";
+import PrivacyPolicy from "../pages/PrivacyPolicy";
 
 import { AuthProvider, useAuth } from "../pages/AuthContext";
 import { ReactNode } from "react";
@@ -111,6 +113,8 @@ const AppRoutes = () => {
                   </ProtectedRoute>
                 }
               />
+              <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
