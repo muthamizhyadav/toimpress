@@ -7,8 +7,8 @@ export default defineConfig({
     postcss: "./postcss.config.js",
   },
   server: {
-    host: '0.0.0.0',
-    allowedHosts: ['*'],
-    port: 5173
-  }
+    host: "0.0.0.0",
+    port: 5173,
+    allowedHosts: true, // ✅ allow ALL hosts
+  },
 });
