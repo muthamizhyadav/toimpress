@@ -11,23 +11,51 @@ import {
   Group,
 } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../AuthContext";
 import { useState } from "react";
 import { useMediaQuery } from "@mantine/hooks";
 import ToImpressLogo from "../../assets/svg/ToImpressLogo.svg";
 import GoogleLogo from "../../assets/svg/GoogleLogo.tsx";
 import FacebookLogo from "../../assets/svg/FacebookLogo.tsx";
+import { useDispatch } from 'react-redux';
+import { login } from "../../redux/store.ts";
+import { LOGIN } from "../../api/api.ts";
+import axiosInstance from "../../api/axiosInstance.ts";
+
 
 const Login = () => {
-  const { login } = useAuth();
+ // const { login } = useAuth();
   const navigate = useNavigate();
+   const dispatch = useDispatch();
   const [mobile, setMobile] = useState("");
 
   const isMobile = useMediaQuery("(max-width: 768px)");
 
+  const handleLoginApiCall = async () => {
+    const body = {
+     username: "",
+     password: ""
+    };
+
+    try {
+      const response = await axiosInstance.post(LOGIN, body );
+      console.log(response);
+      if (response && response?.status === 200) {
+        // Handle success
+        console.log("Edits applied successfully");
+      } else {
+        // Handle failure
+        console.error("Failed to apply edits");
+      }
+    } catch (error) {
+      console.log(error);
+    }
+
+    
+  };
+
   const handleLogin = () => {
-    login({ mobile });
     navigate("/");
+    dispatch(login({ user: 'John', token: 'abc123' }));
   };
 
   return (
@@ -113,3 +141,4 @@ const Login = () => {
 };
 
 export default Login;
+ 
