@@ -10,7 +10,7 @@ export default function Profile() {
 
   return (
     <div >
-         <SmallHeader />
+      <SmallHeader />
       <Header />
       <AuthModal  />
       <Footer />

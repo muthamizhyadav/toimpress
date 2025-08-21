@@ -21,8 +21,7 @@ import ScrollToTop from "../components/ScrollToTop";
 // ProtectedRoute component
 const ProtectedRoute = ({ children }: { children: ReactNode }) => {
   const { isAuthenticated } = useAuth();
-
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+  return isAuthenticated ? <>{children}</> : <Navigate to="/" replace />;
 };
 
 // Custom theme

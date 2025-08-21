@@ -257,12 +257,12 @@ const ProductPage = () => {
         </Tabs.Panel>
       </Tabs>
 
-      <Title order={3} mt="xl" mb="md">Similar Products</Title>
+      {/* <Title order={3} mt="xl" mb="md">Similar Products</Title>
       <SimpleGrid cols={4}>
         {similarProducts.map((prod, i) => (
           <SimilarProductCard key={i} {...prod} />
         ))}
-      </SimpleGrid>
+      </SimpleGrid> */}
     </Container>
   );
 };

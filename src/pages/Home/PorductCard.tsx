@@ -108,7 +108,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
             <span className="line-through text-gray-400 font-bold text-sm md:text-base">
               ₹{originalPrice}
             </span>
-            <span className="text-xs md:text-base text-[#96BD75] font-bold">
+            <span className="md:text-base text-[#96BD75] font-bold !text-[12px]">
               (SAVE {Math.round(((originalPrice - price) / originalPrice) * 100)}%)
             </span>
           </div>
