@@ -12,7 +12,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useMediaQuery } from "@mantine/hooks";
-import ToImpressLogo from "../../src/assets/svg/toimpresslogo.svg";
+import ToImpressLogo from "../../src/assets/svg/ToImpressLogo.svg";
 import { useDispatch } from "react-redux";
 import { login } from "../redux/store.ts";
 import { LOGIN } from "../api/api.ts";
