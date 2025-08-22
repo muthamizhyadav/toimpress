@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { MobileMenuDrawer, UseMobileMenuDrawer } from "./MobileMenuDrawer";
 import { MobileCartDrawer, UseMobileCartDrawer } from "./MobileCartDrawer";
-import Logo from "../../public/logo.png"; // Assuming you have a logo image
+import Logo from "../../public/logo.png";
 
 export default function Header() {
   const navigate = useNavigate();
@@ -50,7 +50,7 @@ export default function Header() {
   return (
     <header className="bg-sandle w-full h-[80px] md:h-[112px] flex items-center px-10 sm:px-12 md:px-14 lg:px-14">
       <img
-        src={Logo}
+        src="/logo.png"
         alt="Logo"
         className="md:w-[106px] md:h-[65px] w-[80px] h-[50px] cursor-pointer"
         onClick={() => handleNavigation("")}
