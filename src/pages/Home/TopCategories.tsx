@@ -59,45 +59,36 @@ export default function TopCategories() {
       <Tabs value={selectedTab} onChange={setSelectedTab}>
         {/* Scrollable Category Tabs */}
         <div className="overflow-x-auto no-scrollbar">
-          <Tabs.List className="flex-nowrap inline-flex gap-4 px-1 min-w-max tc-tab-list"  >
+          <Tabs.List className="flex-nowrap inline-flex gap-4 px-1 min-w-max tc-tab-list">
             <div className="w-full flex md:justify-around justify-start">
               {categoryList.map((cat) => (
                 <Tabs.Tab
                   key={cat.name}
                   value={cat.name}
-                  ref={(el) => (tabRefs.current[cat.name] = el)}
                   className="p-0 m-0"
-                  styles={{
-                    root: {
-                      border: "none",
-                      boxShadow: "none",
-                      background: "transparent",
-                      "&[data-active]": {
-                        border: "none", // ensures tab itself has no border
-                        boxShadow: "none",
-                      },
-                    },
+                  style={{
+                    border: "none",
+                    boxShadow: "none",
+                    background: "transparent",
                   }}
                 >
                   <Button
                     radius="xl"
                     size="lg"
                     className="border-0"
-                    styles={{
-                      root: {
-                        backgroundColor:
-                          selectedTab === cat.name ? "#133215" : "#ffffff",
-                        color:
-                          selectedTab === cat.name ? "#ffffff" : "#000000",
-                        fontWeight: 700,
-                        paddingLeft: 32,
-                        paddingRight: 32,
-                        height: 34,
-                        fontSize: isMobile ? "14px" : "18px",
-                        boxShadow: "none",
-                        whiteSpace: "nowrap",
-                        border: "none",
-                      },
+                    style={{
+                      backgroundColor:
+                        selectedTab === cat.name ? "#133215" : "#ffffff",
+                      color:
+                        selectedTab === cat.name ? "#ffffff" : "#000000",
+                      fontWeight: 700,
+                      paddingLeft: 32,
+                      paddingRight: 32,
+                      height: 34,
+                      fontSize: isMobile ? "14px" : "18px",
+                      boxShadow: "none",
+                      whiteSpace: "nowrap",
+                      border: "none",
                     }}
                   >
                     {cat.name}

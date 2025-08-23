@@ -21,10 +21,9 @@ export default function FoodCourier() {
       }}
     >
       <Group
-        direction={isMobile ? 'column' : 'row'}
         justify="space-between"
         align="center"
-        spacing={isMobile ? 'lg' : 'xl'}
+        gap={isMobile ? 'lg' : 'xl'}
         wrap="nowrap"
       >
         <Feature icon={<FastAndFree />} label="Fast & Free Delivery" size={iconSize} isMobile={isMobile} />

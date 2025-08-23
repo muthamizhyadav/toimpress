@@ -70,7 +70,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({ fetchProducts }) => {
 
   return (
     <div style={{ padding: isMobile ? "10px 15px" : "2rem" }}>
-      <Text size="40px" fw={700} align="center" mb="lg" tt="capitalize">
+      <Text size="40px" fw={700} ta="center" mb="lg" tt="capitalize">
         {category}
       </Text>
 

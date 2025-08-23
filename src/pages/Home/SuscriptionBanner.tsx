@@ -26,7 +26,7 @@ export default function SubscriptionBanner() {
       }}
     >
       {isMobile ? (
-        <Stack spacing="md" align="center">
+        <Stack gap="md" align="center">
           <Text
             c="white"
             size="sm"

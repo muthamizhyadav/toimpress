@@ -86,7 +86,6 @@ export default function Testimonials() {
           slideSize={isMobile ? "85%" : "33.3333%"} // increased slide size on mobile
           height={260}
           slideGap="md"
-          align="start" // Ensures first slide aligns to the left
           controlsOffset="sm"
           controlSize={24}
           withControls={false}

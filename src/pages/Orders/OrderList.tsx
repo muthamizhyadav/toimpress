@@ -11,7 +11,7 @@ import {
     Tabs,
     ScrollArea,
     AspectRatio,
-    Paper,
+    // Paper,
     Center,
     rem,
   } from "@mantine/core";
@@ -78,7 +78,7 @@ import {
             w={isMobile ? "100%" : rem("1200px")} // 200% feel on desktop (based on default ~600px)
             bg={isMobile ? "transparent" : "white"}
             p={isMobile ? 0 : "md"}
-            sx={{
+            style={{
               borderRadius: isMobile ? 0 : theme.radius.md,
               boxShadow: isMobile ? "none" : theme.shadows.md,
             }}
@@ -98,15 +98,15 @@ import {
                     p="md"
                     my="sm"
                     bg="white"
-                    sx={{
+                    style={{
                       borderRadius: 10,
                       boxShadow: theme.shadows.sm,
                       cursor: "pointer",
                     }}
                     onClick={() => handleClick(order)}
                   >
-                    <Group position="apart" align="center">
-                      <Group spacing="xs">
+                    <Group justify="space-between" align="center">
+                      <Group gap="xs">
                         <Badge color={order.statusColor} variant="light">
                           {order.status}
                         </Badge>
@@ -154,7 +154,7 @@ import {
           size={isMobile ? "100%" : "400px"}
         >
           {selectedOrder && (
-            <Stack spacing="md">
+            <Stack gap="md">
               <Image
                 src={selectedOrder.image}
                 radius="md"

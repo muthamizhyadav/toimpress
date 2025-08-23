@@ -40,7 +40,7 @@ const Login = () => {
           p="xl"
           radius="lg"
           w="100%"
-          sx={{
+          style={{
             maxWidth: 480,
             width: "100%",
           }}

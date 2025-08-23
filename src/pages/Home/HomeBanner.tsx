@@ -63,7 +63,6 @@ const HomeBanner: React.FC = () => {
   <Carousel
     withIndicators={false}
     withControls={false}
-    loop
     slideSize="100%"
     slideGap={0}
     getEmblaApi={(api) => (emblaRef.current = api)}

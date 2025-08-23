@@ -9,7 +9,7 @@ import FooterCourier from "./Home/FooterCourier";
 import HomeBanner from "./Home/HomeBanner";
 import ShopBySize from "./Home/ShopBySize";
 import SubscriptionBanner from "./Home/SuscriptionBanner";
-import Testimonials from "./Home/Testimonials";
+// import Testimonials from "./Home/Testimonials";
 import TopCategories from "./Home/TopCategories";
 import MobileBottomNavbar from "./MobileBottomBar";
 import Reviews from './Home/Reviews';

@@ -22,7 +22,7 @@ export default function SizeCalculator() {
 
   return (
     <Box w={isMobile ? "100%" : "50vw"} mx="auto" p="md">
-      <Text align="center" fw={500} size="lg" mb="md">
+      <Text ta="center" fw={500} size="lg" mb="md">
         Calculate your size here
       </Text>
 
@@ -119,8 +119,8 @@ export default function SizeCalculator() {
         <Group
           align="start"
           wrap="nowrap"
-          direction={isMobile ? "column" : "row"}
-          spacing={isMobile ? "md" : "lg"}
+          justify={isMobile ? "center" : "space-between"}
+          gap={isMobile ? "md" : "lg"}
         >
           <Image
             src={BodySize}
