@@ -18,11 +18,6 @@ import { AuthProvider, useAuth } from "../pages/AuthContext";
 import { ReactNode } from "react";
 import ScrollToTop from "../components/ScrollToTop";
 
-// ProtectedRoute component
-const ProtectedRoute = ({ children }: { children: ReactNode }) => {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? <>{children}</> : <Navigate to="/" replace />;
-};
 
 // Custom theme
 const customTheme = createTheme({
@@ -67,49 +62,37 @@ const AppRoutes = () => {
               <Route
                 path="/"
                 element={
-                  <ProtectedRoute>
                     <Home />
-                  </ProtectedRoute>
                 }
               />
               <Route
                 path="/product"
                 element={
-                  <ProtectedRoute>
                     <Product />
-                  </ProtectedRoute>
                 }
               />
               <Route
                 path="/account"
                 element={
-                  <ProtectedRoute>
                     <Profile />
-                  </ProtectedRoute>
                 }
               />
               <Route
                 path="/orders"
                 element={
-                  <ProtectedRoute>
                     <Orders />
-                  </ProtectedRoute>
                 }
               />
               <Route
                 path="/fit"
                 element={
-                  <ProtectedRoute>
                     <FindYourFitPage />
-                  </ProtectedRoute>
                 }
               />
               <Route
                 path="/category"
                 element={
-                  <ProtectedRoute>
                     <CategoryPage />
-                  </ProtectedRoute>
                 }
               />
               <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
