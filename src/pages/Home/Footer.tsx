@@ -35,27 +35,13 @@ export default function Footer() {
                 <Group gap={6}>
                   <IconPhone size={18} />
                   <Text size="sm">
-                    <strong>310–437–2766</strong>
+                    <strong>+91 8778010278</strong>
                   </Text>
                 </Group>
                 <Group gap={6}>
                   <IconMail size={18} />
                   <Text size="sm">
-                    <strong>unreal@outlook.com</strong>
-                  </Text>
-                </Group>
-              </Group>
-              <Group gap="md">
-                <Group gap={6}>
-                  <IconMapPin size={18} />
-                  <Text size="sm">
-                    <strong>706 Campfire Ave. Meriden, CT 06450</strong>
-                  </Text>
-                </Group>
-                <Group gap={6}>
-                  <IconPrinter size={18} />
-                  <Text size="sm">
-                    <strong>+1–000–0000</strong>
+                    <strong>muthamizhyadav@gmail.com.com</strong>
                   </Text>
                 </Group>
               </Group>
@@ -66,7 +52,7 @@ export default function Footer() {
         </Grid>
 
         {/* Bottom Bar */}
-        <Flex
+        {/* <Flex
           justify="space-between"
           align="center"
           wrap="wrap"
@@ -94,7 +80,7 @@ export default function Footer() {
           <Text size="xs" c="dimmed" mt="sm">
             © {startYear}–{endYear}, All Rights Reserved
           </Text>
-        </Flex>
+        </Flex> */}
       </Container>
     </Box>
   );
