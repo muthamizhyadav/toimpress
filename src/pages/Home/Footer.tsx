@@ -1,4 +1,5 @@
-import { Box, Container, Grid, Group, Stack, Text } from "@mantine/core";
+import { Box, Container, Flex, Grid, Group, Stack, Text } from "@mantine/core";
+import { Link } from "react-router-dom";
 import { IconPhone, IconMail } from "@tabler/icons-react";
 import Logo from "../../../public/logo.png"
 
@@ -24,7 +25,7 @@ export default function Footer() {
                 <Group gap={6}>
                   <IconPhone size={18} />
                   <Text size="sm">
-                    <strong>+91 8778010278</strong>
+                    <strong>+91 8124732811</strong>
                   </Text>
                 </Group>
                 <Group gap={6}>
@@ -39,7 +40,7 @@ export default function Footer() {
         </Grid>
 
         {/* Bottom Bar */}
-        {/* <Flex
+        <Flex
           justify="space-between"
           align="center"
           wrap="wrap"
@@ -67,7 +68,7 @@ export default function Footer() {
           <Text size="xs" c="dimmed" mt="sm">
             © {endYear}, All Rights Reserved
           </Text>
-        </Flex> */}
+        </Flex>
       </Container>
     </Box>
   );
