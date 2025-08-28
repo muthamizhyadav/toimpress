@@ -66,7 +66,7 @@ export default function TopCategories() {
                   key={cat.name}
                   value={cat.name}
                   ref={(el) => (tabRefs.current[cat.name] = el)}
-                  className="p-0 m-0"
+                  className="p-0 m-0 d-none"
                   styles={{
                     root: {
                       border: "none",
@@ -79,10 +79,10 @@ export default function TopCategories() {
                     },
                   }}
                 >
-                  <Button
+                  {/* <Button
                     radius="xl"
                     size="lg"
-                    className="border-0"
+                    className="border-0  "
                     styles={{
                       root: {
                         backgroundColor:
@@ -101,7 +101,7 @@ export default function TopCategories() {
                     }}
                   >
                     {cat.name}
-                  </Button>
+                  </Button> */}
                 </Tabs.Tab>
               ))}
             </div>

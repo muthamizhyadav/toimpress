@@ -48,7 +48,7 @@ export default function Footer() {
           pt="md"
           style={{ borderTop: "1px solid #e9ecef" }}
         >
-          <Group gap="lg" mt="sm">
+          {/* <Group gap="lg" mt="sm">
             <Text size="xs" c="dimmed">
               <Link to="/about">About us</Link>
             </Text>
@@ -64,7 +64,7 @@ export default function Footer() {
             <Text size="xs" c="dimmed">
               <Link to="/terms-and-conditions">Terms & Conditions</Link>
             </Text>
-          </Group>
+          </Group> */}
           <Text size="xs" c="dimmed" mt="sm">
             © {endYear}, All Rights Reserved
           </Text>

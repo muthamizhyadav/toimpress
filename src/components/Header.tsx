@@ -150,7 +150,7 @@ export default function Header() {
         </div>
 
         {/* Category nav */}
-        <div className="hidden md:flex gap-5 w-full">
+        {/* <div className="hidden md:flex gap-5 w-full">
           <ul className="flex justify-center w-[50%] gap-10">
             <li className={`text-sm cursor-pointer ${isSelected("1")}`} onClick={() => handleNavigation("category?id=1")}>
               Brassiere
@@ -171,7 +171,7 @@ export default function Header() {
               Combo Offer
             </li>
           </ul>
-        </div>
+        </div> */}
       </div>
     </header>
   );

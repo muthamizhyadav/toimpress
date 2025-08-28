@@ -15,7 +15,8 @@ export default function Profile() {
     <div >
       <SmallHeader />
       <Header />
-      { isAuthenticated ? <AuthModal  /> : <ProfileCard /> }
+      {/* { isAuthenticated ? <AuthModal  /> : <ProfileCard /> } */}
+       <AuthModal  /> 
       <Footer />  
       <MobileBottomNavbar />
     </div>

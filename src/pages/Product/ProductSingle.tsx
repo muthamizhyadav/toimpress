@@ -209,9 +209,7 @@ const ProductPage = () => {
               <li>Slim fit for any body</li>
               <li>Quality control by JC</li>
             </ul>
-            <Text mt="sm" size="sm">
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-            </Text>
+           
           </Box>
         </Tabs.Panel>
 
