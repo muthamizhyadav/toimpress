@@ -3,7 +3,7 @@ import { useMediaQuery } from "@mantine/hooks";
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { addToCart, increaseQty, decreaseQty } from "../../redux/features/CartSlice";
+import { addToCart, increaseQty, decreaseQty } from "../../redux/features/cartSlice";
 import { useSelector } from "react-redux";
 
 interface ProductCardProps {

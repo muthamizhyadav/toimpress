@@ -6,7 +6,7 @@ import {
   decreaseQty,
   increaseQty,
   removeFromCart,
-} from "../redux/features/CartSlice"; // <- ensure exact filename/case
+} from "../redux/features/cartSlice"; // <- ensure exact filename/case
 import {
   Button,
   Text,

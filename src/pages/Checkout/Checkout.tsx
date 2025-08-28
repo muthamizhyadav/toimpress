@@ -3,7 +3,7 @@ import {
 } from "@mantine/core";
 import { IconMinus, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useDispatch, useSelector } from "react-redux";
-import { increaseQty, decreaseQty, removeFromCart, clearCart } from "../../redux/features/CartSlice";
+import { increaseQty, decreaseQty, removeFromCart, clearCart } from "../../redux/features/cartSlice";
 import { useMemo } from "react";
 
 import SmallHeader from "../../components/SmallHeader";
