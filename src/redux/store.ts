@@ -1,6 +1,6 @@
 // src/redux/store.ts
 import { configureStore, createSlice, PayloadAction } from "@reduxjs/toolkit";
-import cartReducer from "./features/CartSlice"; // <-- filename should be cartSlice.ts
+import cartReducer from "./features/cartSlice";
 
 // ----- Auth slice -----
 interface AuthState {
