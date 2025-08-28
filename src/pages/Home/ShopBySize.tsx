@@ -1,23 +1,38 @@
 import { Box, Button, Text, Title, rem } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-
-const braSizes = Array(20).fill("30A");
+import { useSelector } from "react-redux";
+import type { RootState } from "../redux/store";
 
 export default function ShopBySize() {
   const navigate = useNavigate();
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
 
-   const handleNavigation = (str?: string) => {
-    navigate(`/${str}`);
+  // Get sizes from Fit Calculator slice (adjust selector if your path is different)
+  const calculatorSizes = useSelector(
+    (s: RootState) => (s as any)?.fit?.availableSizes as string[] | undefined
+  );
+
+  // Optional fallback sizes if calculator is empty
+  const fallbackSizes = ["30A","32A","34A","36A","38A","30B","32B","34B","36B","38B","30C","32C","34C","36C","38C"];
+  const sizes = useMemo(
+    () => (calculatorSizes && calculatorSizes.length ? calculatorSizes : fallbackSizes),
+    [calculatorSizes]
+  );
+
+  const handleNavigation = (size: string) => {
+    // pass the size along so listing can pre-filter
+    navigate(`/category?id=1&size=${encodeURIComponent(size)}`);
   };
 
-
   return (
-    <Box bg="#f3e7cf" h={isMobile ? "auto" : "55vh"} style={{  paddingBottom: isMobile ? "20px" : "50px",  }} >
+    <Box
+      bg="#f3e7cf"
+      h={isMobile ? "auto" : "55vh"}
+      style={{ paddingBottom: isMobile ? "20px" : "50px" }}
+    >
       <Text
         size="lg"
         fw={600}
@@ -29,7 +44,6 @@ export default function ShopBySize() {
           margin: isMobile ? "20px 0 0 10px" : "0 auto",
           paddingTop: isMobile ? "20px" : "50px",
           marginBottom: isMobile ? "20px" : "50px",
-         
           fontSize: isMobile ? "20px" : "40px",
         }}
       >
@@ -73,17 +87,15 @@ export default function ShopBySize() {
             margin: "0 auto",
           }}
         >
-          {braSizes.map((size, index) => {
-            const isSelected = selectedSize === `${size}-${index}`; // unique key
+          {sizes.map((size) => {
+            const isSelected = selectedSize === size;
             return (
               <Button
-                key={`${size}-${index}`}
+                key={size}
                 onClick={() => {
-                   setSelectedSize(`${size}-${index}`)
-                   setTimeout(() => {
-                       handleNavigation("category?id=1")
-                   }, 500);
-               } }
+                  setSelectedSize(size);
+                  handleNavigation(size);
+                }}
                 variant="filled"
                 radius="70px"
                 size={isMobile ? "xs" : "md"}
@@ -98,9 +110,7 @@ export default function ShopBySize() {
                     backgroundColor: isSelected ? "#133215" : "transparent",
                     color: isSelected ? "#ffffff" : "#000000",
                   },
-                  label: {
-                    fontWeight: 500,
-                  },
+                  label: { fontWeight: 500 },
                 }}
               >
                 {size}
@@ -108,6 +118,13 @@ export default function ShopBySize() {
             );
           })}
         </Box>
+
+        {/* Hint when calculator is empty */}
+        {(!calculatorSizes || calculatorSizes.length === 0) && (
+          <Text ta="center" c="dimmed" size="sm" mt="md">
+            Tip: Use the Fit Calculator to get personalized sizes.
+          </Text>
+        )}
       </Box>
     </Box>
   );

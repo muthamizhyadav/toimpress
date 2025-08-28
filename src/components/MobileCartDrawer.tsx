@@ -1,56 +1,37 @@
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import type { RootState } from "../redux/store";
 import {
-  Drawer,
-  Box,
+  closeCart,
+  decreaseQty,
+  increaseQty,
+  removeFromCart,
+} from "../redux/features/CartSlice"; // <- ensure exact filename/case
+import {
+  Button,
   Text,
+  Drawer,
+  ActionIcon,
+  Box,
+  Divider,
   Group,
   Stack,
-  Button,
-  Divider,
-  ActionIcon,
 } from "@mantine/core";
-import { useEffect, useState } from "react";
 import { IconTrash, IconMinus, IconPlus } from "@tabler/icons-react";
-import { useDisclosure } from "@mantine/hooks";
 
-interface CartItemType {
+// ------------ UI-friendly item shape (mapped from redux items) ------------
+type DisplayItem = {
   id: string | number;
   imageUrl: string;
   productName: string;
-  price: number;
-  originalPrice: number;
-  rating: number;
+  price: number;          // effective price per unit
+  originalPrice?: number; // optional MRP (for strikethrough)
   quantity: number;
-}
+};
 
-function CartItem({
-  item,
-  onUpdate,
-}: {
-  item: CartItemType;
-  onUpdate: () => void;
-}) {
-  const [quantity, setQuantity] = useState(item.quantity);
-
-  const updateCart = (newQty: number) => {
-    let cart = JSON.parse(localStorage.getItem("cart") || "[]");
-    if (newQty <= 0) {
-      cart = cart.filter((c: any) => c.id !== item.id);
-    } else {
-      cart = cart.map((c: any) =>
-        c.id === item.id ? { ...c, quantity: newQty } : c
-      );
-    }
-    localStorage.setItem("cart", JSON.stringify(cart));
-    setQuantity(newQty);
-    onUpdate();
-  };
-
-  const removeItem = () => {
-    const cart = JSON.parse(localStorage.getItem("cart") || "[]");
-    const updatedCart = cart.filter((c: any) => c.id !== item.id);
-    localStorage.setItem("cart", JSON.stringify(updatedCart));
-    onUpdate();
-  };
+// ------------ Row component ------------
+function CartItemRow({ item }: { item: DisplayItem }) {
+  const dispatch = useDispatch();
 
   return (
     <Box w="100%">
@@ -71,38 +52,43 @@ function CartItem({
           <Text size="sm" fw={500} lineClamp={2}>
             {item.productName}
           </Text>
-          <Group >
-            <Text size="sm" fw={600}>
-              ₹{item.price}
-            </Text>
-            <Text size="xs" c="dimmed" td="line-through">
-              ₹{item.originalPrice}
-            </Text>
+          <Group>
+            <Text size="sm" fw={600}>₹{item.price}</Text>
+            {item.originalPrice ? (
+              <Text size="xs" c="dimmed" td="line-through">
+                ₹{item.originalPrice}
+              </Text>
+            ) : null}
           </Group>
         </Stack>
 
-        <ActionIcon variant="subtle" color="gray" mt={4} onClick={removeItem}>
+        <ActionIcon
+          variant="subtle"
+          color="gray"
+          mt={4}
+          onClick={() => dispatch(removeFromCart(item.id))}
+        >
           <IconTrash size={16} />
         </ActionIcon>
       </Group>
 
-      <Group mt="xs" justify="right" >
+      <Group mt="xs" justify="right">
         <ActionIcon
           variant="outline"
           size="sm"
           color="green"
-          onClick={() => updateCart(quantity - 1)}
+          onClick={() => dispatch(decreaseQty(item.id))}
         >
           <IconMinus size={14} />
         </ActionIcon>
         <Button variant="light" size="sm" radius="xl" disabled>
-          {quantity}
+          {item.quantity}
         </Button>
         <ActionIcon
           variant="outline"
           size="sm"
           color="green"
-          onClick={() => updateCart(quantity + 1)}
+          onClick={() => dispatch(increaseQty(item.id))}
         >
           <IconPlus size={14} />
         </ActionIcon>
@@ -113,44 +99,45 @@ function CartItem({
   );
 }
 
+// ------------ Drawer ------------
+export function MobileCartDrawer() {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { items, isOpen } = useSelector((state: RootState) => state.cart);
 
-export function MobileCartDrawer({
-  opened,
-  onClose,
-}: {
-  opened: boolean;
-  onClose: () => void;
-}) {
-  const [cartItems, setCartItems] = useState<CartItemType[]>([]);
+  // Map redux items -> display props for UI
+  const displayItems: DisplayItem[] = (items || []).map((it: any) => ({
+    id: it.id,
+    imageUrl: it.image ?? it.imageUrl ?? "",
+    productName: it.title ?? it.productName ?? "Product",
+    price: it.salePrice ?? it.price ?? 0,
+    originalPrice: it.salePrice ? it.price : undefined,
+    quantity: it.qty ?? it.quantity ?? 1,
+  }));
 
-  const fetchCartItems = () => {
-    const storedCart = JSON.parse(localStorage.getItem("cart") || "[]");
-    setCartItems(storedCart);
+  const goToCheckout = () => {
+    dispatch(closeCart());
+    navigate("/checkout");
   };
-
-  useEffect(() => {
-    if (opened) {
-      fetchCartItems();
-    }
-  }, [opened]);
 
   return (
     <Drawer
-      opened={opened}
-      onClose={onClose}
+      opened={isOpen}
+      onClose={() => dispatch(closeCart())}
       position="right"
       padding="md"
+      // Mobile: 100%, Desktop: 40vw
       size="100%"
       transitionProps={{ transition: "slide-left", duration: 250 }}
       styles={{
         content: {
           width: "100%",
           maxWidth: "100vw",
-          margin: "0 auto",
-          [`@media (min-width: 768px)`]: {
-            width: "60vw",
-            maxWidth: "60vw",
-            margin: "0 auto",
+          margin: "0 0 0 auto", // stick to right
+          // desktop breakpoint
+          ["@media (min-width: 1024px)"]: {
+            width: "40vw",
+            maxWidth: "40vw",
           },
         },
       }}
@@ -163,21 +150,19 @@ export function MobileCartDrawer({
 
         {/* Cart Items */}
         <div className="flex-grow overflow-y-auto space-y-6">
-          {cartItems.length === 0 ? (
+          {displayItems.length === 0 ? (
             <Text className="text-center" color="dimmed">
               Your cart is empty
             </Text>
           ) : (
-            cartItems.map((item, index) => (
-              <CartItem key={index} item={item} onUpdate={fetchCartItems} />
-            ))
+            displayItems.map((item) => <CartItemRow key={item.id} item={item} />)
           )}
         </div>
 
         {/* Checkout Button */}
-        {cartItems.length > 0 && (
+        {displayItems.length > 0 && (
           <div className="mt-6">
-            <Button fullWidth color="dark" radius="xl">
+            <Button fullWidth color="dark" radius="xl" onClick={goToCheckout}>
               Proceed to Checkout
             </Button>
           </div>
@@ -185,9 +170,4 @@ export function MobileCartDrawer({
       </div>
     </Drawer>
   );
-}
-
-export function UseMobileCartDrawer() {
-  const [opened, { open, close }] = useDisclosure(false);
-  return { opened, open, close };
 }

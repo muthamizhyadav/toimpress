@@ -1,15 +1,9 @@
-import { Box, Container, Flex, Grid, Group, Stack, Text } from "@mantine/core";
-import { Link } from "react-router-dom";
-import {
-  IconPhone,
-  IconMail,
-  IconMapPin,
-  IconPrinter,
-} from "@tabler/icons-react";
+import { Box, Container, Grid, Group, Stack, Text } from "@mantine/core";
+import { IconPhone, IconMail } from "@tabler/icons-react";
+import Logo from "../../../public/logo.png"
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
-  const startYear = 2025;
   const endYear = currentYear > 2025 ? currentYear : 2026;
 
   return (
@@ -17,20 +11,15 @@ export default function Footer() {
       <Container size="xl">
         {/* Top section with logo & contact */}
         <Grid gutter="xl">
-          {/* Left: Logo & Description */}
+          {/* Left: Logo & Contact */}
           <Grid.Col span={{ base: 12, md: 6 }}>
             <Stack>
               <img
-                src="logo.png"
-                alt=""
-                srcSet=""
+                src={Logo}
+                alt="Company Logo"
                 className="md:w-[106px] md:h-[65px] w-[80px] h-[50px]"
               />
-              <Text c="dimmed" size="sm">
-                We ara a lorem ipsum dolor sit amet, consectetur adipiscing
-                elit, sed do eiusmod tempor incididunt ut labore exercitation
-                ullamco laboris nisi ut aliquip ex ea commodo consequat.
-              </Text>
+
               <Group gap="md" mt="sm">
                 <Group gap={6}>
                   <IconPhone size={18} />
@@ -41,14 +30,12 @@ export default function Footer() {
                 <Group gap={6}>
                   <IconMail size={18} />
                   <Text size="sm">
-                    <strong>muthamizhyadav@gmail.com.com</strong>
+                    <strong>innovaturetechenginneers@gmail.com</strong>
                   </Text>
                 </Group>
               </Group>
             </Stack>
           </Grid.Col>
-
-          {/* Right: Footer Links */}
         </Grid>
 
         {/* Bottom Bar */}
@@ -78,7 +65,7 @@ export default function Footer() {
             </Text>
           </Group>
           <Text size="xs" c="dimmed" mt="sm">
-            © {startYear}–{endYear}, All Rights Reserved
+            © {endYear}, All Rights Reserved
           </Text>
         </Flex> */}
       </Container>

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { MantineProvider, createTheme } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
 import { ModalsProvider } from "@mantine/modals";
@@ -14,9 +14,12 @@ import CategoryPage from "../pages/Category/CategoryPage";
 import TermsAndConditions from "../pages/TermsAndConditions";
 import PrivacyPolicy from "../pages/PrivacyPolicy";
 
-import { AuthProvider, useAuth } from "../pages/AuthContext";
-import { ReactNode } from "react";
+import { AuthProvider } from "../pages/AuthContext";
 import ScrollToTop from "../components/ScrollToTop";
+import AboutUsHome from "../pages/About/AboutUsHome";
+import SiteMapPage from "../pages/SiteMap/SiteMap";
+import ContactUs from "../pages/ContactUs/ContactUs";
+import Checkout from "../pages/Checkout/Checkout";
 
 
 // Custom theme
@@ -71,10 +74,35 @@ const AppRoutes = () => {
                     <Product />
                 }
               />
+               <Route
+                path="/about"
+                element={
+                    <AboutUsHome />
+                }
+              />
+
+               <Route
+                path="/sitemap"
+                element={
+                    <SiteMapPage />
+                }
+              />
               <Route
                 path="/account"
                 element={
                     <Profile />
+                }
+              />
+               <Route
+                path="/contact"
+                element={
+                    <ContactUs />
+                }
+              />
+               <Route
+                path="/checkout"
+                element={
+                    <Checkout />
                 }
               />
               <Route

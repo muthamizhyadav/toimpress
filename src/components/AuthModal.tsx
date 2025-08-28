@@ -16,7 +16,8 @@ import ToImpressLogo from "../../src/assets/svg/ToImpressLogo.svg";
 import { useDispatch } from "react-redux";
 import { login } from "../redux/store.ts";
 import { LOGIN } from "../api/api.ts";
-import axiosInstance from "../api/axiosInstance.ts";
+import { useAuth } from "../assets/hooks/useAuth";
+
 
 const AuthModal = () => {
   const navigate = useNavigate();
@@ -25,32 +26,49 @@ const AuthModal = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const { isAuthenticated } = useAuth();
+
 
   const isMobile = useMediaQuery("(max-width: 768px)");
 
   const handleLogin = async () => {
-    setError(null);
-    setLoading(true);
+  setError(null);
+  setLoading(true);
 
-    try {
-      const body = { username, password };
-      const response = await axiosInstance.post(LOGIN, body);
+  try {
+    const myHeaders = new Headers();
+    myHeaders.append("Content-Type", "application/json");
 
-      if (response && response.status === 200) {
-        // Assuming API returns { user, token }
-        const { user, token } = response.data;
-        dispatch(login({ user, token }));
-        navigate("/");
-      } else {
-        setError("Invalid credentials. Please try again.");
-      }
-    } catch (err) {
-      setError("Something went wrong. Please try again later.");
-      console.error(err);
-    } finally {
-      setLoading(false);
+    const raw = JSON.stringify({
+      email: username, 
+      password
+    });
+
+    const requestOptions: any = {
+      method: "POST",
+      headers: myHeaders,
+      body: raw,
+      redirect: "follow"
+    };
+
+    const response = await fetch(LOGIN, requestOptions);
+
+    if (response.ok) {
+      const data = await response.json();
+      const { user, tokens } = data;
+
+      dispatch(login({ user, tokens }));
+      navigate("/");
+    } else {
+      setError("Invalid credentials. Please try again.");
     }
-  };
+  } catch (err) {
+    setError("Something went wrong. Please try again later.");
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <Container size="xs" px="md" py={isMobile ? 40 : 80}>
@@ -76,6 +94,7 @@ const AuthModal = () => {
               onChange={(e) => setUsername(e.currentTarget.value)}
               radius="xl"
               size="md"
+              style={{ margin: "-30px 0px 10px 0px"  }}
             />
 
             <TextInput
@@ -85,6 +104,7 @@ const AuthModal = () => {
               onChange={(e) => setPassword(e.currentTarget.value)}
               radius="xl"
               size="md"
+              style={{ margin: "10px 0px"  }}
             />
 
             {error && (
@@ -93,7 +113,7 @@ const AuthModal = () => {
               </Text>
             )}
 
-            <Stack w="100%" align="center">
+            <Stack w="100%" align="center" style={{ marginTop: "20px"  }} >
               <Button
                 w="80%"
                 radius="xl"

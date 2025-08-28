@@ -1,47 +1,54 @@
-import { configureStore, createSlice, PayloadAction } from '@reduxjs/toolkit';
+// src/redux/store.ts
+import { configureStore, createSlice, PayloadAction } from "@reduxjs/toolkit";
+import cartReducer from "./features/CartSlice"; // <-- filename should be cartSlice.ts
 
+// ----- Auth slice -----
 interface AuthState {
   isAuthenticated: boolean;
   user: string | null;
-  token: string | null;
+  tokens: string | null;
 }
 
 const initialState: AuthState = {
   isAuthenticated: false,
   user: null,
-  token: null,
+  tokens: null,
 };
 
 interface AuthPayload {
   user: string;
-  token: string;
+  tokens: string;
 }
 
 const authSlice = createSlice({
-  name: 'auth',
+  name: "auth",
   initialState,
   reducers: {
     login(state, action: PayloadAction<AuthPayload>) {
       state.isAuthenticated = true;
       state.user = action.payload.user;
-      state.token = action.payload.token;
+      state.tokens = action.payload.tokens;
     },
     logout(state) {
       state.isAuthenticated = false;
       state.user = null;
-      state.token = null;
+      state.tokens = null;
     },
   },
 });
 
 export const { login, logout } = authSlice.actions;
 
-const store = configureStore({
+// ----- Store -----
+export const store = configureStore({
   reducer: {
     auth: authSlice.reducer,
+    cart: cartReducer,
   },
 });
 
+// ----- Types -----
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
+
 export default store;

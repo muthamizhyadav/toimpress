@@ -1,25 +1,15 @@
 import {
-  Container,
-  Grid,
-  Image,
-  Text,
-  Title,
-  Button,
-  Group,
-  Badge,
-  Tabs,
-  SimpleGrid,
-  Box,
-  ThemeIcon,
-  Stack,
+  Container, Grid, Image, Text, Title, Button, Group, Badge,
+  Tabs, SimpleGrid, Box, ThemeIcon, Stack
 } from "@mantine/core";
 import { useEffect, useState } from "react";
 import { IconTruck, IconPackage, IconExchange } from "@tabler/icons-react";
 import { useMediaQuery } from "@mantine/hooks";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { GET_PRODUCTS_DETAILS } from "../../api/api";
 import axiosInstance from "../../api/axiosInstance";
-import ProductCard from "../Home/PorductCard";
+import { useDispatch, useSelector } from "react-redux";
+import { addToCart } from "../../redux/features/cartSlice";
 
 // Static description tags
 import BraDescp1 from "../../assets/svg/bradescription/descp1.svg";
