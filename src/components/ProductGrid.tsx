@@ -32,7 +32,7 @@ const categoryMap: Record<string, string> = {
   "2": "Panties",
   "3": "Shimmer Leggings",
   "4": "New Arrivals",
-  "5": "Offers Zone",
+  "5": "Elite",
   "6": "Combo Offer",
 };
 

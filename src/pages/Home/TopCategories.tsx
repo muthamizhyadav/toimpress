@@ -79,7 +79,7 @@ export default function TopCategories() {
                     },
                   }}
                 >
-                  {/* <Button
+                  <Button
                     radius="xl"
                     size="lg"
                     className="border-0  "
@@ -101,7 +101,7 @@ export default function TopCategories() {
                     }}
                   >
                     {cat.name}
-                  </Button> */}
+                  </Button>
                 </Tabs.Tab>
               ))}
             </div>

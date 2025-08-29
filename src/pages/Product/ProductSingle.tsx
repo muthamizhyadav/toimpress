@@ -1,17 +1,20 @@
+// pages/Product/ProductPage.tsx
 import {
   Container, Grid, Image, Text, Title, Button, Group, Badge,
-  Tabs, SimpleGrid, Box, ThemeIcon, Stack
+  Tabs, SimpleGrid, Box, ThemeIcon, Stack, ActionIcon
 } from "@mantine/core";
-import { useEffect, useState } from "react";
-import { IconTruck, IconPackage, IconExchange } from "@tabler/icons-react";
+import { useEffect, useMemo, useState } from "react";
+import { IconTruck, IconPackage, IconExchange, IconMinus, IconPlus } from "@tabler/icons-react";
 import { useMediaQuery } from "@mantine/hooks";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { GET_PRODUCTS_DETAILS } from "../../api/api";
 import axiosInstance from "../../api/axiosInstance";
 import { useDispatch, useSelector } from "react-redux";
-import { addToCart } from "../../redux/features/cartSlice";
+import { addToCart, increaseQty, decreaseQty, removeFromCart } from "../../redux/features/cartSlice";
+import type { RootState } from "../../redux/store";
 
-// Static description tags
+import SizeSelectorDrawer, { type SizeOption } from "../../components/SizeSelectorDrawer";
+
 import BraDescp1 from "../../assets/svg/bradescription/descp1.svg";
 import BraDescp2 from "../../assets/svg/bradescription/descp2.svg";
 import BraDescp3 from "../../assets/svg/bradescription/descp3.svg";
@@ -20,7 +23,6 @@ import BraDescp5 from "../../assets/svg/bradescription/descp5.svg";
 import BraDescp6 from "../../assets/svg/bradescription/descp6.svg";
 import BraDescp7 from "../../assets/svg/bradescription/descp7.svg";
 import BraDescp8 from "../../assets/svg/bradescription/descp8.svg";
-import SimilarProductCard from "../Home/SimilarProductCard";
 
 const tags = [
   "Everyday", "Plus Size", "Non-Padded", "Wirefree",
@@ -32,14 +34,22 @@ const description = [
 ];
 const items = tags.map((tag, i) => ({ tag, image: description[i] }));
 
-const ProductPage = () => {
-  const [mainImage, setMainImage] = useState<string>("");
-  const [selectedColor, setSelectedColor] = useState<string>("");
-  const [productDetails, setProductDetails] = useState<any | null>(null);
-  const [similarProducts, setSimilarProducts] = useState<any[]>([]);
+export default function ProductPage() {
+  // 🔹 Hooks must be unconditional
   const isMobile = useMediaQuery("(max-width: 640px)");
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { items: cartItems } = useSelector((s: RootState) => s.cart);
+
   const productId = searchParams.get("id");
+
+  const [mainImage, setMainImage] = useState<string>("");
+  const [selectedColor, setSelectedColor] = useState<string>("");
+  const [selectedSize, setSelectedSize] = useState<string>(""); // "32B"
+  const [productDetails, setProductDetails] = useState<any | null>(null);
+  const [, setSimilarProducts] = useState<any[]>([]);
+  const [openSizeDrawer, setOpenSizeDrawer] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -51,32 +61,91 @@ const ProductPage = () => {
         setSimilarProducts(sims || []);
         setMainImage(detail?.images?.[0] || "");
         setSelectedColor(detail?.selectedColors?.[0] || "");
+        setSelectedSize(detail?.selectedSizes?.[0] || "");
       } catch (err) {
         console.error("Error fetching product:", err);
       }
     };
-    fetchData();
+    if (productId) fetchData();
   }, [productId]);
 
+  // ✅ Prepare safe inputs for hooks even before data loads
+  const sizesInput: string[] = productDetails?.selectedSizes ?? [];
+  const colorsInput: string[] = productDetails?.selectedColors ?? [];
+  const imagesInput: string[] = productDetails?.images ?? [];
+  const priceInput: number | undefined = productDetails?.price;
+  const salePriceInput: number | undefined = productDetails?.salePrice;
+  const titleInput: string = productDetails?.productTitle ?? "";
+  const descInput: string = productDetails?.productDescription ?? "";
+
+  // ✅ useMemo must run every render
+  const sizeOptions: SizeOption[] = useMemo(() => {
+    const map = new Map<number, Set<string>>();
+    for (const s of sizesInput) {
+      const m = /^(\d{2})([A-Z]+)$/.exec(String(s).toUpperCase().trim());
+      if (!m) continue;
+      const band = Number(m[1]);
+      const cup = m[2];
+      if (!map.has(band)) map.set(band, new Set());
+      map.get(band)!.add(cup);
+    }
+    return Array.from(map.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([band, cupsSet]) => ({
+        band,
+        cups: Array.from(cupsSet.values()).sort(),
+      }));
+  }, [sizesInput]);
+
+  // Early return AFTER all hooks are declared
   if (!productDetails) return null;
 
-  const {
-    productTitle,
-    productDescription,
-    images = [],
-    selectedSizes = [],
-    selectedColors = [],
-    price,
-    salePrice,
-  } = productDetails;
+  const discount =
+    priceInput && salePriceInput
+      ? Math.round(((priceInput - salePriceInput) / priceInput) * 100)
+      : 0;
 
-  const discount = price && salePrice
-    ? Math.round(((price - salePrice) / price) * 100)
-    : 0;
+  const currentCartItem = cartItems?.find(
+    (it: any) =>
+      it.id === productId &&
+      (it.size ?? "") === (selectedSize || "") &&
+      (it.color ?? "") === (selectedColor || "")
+  );
+  const currentQty: number = currentCartItem?.qty ?? 0;
+
+  const requiresSize = sizeOptions.length > 0;
+  const requiresColor = colorsInput.length > 0;
+
+  const makeCartPayload = (sizeLabel?: string) => ({
+    id: productId as string,
+    imageUrl: mainImage || imagesInput?.[0] || "",
+    title: titleInput,
+    productName: titleInput,
+    price: salePriceInput ?? priceInput,
+    originalPrice: priceInput,
+    rating: 0,
+    qty: 1,
+    size: requiresSize ? (sizeLabel ?? selectedSize) : undefined, // "32B"
+    color: requiresColor ? selectedColor : undefined,
+    silent: true,
+  });
+
+  const handleAddToCart = () => setOpenSizeDrawer(true);
+  const handleBuyNow = () => setOpenSizeDrawer(true);
+
+  const handleConfirmSize = (sel: { band: number; cup: string; label: string }) => {
+    const chosen = sel.label; // "32B"
+    setSelectedSize(chosen);
+    dispatch(addToCart(makeCartPayload(chosen)));
+    setOpenSizeDrawer(false);
+    // If buy-now flow needed, navigate here.
+    // navigate("/checkout");
+  };
 
   return (
     <Container size="xl" py="md">
       <Grid>
+        {/* Left: images */}
         <Grid.Col span={{ base: 12, md: 6 }}>
           <Image
             src={mainImage}
@@ -87,7 +156,7 @@ const ProductPage = () => {
             fit="contain"
           />
           <Group mt="sm" wrap="wrap">
-            {images.map((img: string, idx: number) => (
+            {imagesInput.map((img: string, idx: number) => (
               <Box
                 key={idx}
                 onClick={() => setMainImage(img)}
@@ -95,8 +164,8 @@ const ProductPage = () => {
                   cursor: "pointer",
                   border: mainImage === img ? "2px solid #38a169" : "1px solid #ccc",
                   borderRadius: 8,
-                  width: "80px",
-                  height: "80px",
+                  width: 80,
+                  height: 80,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -108,52 +177,112 @@ const ProductPage = () => {
           </Group>
         </Grid.Col>
 
+        {/* Right: details */}
         <Grid.Col span={{ base: 12, md: 6 }}>
-          <Title order={2}>{productTitle}</Title>
-          <Text>{productDescription}</Text>
-          <Text size="sm" color="dimmed">⭐ 4.5 (157 Reviews)</Text>
+          <Title order={2}>{titleInput}</Title>
+          <Text>{descInput}</Text>
+          <Text size="sm" c="dimmed">⭐ 4.5 (157 Reviews)</Text>
 
           <Group mt="xs">
-            <Text fw={700} size="xl">₹{salePrice}</Text>
-            <Text color="dimmed" td="line-through">₹{price}</Text>
-            <Badge color="green">Save {discount}%</Badge>
+            <Text fw={700} size="xl">₹{salePriceInput ?? priceInput}</Text>
+            {salePriceInput ? <Text c="dimmed" td="line-through">₹{priceInput}</Text> : null}
+            {salePriceInput ? <Badge color="green">Save {discount}%</Badge> : null}
           </Group>
 
-          <Box mt="md">
-            <Text fw={500}>Size</Text>
-            <SimpleGrid cols={6} mt="xs">
-              {selectedSizes.map((sz: string, i: number) => (
-                <Button variant="outline" size="xs" radius={100} key={i}>
-                  {sz}
-                </Button>
-              ))}
-            </SimpleGrid>
-          </Box>
-
+          {/* Colors */}
           <Box mt="md">
             <Text fw={500}>Colors</Text>
             <Group mt="xs">
-              {selectedColors.map((clr: string, i: number) => (
+              {colorsInput.map((clr: string, i: number) => (
                 <Box
                   key={i}
                   bg={clr}
-                  w={20} h={20}
+                  w={24} h={24}
                   style={{
                     border: selectedColor === clr ? "2px solid #38a169" : "1px solid #ccc",
                     borderRadius: "50%", cursor: "pointer",
                   }}
+                  title={clr}
                   onClick={() => setSelectedColor(clr)}
                 />
               ))}
+              {colorsInput.length === 0 && <Text size="xs" c="dimmed">Single Color</Text>}
             </Group>
           </Box>
 
-          <Group mt="lg">
-            <Button color="green">Add to cart</Button>
-            <Button variant="outline">Buy Now</Button>
+          {/* Actions */}
+          <Group mt="lg" gap="sm">
+            {currentQty > 0 ? (
+              <Group
+                gap="xs"
+                style={{
+                  background: "#96BD75",
+                  borderRadius: 999,
+                  padding: "6px 8px",
+                }}
+              >
+                <ActionIcon
+                  variant="transparent"
+                  onClick={() => {
+                    if (currentQty <= 1) {
+                      dispatch(removeFromCart({
+                        id: productId as string,
+                        size: requiresSize ? selectedSize : undefined,
+                        color: requiresColor ? selectedColor : undefined,
+                        silent: true,
+                      }));
+                    } else {
+                      dispatch(decreaseQty({
+                        id: productId as string,
+                        size: requiresSize ? selectedSize : undefined,
+                        color: requiresColor ? selectedColor : undefined,
+                        silent: true,
+                      }));
+                    }
+                  }}
+                  aria-label="Decrease quantity"
+                >
+                  <IconMinus size={16} color="white" />
+                </ActionIcon>
+
+                <Button
+                  variant="subtle"
+                  size="compact-sm"
+                  radius="xl"
+                  styles={{ root: { color: "white", pointerEvents: "none" } }}
+                >
+                  {currentQty}
+                </Button>
+
+                <ActionIcon
+                  variant="transparent"
+                  onClick={() =>
+                    dispatch(increaseQty({
+                      id: productId as string,
+                      size: requiresSize ? selectedSize : undefined,
+                      color: requiresColor ? selectedColor : undefined,
+                      silent: true,
+                    }))
+                  }
+                  aria-label="Increase quantity"
+                >
+                  <IconPlus size={16} color="white" />
+                </ActionIcon>
+              </Group>
+            ) : (
+              <>
+                <Button color="green" onClick={handleAddToCart}>
+                  Add to cart
+                </Button>
+                <Button variant="outline" onClick={handleBuyNow}>
+                  Buy Now
+                </Button>
+              </>
+            )}
           </Group>
 
-          <Group mt="md" spacing="lg">
+          {/* Trust badges */}
+          <Group mt="md" gap="lg">
             <Group>
               <ThemeIcon variant="light" color="green"><IconTruck /></ThemeIcon>
               <Text>Fast & Free Delivery</Text>
@@ -176,11 +305,10 @@ const ProductPage = () => {
         </Grid.Col>
       </Grid>
 
+      {/* Tabs */}
       <Tabs defaultValue="description" mt="xl">
         <Tabs.List>
           <Tabs.Tab value="description">Description</Tabs.Tab>
-          <Tabs.Tab value="reviews">Reviews</Tabs.Tab>
-          <Tabs.Tab value="washcare">Wash care</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel value="description" pt="xs">
@@ -209,50 +337,20 @@ const ProductPage = () => {
               <li>Slim fit for any body</li>
               <li>Quality control by JC</li>
             </ul>
-           
-          </Box>
-        </Tabs.Panel>
-
-        <Tabs.Panel value="reviews" pt="xs">
-          <Stack mt="sm">
-            <Box>
-              <Text fw={500}>Aarti R.</Text>
-              <Text size="sm" c="dimmed">“Very comfortable and fits perfectly…”</Text>
-            </Box>
-            <Box>
-              <Text fw={500}>Nisha K.</Text>
-              <Text size="sm" c="dimmed">“Soft fabric and good quality…”</Text>
-            </Box>
-            <Box>
-              <Text fw={500}>Sana M.</Text>
-              <Text size="sm" c="dimmed">“Looks exactly like the pictures…”</Text>
-            </Box>
-          </Stack>
-        </Tabs.Panel>
-
-        <Tabs.Panel value="washcare" pt="xs">
-          <Box mt="sm">
-            <Text fw={600}>Wash Care Instructions:</Text>
-            <ul>
-              <li>Hand wash separately in cold water</li>
-              <li>Use mild detergent</li>
-              <li>Do not bleach or tumble dry</li>
-              <li>Dry in shade</li>
-              <li>Iron on low heat if needed</li>
-            </ul>
-            <Text size="sm" mt="sm">Following these care instructions will help maintain product quality.</Text>
           </Box>
         </Tabs.Panel>
       </Tabs>
 
-      {/* <Title order={3} mt="xl" mb="md">Similar Products</Title>
-      <SimpleGrid cols={4}>
-        {similarProducts.map((prod, i) => (
-          <SimilarProductCard key={i} {...prod} />
-        ))}
-      </SimpleGrid> */}
+      {/* Size drawer (same component) */}
+      <SizeSelectorDrawer
+        opened={openSizeDrawer}
+        onClose={() => setOpenSizeDrawer(false)}
+        onConfirm={handleConfirmSize}
+        productTitle={titleInput}
+        price={salePriceInput ?? priceInput}
+        imageUrl={mainImage || imagesInput?.[0] || ""}
+        options={sizeOptions.length ? sizeOptions : undefined}
+      />
     </Container>
   );
-};
-
-export default ProductPage;
+}

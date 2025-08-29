@@ -1,77 +1,70 @@
+// redux/features/cartSlice.ts
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
-export type CartItem = {
-  id: string;
+type CartItem = {
+  id: string | number;
   title: string;
-  price: number;
-  salePrice?: number | null;
+  productName?: string;
   image?: string;
-  color?: string;
-  size?: string;
+  imageUrl?: string;
+  price?: number;
+  salePrice?: number;
   qty: number;
+  size?: string;
+  color?: string;
 };
 
-type CartState = {
-  items: CartItem[];
-  isOpen: boolean; // <— drawer UI state
-};
+type AdjustPayload = { id: string | number; size?: string; color?: string; silent?: boolean };
+type AddPayload = CartItem & { silent?: boolean };
 
-const initialState: CartState = {
-  items: [],
-  isOpen: false,
-};
+type CartState = { items: CartItem[]; isOpen: boolean };
+const initialState: CartState = { items: [], isOpen: false };
 
-const key = (p: Pick<CartItem, "id" | "size" | "color">) =>
-  `${p.id}_${p.size ?? ""}_${p.color ?? ""}`;
+const sameVariant = (a: CartItem, b: { id: CartItem["id"]; size?: string; color?: string }) =>
+  a.id === b.id && (a.size ?? "") === (b.size ?? "") && (a.color ?? "") === (b.color ?? "");
 
 const cartSlice = createSlice({
   name: "cart",
   initialState,
   reducers: {
-    // UI actions for drawer
-    openCart: (state) => { state.isOpen = true; },
-    closeCart: (state) => { state.isOpen = false; },
-    toggleCart: (state) => { state.isOpen = !state.isOpen; },
+    openCart(state) { state.isOpen = true; },
+    closeCart(state) { state.isOpen = false; },
 
-    // cart actions
-    addToCart: (
-      state,
-      action: PayloadAction<Omit<CartItem, "qty"> & { qty?: number }>
-    ) => {
-      const payload = { ...action.payload, qty: action.payload.qty ?? 1 };
-      const k = key(payload);
-      const existing = state.items.find((i) => key(i) === k);
-      if (existing) existing.qty += payload.qty;
-      else state.items.push({ ...payload });
-      // optional: open the cart when item added
-      state.isOpen = true;
+    addToCart(state, action: PayloadAction<AddPayload>) {
+      const { silent, ...p } = action.payload;
+      const existing = state.items.find((it) => sameVariant(it, p));
+      if (existing) existing.qty += p.qty ?? 1;
+      else state.items.push({ ...p, title: p.title ?? p.productName ?? "Product", qty: p.qty ?? 1 });
+      if (!silent) state.isOpen = true;              // ← respect silent
     },
-    increaseQty: (state, action: PayloadAction<{ id: string; size?: string; color?: string }>) => {
-      const item = state.items.find((i) => key(i) === key(action.payload));
-      if (item) item.qty += 1;
+
+    increaseQty(state, action: PayloadAction<AdjustPayload>) {
+      const { silent, ...p } = action.payload;
+      const it = state.items.find((x) => sameVariant(x, p));
+      if (it) it.qty += 1;
+      if (!silent) state.isOpen = true;              // ← respect silent
     },
-    decreaseQty: (state, action: PayloadAction<{ id: string; size?: string; color?: string }>) => {
-      const item = state.items.find((i) => key(i) === key(action.payload));
-      if (item) item.qty = Math.max(1, item.qty - 1);
+
+    decreaseQty(state, action: PayloadAction<AdjustPayload>) {
+      const { silent, ...p } = action.payload;
+      const idx = state.items.findIndex((x) => sameVariant(x, p));
+      if (idx >= 0) {
+        const it = state.items[idx];
+        if (it.qty > 1) it.qty -= 1;
+        else state.items.splice(idx, 1);
+      }
+      if (!silent) state.isOpen = true;              // ← respect silent
     },
-    removeFromCart: (state, action: PayloadAction<{ id: string; size?: string; color?: string }>) => {
-      state.items = state.items.filter((i) => key(i) !== key(action.payload));
+
+    removeFromCart(state, action: PayloadAction<AdjustPayload>) {
+      const { silent, ...p } = action.payload;
+      const idx = state.items.findIndex((x) => sameVariant(x, p));
+      if (idx >= 0) state.items.splice(idx, 1);
+      if (!silent) state.isOpen = true;              // ← respect silent
     },
-    clearCart: (state) => {
-      state.items = [];
-    },
+    clearCart(state) { state.items = []; },
   },
 });
 
-export const {
-  openCart,
-  closeCart,
-  toggleCart,
-  addToCart,
-  increaseQty,
-  decreaseQty,
-  removeFromCart,
-  clearCart,
-} = cartSlice.actions;
-
+export const { openCart, closeCart, addToCart, increaseQty, decreaseQty, removeFromCart, clearCart } = cartSlice.actions;
 export default cartSlice.reducer;

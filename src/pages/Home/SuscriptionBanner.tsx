@@ -27,12 +27,7 @@ export default function SubscriptionBanner() {
     >
       {isMobile ? (
         <Stack spacing="md" align="center">
-          <Text
-            c="white"
-            size="sm"
-            fw={600}
-            ta="center"
-          >
+          <Text c="white" size="sm" fw={600} ta="center">
             Sign Up & Enjoy Instant Discount Of ₹199
           </Text>
 
@@ -45,10 +40,13 @@ export default function SubscriptionBanner() {
               borderRadius: rem(999),
             }}
           >
+            {/* Email input expands, button stays to the right */}
             <TextInput
+              type="email"
               placeholder="Email address"
               leftSection={<IconMail size={14} />}
               variant="unstyled"
+              style={{ flex: 1 }}
               styles={{
                 input: {
                   paddingLeft: rem(28),
@@ -61,12 +59,12 @@ export default function SubscriptionBanner() {
             <Button
               radius="xl"
               color="lime"
-              fullWidth
+              size="compact-sm"
               styles={{
                 root: {
-                  fontSize: rem(12),
+                  fontSize: rem(11),
                   fontWeight: 600,
-                  height: rem(34),
+                  height: rem(30),
                 },
               }}
             >
@@ -86,27 +84,33 @@ export default function SubscriptionBanner() {
             p={4}
             style={{
               borderRadius: rem(999),
+              alignItems: "center",
             }}
           >
             <TextInput
+              type="email"
               placeholder="Enter your email"
               leftSection={<IconMail size={16} />}
               variant="unstyled"
+              style={{ flex: 1 }}
               styles={{
                 input: {
                   paddingLeft: rem(30),
                   paddingRight: rem(8),
-                  width: rem(220),
+                  width: "100%",
                 },
               }}
             />
             <Button
               radius="xl"
               color="lime"
-              px="md"
+              size="compact-sm"
+              px="sm"
               styles={{
                 root: {
                   fontWeight: 600,
+                  fontSize: rem(13),
+                  height: rem(34),
                 },
               }}
             >

@@ -150,7 +150,7 @@ export default function Header() {
         </div>
 
         {/* Category nav */}
-        {/* <div className="hidden md:flex gap-5 w-full">
+        <div className="hidden md:flex gap-5 w-full">
           <ul className="flex justify-center w-[50%] gap-10">
             <li className={`text-sm cursor-pointer ${isSelected("1")}`} onClick={() => handleNavigation("category?id=1")}>
               Brassiere
@@ -158,20 +158,17 @@ export default function Header() {
             <li className={`text-sm cursor-pointer ${isSelected("2")}`} onClick={() => handleNavigation("category?id=2")}>
               Panties
             </li>
-            <li className={`text-sm cursor-pointer ${isSelected("3")}`} onClick={() => handleNavigation("category?id=3")}>
-              Shimmer Leggings
-            </li>
             <li className={`text-sm cursor-pointer ${isSelected("4")}`} onClick={() => handleNavigation("category?id=4")}>
               New Arrivals
             </li>
             <li className={`text-sm cursor-pointer ${isSelected("5")}`} onClick={() => handleNavigation("category?id=5")}>
-              Offers Zone
+              Elite
             </li>
             <li className={`text-sm cursor-pointer ${isSelected("6")}`} onClick={() => handleNavigation("category?id=6")}>
               Combo Offer
             </li>
           </ul>
-        </div> */}
+        </div>
       </div>
     </header>
   );

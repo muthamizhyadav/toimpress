@@ -13,6 +13,7 @@ import Testimonials from "./Home/Testimonials";
 import TopCategories from "./Home/TopCategories";
 import MobileBottomNavbar from "./MobileBottomBar";
 import Reviews from './Home/Reviews';
+import PromoBanners from '../components/PromoBanner';
 
 const Home = () => {
   const isMobile = useMediaQuery('(max-width: 640px)');
@@ -25,6 +26,7 @@ const Home = () => {
       {isMobile && <CategoriesHomeMobile />}
       <TopCategories />
       <CategorySlider />
+      <PromoBanners/>
       <ShopBySize />
       <FindYourFitt />
       <Reviews/>
