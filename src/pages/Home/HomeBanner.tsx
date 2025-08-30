@@ -19,9 +19,9 @@ const HomeBanner: React.FC = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const emblaRef = useRef<any>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
-  const getAllProducts = async () => {
+  const getAllBanners = async () => {
     try {
       const response = await axiosInstance.get(GET_HOME_BANNER);
       if (response?.data) {
@@ -33,14 +33,14 @@ const HomeBanner: React.FC = () => {
   };
 
   useEffect(() => {
-    getAllProducts();
+    getAllBanners();
   }, []);
 
   const handleNavigation = (str?: string) => {
     navigate(`/${str}`);
   };
 
-
+  // autoplay logic
   useEffect(() => {
     if (banners.length > 0 && emblaRef.current) {
       if (intervalRef.current) clearInterval(intervalRef.current);
@@ -51,7 +51,7 @@ const HomeBanner: React.FC = () => {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [banners, emblaRef.current]);
+  }, [banners]);
 
   useEffect(() => {
     if (emblaRef.current) {
@@ -60,68 +60,59 @@ const HomeBanner: React.FC = () => {
   }, [currentSlide]);
 
   return (
-  <Carousel
-    withIndicators={false}
-    withControls={false}
-    loop
-    slideSize="100%"
-    slideGap={0}
-    getEmblaApi={(api) => (emblaRef.current = api)}
-    className={`${isMobile ? "h-[200px]" : "h-[741px]"} w-full rounded-2xl overflow-hidden`}
-  >
-    {banners.map((banner) => (
-      <Carousel.Slide
-        key={banner._id}
-        onClick={() => handleNavigation("category?id=1")}
+    <div
+      className={`relative w-full rounded-2xl overflow-hidden ${
+        isMobile ? "h-[220px]" : "aspect-[16/9] max-h-[820px]"
+      }`}
+    >
+      <Carousel
+        withIndicators={false}
+        withControls={false}
+        loop
+        slideSize="100%"
+        slideGap={0}
+        getEmblaApi={(api) => (emblaRef.current = api)}
+        className="w-full h-full"
       >
-        <img
-          src={banner.url}
-          alt={banner.title}
-          className="w-full h-full max-h-[741px] object-cover"
-        />
-      </Carousel.Slide>
-    ))}
-  </Carousel>
+        {banners.map((banner) => (
+          <Carousel.Slide
+            key={banner._id}
+            onClick={() => handleNavigation("category?id=1")}
+          >
+            <img
+              src={banner.url}
+              alt={banner.title}
+              className="w-full h-full object-cover"
+            />
+          </Carousel.Slide>
+        ))}
+      </Carousel>
 
+      {/* Example overlay (optional) */}
+      {/*
+      <div className="absolute left-4 sm:left-8 top-1/2 -translate-y-1/2 text-left p-4">
+        <h1 className="mb-2">
+          <img src={Logo} alt="TO IMPRESS" className="h-6 sm:h-8 md:h-10 lg:h-12" />
+        </h1>
+        <p
+          className={`${
+            isMobile ? "text-[12px]" : "text-[40px]"
+          } font-semibold text-gray-800 leading-tight`}
+        >
+          Finding the <span className="text-green-500">Perfect Fit</span> Has Never Been This Simple!
+        </p>
+        <button
+          className={`bg-green-500 hover:bg-green-600 text-white font-bold rounded-full shadow-lg transition duration-300 ease-in-out mt-3 ${
+            isMobile ? "py-2 px-4 text-[12px]" : "py-3 px-6 text-base"
+          }`}
+          onClick={() => navigate("/fit")}
+        >
+          Calculate Your Size
+        </button>
+      </div>
+      */}
+    </div>
   );
 };
 
 export default HomeBanner;
-
-
- {/* <div className="absolute left-4 sm:left-8 top-1/2 transform -translate-y-1/2 text-left p-4 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl">
-        <div>
-          <h1 className="mb-2">
-            <img
-              src={Logo}
-              alt="ATO IMPRESS"
-              className="h-6 sm:h-8 md:h-10 lg:h-12"
-            />
-          </h1>
-          {isMobile ? (
-            <>
-              <p className="text-[12px] font-semibold text-gray-800 mb-3 leading-snug" style={{  fontFamily: "cursive", }} >
-                Finding the <span className="text-green-500">Perfect Fit</span>{" "}
-                Has <br />
-                Never Been This Simple!
-              </p>
-
-              <button className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 !text-[12px] rounded-full shadow-lg transition duration-300 ease-in-out" onClick={()=>{navigate('/fit')}}  >
-                Calculate Your Size
-              </button>
-            </>
-          ) : (
-            <>
-              <p className="text-[40px] font-semibold text-gray-800 mb-4 leading-tight" style={{  fontFamily: "cursive", }} >
-                Finding the <span className="text-green-500">Perfect Fit</span>{" "}
-                Has <br />
-                Never Been This Simple!
-              </p>
-
-              <button className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 text-base rounded-full shadow-lg transition duration-300 ease-in-out" onClick={()=>{navigate('/fit')}}  >
-                Calculate Your Size
-              </button>
-            </>
-          )}
-        </div>
-      </div> */}

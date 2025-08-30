@@ -31,33 +31,25 @@ const AuthModal = () => {
 
   const isMobile = useMediaQuery("(max-width: 768px)");
 
-  const handleLogin = async () => {
+const handleLogin = async () => {
   setError(null);
   setLoading(true);
 
   try {
-    const myHeaders = new Headers();
-    myHeaders.append("Content-Type", "application/json");
-
-    const raw = JSON.stringify({
-      email: username, 
-      password
-    });
-
-    const requestOptions: any = {
+    const response = await fetch(LOGIN, {
       method: "POST",
-      headers: myHeaders,
-      body: raw,
-      redirect: "follow"
-    };
-
-    const response = await fetch(LOGIN, requestOptions);
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: username, password }),
+    });
 
     if (response.ok) {
       const data = await response.json();
-      const { user, tokens } = data;
+      const { user, tokens } = data; // <- adjust based on backend response
 
-      dispatch(login({ user, tokens }));
+      // ⚠️ if your backend returns `tokens.access` or `token`, extract it
+      const token = tokens?.access || tokens?.token || tokens;
+
+      dispatch(login({ user, token })); // match slice
       navigate("/");
     } else {
       setError("Invalid credentials. Please try again.");
@@ -69,6 +61,7 @@ const AuthModal = () => {
     setLoading(false);
   }
 };
+
 
   return (
     <Container size="xs" px="md" py={isMobile ? 40 : 80}>

@@ -1,6 +1,17 @@
 // src/redux/store.ts
-import { configureStore, createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { configureStore, createSlice, PayloadAction, combineReducers } from "@reduxjs/toolkit";
 import cartReducer from "./features/cartSlice";
+import {
+  persistStore,
+  persistReducer,
+  FLUSH,
+  REHYDRATE,
+  PAUSE,
+  PERSIST,
+  PURGE,
+  REGISTER,
+} from "redux-persist";
+import storage from "redux-persist/lib/storage"; // defaults to localStorage
 
 // ----- Auth slice -----
 interface AuthState {
@@ -39,13 +50,35 @@ const authSlice = createSlice({
 
 export const { login, logout } = authSlice.actions;
 
+// ----- Root reducer -----
+const rootReducer = combineReducers({
+  auth: authSlice.reducer,
+  cart: cartReducer,
+});
+
+// ----- Persist config -----
+const persistConfig = {
+  key: "root",
+  storage,
+  whitelist: ["auth", "cart"], // ✅ persist both
+};
+
+// Wrap rootReducer with persistReducer
+const persistedReducer = persistReducer(persistConfig, rootReducer);
+
 // ----- Store -----
 export const store = configureStore({
-  reducer: {
-    auth: authSlice.reducer,
-    cart: cartReducer,
-  },
+  reducer: persistedReducer,
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: {
+        ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
+      },
+    }),
 });
+
+// create persistor
+export const persistor = persistStore(store);
 
 // ----- Types -----
 export type RootState = ReturnType<typeof store.getState>;

@@ -23,8 +23,6 @@ const MobileBannerCard: React.FC<MobileBannerCardProps> = ({
     close(); // close drawer after navigation
   };
 
-  
-
   return (
     <div
       className={`relative rounded-md overflow-hidden w-full ${
@@ -35,7 +33,9 @@ const MobileBannerCard: React.FC<MobileBannerCardProps> = ({
       <img
         src={imageUrl}
         alt={title}
-        className="absolute w-full h-full object-contain"
+        className={`absolute w-full h-full ${
+          isDesktop ? "object-contain" : "object-inherit"
+        }`}
       />
     </div>
   );

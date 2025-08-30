@@ -4,7 +4,7 @@ import {
   IconHome,
   IconTag,
   IconUser,
-  IconSearch,
+  IconCalculator
 } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 
@@ -54,7 +54,7 @@ const MobileBottomNavbar: React.FC = () => {
         onClick={handleNavigation}
       />
       <NavLinkItem
-        icon={<IconSearch size={22} />}
+        icon={<IconCalculator size={22} />}
         label="Find your fit"
         path="/fit"
         onClick={handleNavigation}

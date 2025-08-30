@@ -1,19 +1,16 @@
 import {
   Box,
-  Button,
-  Group,
-  SegmentedControl,
-  Stack,
   Text,
   Image,
   Select,
   Card,
   Divider,
   Badge,
+  Group,
+  Stack,
 } from "@mantine/core";
 import { useMemo, useState } from "react";
 import { useMediaQuery } from "@mantine/hooks";
-import Scale from "../../assets/svg/Scale.svg";
 import BodySize from "../../assets/svg/BodySize.svg";
 
 type CupLetter = "A" | "B" | "C" | "D";
@@ -35,43 +32,26 @@ const BAND_TABLE: BandCol[] = [
 ];
 
 function inRange(v: number, [lo, hi]: [number, number]) { return v >= lo && v <= hi; }
-function cmToIn(cm: number) { return cm / 2.54; }
-function inToCm(inch: number) { return inch * 2.54; }
 
 export default function SizeCalculator() {
-  const [unit, setUnit] = useState<"cm" | "inch">("cm");
   const [underBust, setUnderBust] = useState<string>("");
   const [overBust, setOverBust] = useState<string>("");
-  const [showResult, setShowResult] = useState(false);
   const isMobile = useMediaQuery("(max-width: 640px)");
 
   const { underOptions, overOptions } = useMemo(() => {
     const underMin = 58, underMax = 97;
     const overMin = 72, overMax = 115;
-    const toLabel = (n: number) => (unit === "cm" ? `${n}` : cmToIn(n).toFixed(1));
     const under = Array.from({ length: underMax - underMin + 1 }, (_, i) => {
-      const cm = underMin + i; return { value: unit === "cm" ? `${cm}` : toLabel(cm) };
+      const cm = underMin + i; return { value: `${cm}`, label: `${cm}` };
     });
     const over = Array.from({ length: overMax - overMin + 1 }, (_, i) => {
-      const cm = overMin + i; return { value: unit === "cm" ? `${cm}` : toLabel(cm) };
+      const cm = overMin + i; return { value: `${cm}`, label: `${cm}` };
     });
-    return {
-      underOptions: under.map((o) => ({ value: o.value, label: o.value })),
-      overOptions: over.map((o) => ({ value: o.value, label: o.value })),
-    };
-  }, [unit]);
+    return { underOptions: under, overOptions: over };
+  }, []);
 
-  const underBustCm = useMemo(() => {
-    if (!underBust) return null;
-    const num = parseFloat(underBust);
-    return unit === "cm" ? num : Math.round(inToCm(num));
-  }, [underBust, unit]);
-
-  const overBustCm = useMemo(() => {
-    if (!overBust) return null;
-    const num = parseFloat(overBust);
-    return unit === "cm" ? num : Math.round(inToCm(num));
-  }, [overBust, unit]);
+  const underBustCm = underBust ? parseFloat(underBust) : null;
+  const overBustCm = overBust ? parseFloat(overBust) : null;
 
   const result = useMemo(() => {
     if (underBustCm == null || overBustCm == null) return null;
@@ -85,176 +65,183 @@ export default function SizeCalculator() {
     return { label: `${col.band}${cup}`, note: null as string | null };
   }, [underBustCm, overBustCm]);
 
-  const handleUnitChange = (val: "cm" | "inch") => {
-    if (val === unit) return;
-    const to = val, from = unit;
-    const convert = (v: string) => {
-      if (!v) return v;
-      const n = parseFloat(v);
-      if (Number.isNaN(n)) return "";
-      const converted = from === "cm" ? cmToIn(n) : inToCm(n);
-      return to === "cm" ? `${Math.round(converted)}` : converted.toFixed(1);
-    };
-    setUnit(val);
-    setUnderBust((u) => convert(u));
-    setOverBust((o) => convert(o));
-    setShowResult(false);
-  };
-
-  const onClear = () => {
-    setUnderBust("");
-    setOverBust("");
-    setShowResult(false);
-  };
-
   return (
     <Box w={isMobile ? "100%" : "70vw"} mx="auto" p="md">
       <Text ta="center" fw={600} size="lg" mb="xs">Calculate your size here</Text>
 
-      <Group justify="center" mb="lg">
-        <SegmentedControl
-          value={unit}
-          onChange={(v) => handleUnitChange(v as "cm" | "inch")}
-          data={[{ label: "CM", value: "cm" }, { label: "INCH", value: "inch" }]}
-          size="xs"
-        />
-      </Group>
-
-      {/* Two-column layout */}
+      {/* Layout: Image + Inputs */}
       <Group align="stretch" wrap={isMobile ? "wrap" : "nowrap"} gap="lg" mb="md">
         {/* LEFT: image */}
         <Box w={isMobile ? "100%" : "50%"} style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
           <Image src={BodySize} alt="Body Measurement Guide" w="100%" h={isMobile ? 240 : 380} fit="contain" />
         </Box>
 
-        {/* RIGHT: inputs + footer pinned */}
+        {/* RIGHT: inputs */}
         <Box w={isMobile ? "100%" : "50%"} style={{ display: "flex", flexDirection: "column" }}>
           <Stack gap="md" style={{ flex: 1 }}>
+            {/* Under-Bust */}
             <Stack gap={6}>
               <Text fw={600} size="sm">Under-Bust</Text>
               <Select
-                placeholder={unit === "cm" ? "Select (cm)" : "Select (in)"}
+                placeholder="Select (cm)"
                 data={underOptions}
                 value={underBust}
-                onChange={(v) => { setUnderBust(v || ""); setShowResult(false); }}
+                onChange={(v) => setUnderBust(v || "")}
                 searchable
-                nothingFoundMessage="No values"
               />
+              {overBust && !underBust && (
+                <Text size="xs" c="red">Please select your under-bust value</Text>
+              )}
             </Stack>
 
+            {/* Over-Bust */}
             <Stack gap={6}>
               <Text fw={600} size="sm">Over-Bust</Text>
               <Select
-                placeholder={unit === "cm" ? "Select (cm)" : "Select (in)"}
+                placeholder="Select (cm)"
                 data={overOptions}
                 value={overBust}
-                onChange={(v) => { setOverBust(v || ""); setShowResult(false); }}
+                onChange={(v) => setOverBust(v || "")}
                 searchable
-                nothingFoundMessage="No values"
               />
+              {underBust && !overBust && (
+                <Text size="xs" c="red">Please select your over-bust value</Text>
+              )}
             </Stack>
-
-            {/* scale (optional) */}
-            {/* <Image src={Scale} alt="Measurement Scale" fit="contain" h={40} w="100%" /> */}
-            <Box style={{ flex: 1 }} />
           </Stack>
 
-          {/* FOOTER: buttons fixed position */}
-          <Box>
-            <Group justify="space-between" wrap="nowrap">
-              <Button
-                radius="xl"
-                color="green"
-                size="md"
-                onClick={() => setShowResult(true)}
-                disabled={!underBust || !overBust}
-              >
-                Get my Size
-              </Button>
-
-              {showResult && (
-                <Button variant="outline" radius="xl" color="gray" size="md" onClick={onClear}>
-                  Clear
-                </Button>
-              )}
-            </Group>
-
-            {/* Reserved area for result so button doesn’t move */}
-            <Box mt="sm" mih={88} /* ~space for two lines */ ta="center">
-              {showResult && (
-                <>
-                  <Text fw={700} size="sm">YOUR BRA SIZE IS</Text>
-                  <Text fz={36} fw={900} c="red">{result?.label ?? "—"}</Text>
-                  {result?.note && <Text size="xs" c="dimmed">{result.note}</Text>}
-                </>
-              )}
-            </Box>
+          {/* Result */}
+          <Box mt="sm" ta="center">
+            {underBust && overBust ? (
+              <>
+                <Text fw={700} size="sm">YOUR BRA SIZE IS</Text>
+                <Text fz={36} fw={900} c="red">{result?.label ?? "—"}</Text>
+                {result?.note && <Text size="xs" c="dimmed">{result.note}</Text>}
+              </>
+            ) : (
+              <Text size="sm" c="dimmed">Select both measurements to see your size</Text>
+            )}
           </Box>
         </Box>
       </Group>
 
-      {/* Size chart (unchanged) */}
+      {/* Size chart */}
       <Card withBorder radius="lg" mt="xl" p="lg">
         <Text fw={700} ta="center" mb="md" size="xl">Bra Size Chart</Text>
 
-        <Group gap="xs" wrap="nowrap" mb="xs" align="center">
-          <Box w={140}><Badge variant="light">Bra Size</Badge></Box>
-          <Group gap="xs" wrap="wrap">
+        {isMobile ? (
+          // 📱 Mobile view: stacked cards
+          <Stack gap="md">
             {BAND_TABLE.map((b) => (
-              <Card key={b.band} padding="xs" radius="sm" withBorder>
-                <Text fw={700} size="sm">{b.band}</Text>
+              <Card key={b.band} withBorder radius="md" padding="md">
+                <Text fw={700} size="md" mb="xs">
+                  Bra Size {b.band}
+                </Text>
+                <Text size="sm" c="dimmed">
+                  Under-bust: {b.underBust[0]}–{b.underBust[1]} cm
+                </Text>
+                <Divider my="xs" />
+                <Stack gap={4}>
+                  {(["A", "B", "C", "D"] as CupLetter[]).map((cup) => {
+                    const [lo, hi] = b.overBustByCup[cup];
+                    const isSelected =
+                      result &&
+                      result.label.includes(String(b.band)) &&
+                      result.label.endsWith(cup);
+                    return (
+                      <Group
+                        key={`${b.band}-${cup}`}
+                        justify="space-between"
+                        style={{
+                          border: `1px solid ${
+                            isSelected ? "var(--mantine-color-red-6)" : "#ddd"
+                          }`,
+                          borderRadius: 6,
+                          padding: "4px 8px",
+                        }}
+                      >
+                        <Text size="sm" fw={500}>
+                          Cup {cup}
+                        </Text>
+                        <Text size="sm">
+                          {lo}–{hi} cm
+                        </Text>
+                      </Group>
+                    );
+                  })}
+                </Stack>
               </Card>
             ))}
-          </Group>
-        </Group>
+          </Stack>
+        ) : (
+          // 💻 Desktop view: matrix
+          <>
+            <Group gap="xs" wrap="nowrap" mb="xs" align="center">
+              <Box w={140}><Badge variant="light">Bra Size</Badge></Box>
+              <Group gap="xs" wrap="wrap">
+                {BAND_TABLE.map((b) => (
+                  <Card key={b.band} padding="xs" radius="sm" withBorder>
+                    <Text fw={700} size="sm">{b.band}</Text>
+                  </Card>
+                ))}
+              </Group>
+            </Group>
 
-        <Group gap="xs" wrap="nowrap" mb="xs" align="center">
-          <Box w={140}><Text size="sm" c="dimmed">Under-bust (cm)</Text></Box>
-          <Group gap="xs" wrap="wrap">
-            {BAND_TABLE.map((b) => (
-              <Card key={b.band} padding="xs" radius="sm" withBorder>
-                <Text size="sm">{b.underBust[0]}–{b.underBust[1]}</Text>
-              </Card>
-            ))}
-          </Group>
-        </Group>
+            <Group gap="xs" wrap="nowrap" mb="xs" align="center">
+              <Box w={140}><Text size="sm" c="dimmed">Under-bust (cm)</Text></Box>
+              <Group gap="xs" wrap="wrap">
+                {BAND_TABLE.map((b) => (
+                  <Card key={b.band} padding="xs" radius="sm" withBorder>
+                    <Text size="sm">{b.underBust[0]}–{b.underBust[1]}</Text>
+                  </Card>
+                ))}
+              </Group>
+            </Group>
 
-        <Divider my="sm" />
+            <Divider my="sm" />
 
-        <Group align="start" wrap="nowrap" gap="xs">
-          <Box w={140}>
-            <Stack gap={8}>
-              {(["A", "B", "C", "D"] as CupLetter[]).map((cup) => (
-                <Card key={cup} padding="xs" radius="sm" withBorder>
-                  <Text fw={700} size="sm">{cup}</Text>
-                </Card>
-              ))}
-            </Stack>
-          </Box>
-
-          <Group gap="xs" align="start">
-            {BAND_TABLE.map((b) => (
-              <Stack key={b.band} gap={8}>
-                {(["A", "B", "C", "D"] as CupLetter[]).map((cup) => {
-                  const [lo, hi] = b.overBustByCup[cup];
-                  const isSelected =
-                    (showResult && result && result.label.includes(String(b.band)) && result.label.endsWith(cup)) || false;
-                  return (
-                    <Card
-                      key={`${b.band}-${cup}`}
-                      padding="xs"
-                      radius="sm"
-                      withBorder
-                      style={{ borderColor: isSelected ? "var(--mantine-color-red-6)" : undefined }}
-                    >
-                      <Text size="sm">{lo}–{hi}</Text>
+            <Group align="start" wrap="nowrap" gap="xs">
+              <Box w={140}>
+                <Stack gap={8}>
+                  {(["A", "B", "C", "D"] as CupLetter[]).map((cup) => (
+                    <Card key={cup} padding="xs" radius="sm" withBorder>
+                      <Text fw={700} size="sm">{cup}</Text>
                     </Card>
-                  );
-                })}
-              </Stack>
-            ))}
-          </Group>
-        </Group>
+                  ))}
+                </Stack>
+              </Box>
+
+              <Group gap="xs" align="start">
+                {BAND_TABLE.map((b) => (
+                  <Stack key={b.band} gap={8}>
+                    {(["A", "B", "C", "D"] as CupLetter[]).map((cup) => {
+                      const [lo, hi] = b.overBustByCup[cup];
+                      const isSelected =
+                        result &&
+                        result.label.includes(String(b.band)) &&
+                        result.label.endsWith(cup);
+                      return (
+                        <Card
+                          key={`${b.band}-${cup}`}
+                          padding="xs"
+                          radius="sm"
+                          withBorder
+                          style={{
+                            borderColor: isSelected
+                              ? "var(--mantine-color-red-6)"
+                              : undefined,
+                          }}
+                        >
+                          <Text size="sm">{lo}–{hi}</Text>
+                        </Card>
+                      );
+                    })}
+                  </Stack>
+                ))}
+              </Group>
+            </Group>
+          </>
+        )}
       </Card>
     </Box>
   );

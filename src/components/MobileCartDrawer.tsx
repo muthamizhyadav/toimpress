@@ -33,20 +33,56 @@ type DisplayItem = {
 function CartItemRow({ item }: { item: DisplayItem }) {
   const dispatch = useDispatch();
 
+  // compute discount %
+  const hasDiscount =
+    item.originalPrice && item.originalPrice > item.price;
+  const discountPct = hasDiscount
+    ? Math.round(((item.originalPrice - item.price) / item.originalPrice) * 100)
+    : 0;
+
   return (
     <Box w="100%">
       <Group align="flex-start" justify="center">
-        <Box w={70} h={90} style={{ borderRadius: 8, overflow: "hidden", flexShrink: 0 }}>
-          <img src={item.imageUrl} alt={item.productName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        <Box
+          w={70}
+          h={90}
+          style={{ borderRadius: 8, overflow: "hidden", flexShrink: 0 }}
+        >
+          <img
+            src={item.imageUrl}
+            alt={item.productName}
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          />
         </Box>
 
         <Stack style={{ flex: 1, minWidth: 0 }}>
-          <Text size="sm" fw={500} lineClamp={2}>{item.productName}</Text>
-          <Group>
-            <Text size="sm" fw={600}>₹{item.price}</Text>
-            {item.originalPrice ? (
-              <Text size="xs" c="dimmed" td="line-through">₹{item.originalPrice}</Text>
-            ) : null}
+          <Text size="sm" fw={500} lineClamp={2}>
+            {item.productName}
+          </Text>
+
+          {/* show size & color */}
+          {(item.size || item.color) && (
+            <Text size="xs" c="dimmed">
+              {item.size && <span>Size: {item.size}</span>}
+              {item.size && item.color && " • "}
+              {item.color && <span>Color: {item.color}</span>}
+            </Text>
+          )}
+
+          <Group gap="xs" mt={2}>
+            <Text size="sm" fw={600}>
+              ₹{item.price}
+            </Text>
+            {item.originalPrice && (
+              <Text size="xs" c="dimmed" td="line-through">
+                ₹{item.originalPrice}
+              </Text>
+            )}
+            {hasDiscount && (
+              <Text size="xs" c="green" fw={600}>
+                {discountPct}% OFF
+              </Text>
+            )}
           </Group>
         </Stack>
 
@@ -54,7 +90,16 @@ function CartItemRow({ item }: { item: DisplayItem }) {
           variant="subtle"
           color="gray"
           mt={4}
-          onClick={() => dispatch(removeFromCart({ id: item.id, size: item.size, color: item.color, silent: true }))} // ★ object + silent
+          onClick={() =>
+            dispatch(
+              removeFromCart({
+                id: item.id,
+                size: item.size,
+                color: item.color,
+                silent: true,
+              })
+            )
+          }
         >
           <IconTrash size={16} />
         </ActionIcon>
@@ -66,7 +111,14 @@ function CartItemRow({ item }: { item: DisplayItem }) {
           size="sm"
           color="green"
           onClick={() =>
-            dispatch(decreaseQty({ id: item.id, size: item.size, color: item.color, silent: true })) // ★ object + silent
+            dispatch(
+              decreaseQty({
+                id: item.id,
+                size: item.size,
+                color: item.color,
+                silent: true,
+              })
+            )
           }
         >
           <IconMinus size={14} />
@@ -79,7 +131,14 @@ function CartItemRow({ item }: { item: DisplayItem }) {
           size="sm"
           color="green"
           onClick={() =>
-            dispatch(increaseQty({ id: item.id, size: item.size, color: item.color, silent: true })) // ★ object + silent
+            dispatch(
+              increaseQty({
+                id: item.id,
+                size: item.size,
+                color: item.color,
+                silent: true,
+              })
+            )
           }
         >
           <IconPlus size={14} />
@@ -90,6 +149,7 @@ function CartItemRow({ item }: { item: DisplayItem }) {
     </Box>
   );
 }
+
 
 export function MobileCartDrawer() {
   const dispatch = useDispatch();

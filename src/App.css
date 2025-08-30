@@ -39,3 +39,12 @@ div.tc-tab-list button:hover {
 div.tc-tab-list button.mantine-focus-auto {
   border: none !important;
 }
+
+/* push arrows out */
+.carousel-control[data-direction="left"] {
+  left: -40px !important;   /* left arrow */
+}
+
+.carousel-control[data-direction="right"] {
+  right: -40px !important;  /* right arrow */
+}

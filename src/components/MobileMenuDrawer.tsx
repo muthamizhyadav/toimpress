@@ -44,7 +44,6 @@ export function MobileMenuDrawer({
           <div className="flex flex-col gap-4 p-4 text-lg font-medium">
             <button onClick={() => handleNavigation("category?id=1")}>Brassiere</button>
             <button onClick={() => handleNavigation("category?id=2")}>Panties</button>
-            <button onClick={() => handleNavigation("category?id=3")}>Shimmer Leggings</button>
             <button onClick={() => handleNavigation("category?id=4")}>New Arrivals</button>
             <button onClick={() => handleNavigation("category?id=5")}>Offers Zone</button>
             <button onClick={() => handleNavigation("category?id=6")}>Combo Offer</button>

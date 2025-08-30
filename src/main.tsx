@@ -1,17 +1,19 @@
-// import { StrictMode } from 'react'
+// src/index.tsx
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import "./App.css";
 import App from "./App.tsx";
 import "@mantine/core/styles.layer.css";
-import '@mantine/carousel/styles.css';
-import { Provider } from 'react-redux';
-import store  from './redux/store';
+import "@mantine/carousel/styles.css";
+
+import { Provider } from "react-redux";
+import { PersistGate } from "redux-persist/integration/react";
+import { store, persistor } from "./redux/store"; // ⬅️ import persistor
 
 createRoot(document.getElementById("root")!).render(
-  // <StrictMode>
   <Provider store={store}>
-    <App />
+    <PersistGate loading={null} persistor={persistor}>
+      <App />
+    </PersistGate>
   </Provider>
-  // </StrictMode>,
 );

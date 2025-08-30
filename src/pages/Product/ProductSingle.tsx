@@ -181,7 +181,7 @@ export default function ProductPage() {
         <Grid.Col span={{ base: 12, md: 6 }}>
           <Title order={2}>{titleInput}</Title>
           <Text>{descInput}</Text>
-          <Text size="sm" c="dimmed">⭐ 4.5 (157 Reviews)</Text>
+          {/* <Text size="sm" c="dimmed">⭐ 4.5 (157 Reviews)</Text> */}
 
           <Group mt="xs">
             <Text fw={700} size="xl">₹{salePriceInput ?? priceInput}</Text>
@@ -322,8 +322,8 @@ export default function ProductPage() {
                   src={item.image}
                   alt={item.tag}
                   radius="md"
-                  w={isMobile ? 30 : 100}
-                  h={isMobile ? 30 : 100}
+                  w={isMobile ? 30 : 150}
+                  h={isMobile ? 30 : 150}
                 />
                 <Text size="sm">{item.tag}</Text>
               </Stack>

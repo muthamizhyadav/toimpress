@@ -33,35 +33,47 @@ const CategorySlider: React.FC = () => {
   const isMobile = useMediaQuery("(max-width: 768px)");
 
   if (isMobile) {
+    // 📱 Mobile: one card per row with 15px padding on both sides
     return (
-      <div className={` ${ isMobile && 'h-[400px]' }  my-4 px-2`}>
-        <Carousel
-          slideSize="70%"
-          height={ isMobile ? "auto" : 200}
-          slideGap="md"
-          controlsOffset="sm"
-          controlSize={26}
-          withControls={false}
-          withIndicators={false}
-          styles={{
-            viewport: { overflow: "hidden" },
-          }}
-        >
-          {bannerData.map((banner, index) => (
-            <Carousel.Slide key={index}>
-              <MobileBannerCard {...banner} />
-            </Carousel.Slide>
-          ))}
-        </Carousel>
+      <div className="my-4 px-[15px] flex flex-col gap-4">
+        {bannerData.map((banner, index) => (
+          <MobileBannerCard key={index} {...banner} />
+        ))}
       </div>
     );
   }
 
+  // 💻 Desktop: Carousel with indicators
   return (
-    <div className="my-8 px-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
-      {bannerData.map((banner, index) => (
-        <HomeBannerCard key={index} {...banner} />
-      ))}
+    <div className="my-8 px-6">
+      <Carousel
+        slideSize="33.33%" // 3 slides visible
+        slideGap="md"
+        align="start"
+        height="auto"
+        withIndicators
+        withControls
+        loop
+        styles={{
+          control: {
+            backgroundColor: "#133215",
+            color: "white",
+            "&:hover": { backgroundColor: "#1a4d1a" },
+          },
+          indicator: {
+            backgroundColor: "#ccc",
+            "&[data-active]": {
+              backgroundColor: "#133215",
+            },
+          },
+        }}
+      >
+        {bannerData.map((banner, index) => (
+          <Carousel.Slide key={index}>
+            <HomeBannerCard {...banner} />
+          </Carousel.Slide>
+        ))}
+      </Carousel>
     </div>
   );
 };
