@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Tabs, Button, Container } from "@mantine/core";
 import { Carousel } from "@mantine/carousel";
 import BraModel from "../../assets/svg/braModel.svg";
@@ -17,6 +17,8 @@ const categoryList = [
 ];
 
 export default function TopCategories() {
+
+  
   const [selectedTab, setSelectedTab] = useState<string | null>(
     categoryList[0].name
   );
@@ -43,6 +45,32 @@ export default function TopCategories() {
     if (selectedTab) getAllProducts(selectedTab);
   }, [selectedTab]);
 
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+
+useEffect(() => {
+  if (selectedTab && tabRefs.current[selectedTab] && scrollContainerRef.current) {
+    const el = tabRefs.current[selectedTab];
+    const container = scrollContainerRef.current;
+
+    const elRect = el.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+
+    // Distance to scroll so the selected tab is centered
+    const offset =
+      el.offsetLeft -
+      container.clientWidth / 2 +
+      el.clientWidth / 2;
+
+    // Add a small padding (scroll slightly more left/right)
+    container.scrollTo({
+      left: offset - 40, // 👈 adjust this number for how much extra space you want
+      behavior: "smooth",
+    });
+  }
+}, [selectedTab]);
+
+
   return (
     <Container
       size="xl"
@@ -59,53 +87,58 @@ export default function TopCategories() {
 
       <Tabs value={selectedTab} onChange={setSelectedTab}>
         {/* Category Tabs */}
-        <div className="overflow-x-auto no-scrollbar">
-          <Tabs.List className="flex-nowrap inline-flex gap-4 px-1 min-w-max tc-tab-list">
-            <div className="w-full flex md:justify-around justify-start">
-              {categoryList.map((cat) => (
-                <Tabs.Tab
-                  key={cat.name}
-                  value={cat.name}
-                  className="p-0 m-0"
-                  styles={{
-                    root: {
-                      border: "none",
-                      boxShadow: "none",
-                      background: "transparent",
-                      "&[data-active]": {
-                        border: "none",
-                        boxShadow: "none",
-                      },
-                    },
-                  }}
-                >
-                  <Button
-                    radius="xl"
-                    size="lg"
-                    className="border-0"
-                    styles={{
-                      root: {
-                        backgroundColor:
-                          selectedTab === cat.name ? "#133215" : "#ffffff",
-                        color: selectedTab === cat.name ? "#ffffff" : "#000000",
-                        fontWeight: 700,
-                        paddingLeft: 32,
-                        paddingRight: 32,
-                        height: 34,
-                        fontSize: isMobile ? "14px" : "18px",
-                        boxShadow: "none",
-                        whiteSpace: "nowrap",
-                        border: "none",
-                      },
-                    }}
-                  >
-                    {cat.name}
-                  </Button>
-                </Tabs.Tab>
-              ))}
-            </div>
-          </Tabs.List>
-        </div>
+       <div
+  ref={scrollContainerRef}
+  className="overflow-x-auto no-scrollbar"
+>
+  <Tabs.List className="flex-nowrap inline-flex gap-4 px-1 min-w-max tc-tab-list">
+    <div className="w-full flex md:justify-around justify-start">
+      {categoryList.map((cat) => (
+        <Tabs.Tab
+          key={cat.name}
+          value={cat.name}
+          ref={(el) => (tabRefs.current[cat.name] = el)}
+          className="p-0 m-0"
+          styles={{
+            root: {
+              border: "none",
+              boxShadow: "none",
+              background: "transparent",
+              "&[data-active]": {
+                border: "none",
+                boxShadow: "none",
+              },
+            },
+          }}
+        >
+          <Button
+            radius="xl"
+            size="lg"
+            className="border-0"
+            styles={{
+              root: {
+                backgroundColor:
+                  selectedTab === cat.name ? "#133215" : "#ffffff",
+                color: selectedTab === cat.name ? "#ffffff" : "#000000",
+                fontWeight: 700,
+                paddingLeft: 32,
+                paddingRight: 32,
+                height: 34,
+                fontSize: isMobile ? "14px" : "18px",
+                boxShadow: "none",
+                whiteSpace: "nowrap",
+                border: "none",
+              },
+            }}
+          >
+            {cat.name}
+          </Button>
+        </Tabs.Tab>
+      ))}
+    </div>
+  </Tabs.List>
+</div>
+
 
         {/* Product List with Carousel */}
         {categoryList.map((cat) => (

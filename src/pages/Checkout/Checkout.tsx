@@ -14,9 +14,9 @@ import { loadRazorpay } from "../../utils/loadRazorpay";
 import axiosInstance from "../../api/axiosInstance";
 
 const RAZORPAY_KEY_ID = import.meta.env.VITE_RZP_KEY_ID as string;
-const CREATE_ORDER_URL = "/api/payments/razorpay/order";
+const CREATE_ORDER_URL = "/payments/razorpay/order";
 const CREATE_PAYMENT_LINK_URL = "/api/payments/razorpay/payment-link";
-const VERIFY_URL = "/api/payments/razorpay/verify";
+const VERIFY_URL = "/payments/razorpay/verify";
 
 type CartItem = {
   id: string | number;

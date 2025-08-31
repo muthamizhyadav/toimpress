@@ -46,10 +46,12 @@ const handleLogin = async () => {
       const data = await response.json();
       const { user, tokens } = data; // <- adjust based on backend response
 
-      // ⚠️ if your backend returns `tokens.access` or `token`, extract it
-      const token = tokens?.access || tokens?.token || tokens;
+      console.log(tokens.access.token, "")
 
-      dispatch(login({ user, token })); // match slice
+      // ⚠️ if your backend returns `tokens.access` or `token`, extract it
+      //const token = tokens.access
+
+      dispatch(login({ user, tokens })); // match slice
       navigate("/");
     } else {
       setError("Invalid credentials. Please try again.");

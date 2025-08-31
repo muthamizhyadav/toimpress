@@ -2,9 +2,9 @@ import React from "react";
 import { Box, Text } from "@mantine/core";
 import {
   IconHome,
-  IconTag,
   IconUser,
-  IconCalculator
+  IconCalculator,
+  IconCube
 } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 
@@ -48,9 +48,9 @@ const MobileBottomNavbar: React.FC = () => {
         onClick={handleNavigation}
       />
       <NavLinkItem
-        icon={<IconTag size={22} />}
-        label="Categories"
-        path="/product"
+        icon={<IconCube size={22} />}
+        label="Orders"
+        path="/orders"
         onClick={handleNavigation}
       />
       <NavLinkItem
