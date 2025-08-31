@@ -92,13 +92,13 @@ function CheckoutItemBox({ item, onMinus, onPlus, onRemove }: {
 
 export default function Checkout() {
   const items = useSelector((s: any) => s.cart.items) as CartItem[];
-  const { accessToken } = useSelector((s: RootState) => s.auth); // ✅ get auth state
+  const { user } = useSelector((s: RootState) => s.auth); // ✅ get auth state
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [payLoading, setPayLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"RAZORPAY" | "COD">("RAZORPAY");
+  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
 
-  const isAuthenticated = !!accessToken; // ✅ simple check
 
   const totals = useMemo(() => {
     const subtotal = (items || []).reduce((sum, i) => {
