@@ -12,6 +12,8 @@ import Footer from "../Home/Footer";
 import MobileBottomNavbar from "../MobileBottomBar";
 import { loadRazorpay } from "../../utils/loadRazorpay";
 import axiosInstance from "../../api/axiosInstance";
+import { RootState } from "../../redux/store";
+import { useNavigate } from "react-router-dom";
 
 const RAZORPAY_KEY_ID = import.meta.env.VITE_RZP_KEY_ID as string;
 const CREATE_ORDER_URL = "/payments/razorpay/order";
@@ -90,9 +92,13 @@ function CheckoutItemBox({ item, onMinus, onPlus, onRemove }: {
 
 export default function Checkout() {
   const items = useSelector((s: any) => s.cart.items) as CartItem[];
+  const { accessToken } = useSelector((s: RootState) => s.auth); // ✅ get auth state
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [payLoading, setPayLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"RAZORPAY" | "COD">("RAZORPAY");
+
+  const isAuthenticated = !!accessToken; // ✅ simple check
 
   const totals = useMemo(() => {
     const subtotal = (items || []).reduce((sum, i) => {
@@ -105,7 +111,17 @@ export default function Checkout() {
     return { subtotal, shipping, codFee, grandTotal };
   }, [items, paymentMethod]);
 
+  // ✅ Guard: redirect if not authenticated
+  const ensureAuth = () => {
+    if (!isAuthenticated) {
+      navigate("/account"); // redirect to profile/login
+      return false;
+    }
+    return true;
+  };
+
   const onPayNow = async () => {
+    if (!ensureAuth()) return; // ✅ check before proceeding
     try {
       if (!items?.length) return;
       const amountPaise = Math.round(totals.grandTotal * 100);
@@ -157,6 +173,7 @@ export default function Checkout() {
   };
 
   const onPayWithLink = async () => {
+    if (!ensureAuth()) return; // ✅ check before proceeding
     try {
       const amountPaise = Math.round(totals.grandTotal * 100);
       const { data } = await axiosInstance.post(CREATE_PAYMENT_LINK_URL, {
@@ -174,6 +191,7 @@ export default function Checkout() {
   };
 
   const onPlaceCOD = async () => {
+    if (!ensureAuth()) return; // ✅ check before proceeding
     try {
       if (!items?.length) return;
       // await axiosInstance.post('/api/orders/cod', { items, totals });
@@ -200,16 +218,10 @@ export default function Checkout() {
       ) : (
         <Container size="lg" py="xl">
           <Grid gutter="lg">
-            {/* LEFT: Items (scrollable on desktop) */}
-            <Grid.Col span={{ base: 12, md: 7 }}> {/* wider right: 7/5 split */}
-              <Box
-                style={{
-                  // only scrollable on desktop
-                  maxHeight: "unset",
-                  overflowY: "visible",
-                }}
-              >
-               <SimpleGrid cols={{ base: 1, md: 1 }} spacing="md">
+            {/* LEFT: Items */}
+            <Grid.Col span={{ base: 12, md: 7 }}>
+              <Box>
+                <SimpleGrid cols={{ base: 1, md: 1 }} spacing="md">
                   {items.map((item, idx) => (
                     <CheckoutItemBox
                       key={`${item.id}-${item.size ?? ""}-${item.color ?? ""}-${idx}`}
@@ -229,18 +241,14 @@ export default function Checkout() {
               </Box>
             </Grid.Col>
 
-            {/* RIGHT: Sticky payments/summary */}
+            {/* RIGHT: Payments */}
             <Grid.Col span={{ base: 12, md: 5 }}>
               <Card
                 withBorder
                 p="lg"
                 radius="md"
-                style={{
-                  position: "static",
-                }}
                 styles={{
                   root: {
-                    // sticky only on desktops
                     [`@media (min-width: 1024px)`]: {
                       position: "sticky",
                       top: 16,
@@ -250,11 +258,9 @@ export default function Checkout() {
                   },
                 }}
               >
-                <Text fw={700} mb="md" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  Order Summary
-                </Text>
+                <Text fw={700} mb="md">Order Summary</Text>
 
-                {/* Payment method selector */}
+                {/* Payment method */}
                 <Stack gap="xs" mb="sm">
                   <Text fw={600} size="sm">Payment Method</Text>
                   <SegmentedControl
@@ -287,7 +293,6 @@ export default function Checkout() {
                   <Text fw={700}>₹{totals.grandTotal}</Text>
                 </Group>
 
-                {/* Actions: text truncation so nothing spills outside */}
                 {paymentMethod === "RAZORPAY" ? (
                   <Stack gap="xs">
                     <Button
@@ -296,7 +301,6 @@ export default function Checkout() {
                       onClick={onPayNow}
                       loading={payLoading}
                       disabled={!items?.length || totals.grandTotal <= 0}
-                      styles={{ root: { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }}
                     >
                       Pay Now (Razorpay)
                     </Button>
@@ -305,7 +309,6 @@ export default function Checkout() {
                       variant="light"
                       onClick={onPayWithLink}
                       disabled={!items?.length || totals.grandTotal <= 0}
-                      styles={{ root: { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }}
                     >
                       Pay via Payment Link
                     </Button>
@@ -316,7 +319,6 @@ export default function Checkout() {
                     color="dark"
                     onClick={onPlaceCOD}
                     disabled={!items?.length || totals.grandTotal <= 0}
-                    styles={{ root: { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }}
                   >
                     Place COD Order
                   </Button>
@@ -327,7 +329,6 @@ export default function Checkout() {
                   variant="subtle"
                   mt="sm"
                   onClick={() => dispatch(clearCart())}
-                  styles={{ root: { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }}
                 >
                   Clear Cart
                 </Button>
