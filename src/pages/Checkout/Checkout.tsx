@@ -5,6 +5,7 @@ import { IconMinus, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useDispatch, useSelector } from "react-redux";
 import { increaseQty, decreaseQty, removeFromCart, clearCart } from "../../redux/features/cartSlice";
 import { useMemo, useState } from "react";
+import axios from "axios";
 
 import SmallHeader from "../../components/SmallHeader";
 import Header from "../../components/Header";
@@ -90,38 +91,74 @@ function CheckoutItemBox({ item, onMinus, onPlus, onRemove }: {
   );
 }
 
+// ✅ Shipment API call function
+async function createShipment(orderId: string, amount: number, isCOD: boolean) {
+  try {
+    const payload = {
+      shipments: [
+        {
+          name: "John Doe",
+          add: "123 Main St, City, State 12345",
+          pin: "400001",
+          city: "Mumbai",
+          state: "Maharashtra",
+          country: "India",
+          phone: "9876543210",
+          products_desc: "Test Product",
+          cod_amount: isCOD ? String(amount) : "0",
+          order_date: new Date().toISOString().split("T")[0], // YYYY-MM-DD
+          total_amount: String(amount),
+          quantity: "1",
+        },
+
+      ],
+      orderId: orderId,
+    };
+
+    const { data } = await axiosInstance.post(
+      "/delhivery/shipment",
+      payload,
+      { headers: { "Content-Type": "application/json" } }
+    );
+
+    console.log("Delhivery response:", data);
+    return data;
+  } catch (err) {
+    console.error("Delhivery shipment error:", err);
+    throw err;
+  }
+}
+
 export default function Checkout() {
   const items = useSelector((s: any) => s.cart.items) as CartItem[];
-  const { user } = useSelector((s: RootState) => s.auth); // ✅ get auth state
+  const { user } = useSelector((s: RootState) => s.auth);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [payLoading, setPayLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"RAZORPAY" | "COD">("RAZORPAY");
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
 
-
   const totals = useMemo(() => {
     const subtotal = (items || []).reduce((sum, i) => {
       const p = i.salePrice ?? i.price ?? 0;
       return sum + p * (i.qty ?? 1);
     }, 0);
-    const shipping = items?.length ? 50 : 0; // default shipping
+    const shipping = items?.length ? 50 : 0;
     const codFee = paymentMethod === "COD" ? 100 : 0;
     const grandTotal = subtotal + shipping + codFee;
     return { subtotal, shipping, codFee, grandTotal };
   }, [items, paymentMethod]);
 
-  // ✅ Guard: redirect if not authenticated
   const ensureAuth = () => {
     if (!isAuthenticated) {
-      navigate("/account"); // redirect to profile/login
+      navigate("/account");
       return false;
     }
     return true;
   };
 
   const onPayNow = async () => {
-    if (!ensureAuth()) return; // ✅ check before proceeding
+    if (!ensureAuth()) return;
     try {
       if (!items?.length) return;
       const amountPaise = Math.round(totals.grandTotal * 100);
@@ -134,7 +171,8 @@ export default function Checkout() {
         amount: amountPaise,
         currency: "INR",
         receipt: "rcpt_" + Date.now(),
-        notes: { itemCount: String(items.length) }
+        notes: { itemCount: String(items.length) },
+        // items: items
       });
 
       const rzp = new (window as any).Razorpay({
@@ -152,10 +190,13 @@ export default function Checkout() {
           if (verify?.valid) {
             dispatch(clearCart());
             alert("Payment successful!");
+
+            // 📦 Create shipment after Razorpay success
+            await createShipment(order.id, totals.grandTotal, false);
           } else {
             alert("Payment verification failed.");
           }
-        }
+        },
       });
 
       rzp.on("payment.failed", (e: any) => {
@@ -173,7 +214,7 @@ export default function Checkout() {
   };
 
   const onPayWithLink = async () => {
-    if (!ensureAuth()) return; // ✅ check before proceeding
+    if (!ensureAuth()) return;
     try {
       const amountPaise = Math.round(totals.grandTotal * 100);
       const { data } = await axiosInstance.post(CREATE_PAYMENT_LINK_URL, {
@@ -191,12 +232,15 @@ export default function Checkout() {
   };
 
   const onPlaceCOD = async () => {
-    if (!ensureAuth()) return; // ✅ check before proceeding
+    if (!ensureAuth()) return;
     try {
       if (!items?.length) return;
-      // await axiosInstance.post('/api/orders/cod', { items, totals });
+
       alert(`COD order placed! Total: ₹${totals.grandTotal} (incl. ₹${totals.shipping} shipping + ₹${totals.codFee} COD fee)`);
       dispatch(clearCart());
+
+      // 📦 Create shipment for COD order
+      await createShipment('null', totals.grandTotal, true);
     } catch (err) {
       console.error(err);
       alert("Unable to place COD order. Please try again.");
@@ -260,7 +304,6 @@ export default function Checkout() {
               >
                 <Text fw={700} mb="md">Order Summary</Text>
 
-                {/* Payment method */}
                 <Stack gap="xs" mb="sm">
                   <Text fw={600} size="sm">Payment Method</Text>
                   <SegmentedControl

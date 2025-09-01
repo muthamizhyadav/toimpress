@@ -3,7 +3,7 @@ import { useMediaQuery } from "@mantine/hooks";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { addToCart, increaseQty, decreaseQty, removeFromCart } from "../../redux/features/cartSlice";
+import { addToCart, removeFromCart } from "../../redux/features/cartSlice";
 import SizeSelectorDrawer from "../../components/SizeSelectorDrawer";
 
 interface ProductCardProps {
@@ -15,7 +15,6 @@ interface ProductCardProps {
   rating: number;
   isNew?: boolean;
   isOnSale?: boolean;
-  // optional: pass in real size matrix if you have it
   sizeOptions?: Parameters<typeof SizeSelectorDrawer>[0]["options"];
 }
 
@@ -34,16 +33,15 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const item = useSelector((state: any) =>
-    state?.cart?.items?.find((i: any) => i.id === id)
+  const items = useSelector((state: any) =>
+    state?.cart?.items?.filter((i: any) => i.id === id)
   );
-  const qty: number = item?.qty ?? 0;
+  const qty = items.reduce((sum: number, it: any) => sum + (it.qty ?? 0), 0);
 
   const [openSizeDrawer, setOpenSizeDrawer] = useState(false);
 
   const handleNavigation = () => navigate(`/product/?id=${id}`);
 
-  // when user picks size in the drawer → add to cart with variant
   const handleConfirmSize = (sel: { band: number; cup: string; label: string }) => {
     dispatch(
       addToCart({
@@ -55,10 +53,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
         originalPrice,
         rating,
         qty: 1,
-        size: sel.label,      // "32B"
-        band: sel.band,       // 32
-        cup: sel.cup,         // "B"
-        silent: true,         // keep existing cart drawer behavior quiet if you want
+        size: sel.label,
+        silent: true,
       })
     );
     setOpenSizeDrawer(false);
@@ -93,13 +89,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
       {/* Content */}
       <div className="mt-1 px-1 flex flex-col justify-between flex-grow gap-1">
         <div>
-          <p className="text-sm md:text-base line-clamp-2 font-medium">
-            {productName}
-          </p>
+          <p className="text-sm md:text-base line-clamp-2 font-medium">{productName}</p>
           <div className="flex mt-1 mb-1">
             <div className="flex items-center gap-1">
               <span className="text-black font-bold text-sm md:text-base">₹{price}</span>
-              <span className="line-through text-gray-400 font-bold text-sm md:text-base">₹{originalPrice}</span>
+              <span className="line-through text-gray-400 font-bold text-sm md:text-base">
+                ₹{originalPrice}
+              </span>
               <span className="text-[#96BD75] font-bold !text-[12px]">
                 (SAVE {Math.round(((originalPrice - price) / originalPrice) * 100)}%)
               </span>
@@ -107,7 +103,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
           </div>
         </div>
 
-        {/* Always open the size drawer when user initiates add */}
         {qty === 0 ? (
           <button
             onClick={() => setOpenSizeDrawer(true)}
@@ -116,12 +111,16 @@ const ProductCard: React.FC<ProductCardProps> = ({
             Add to cart
           </button>
         ) : (
-          <div className="w-full flex items-center justify-between bg-[#96BD75] text-white rounded-full px-2 py-2 shadow-sm mb-2 ">
+          <div className="w-full flex items-center justify-between bg-[#96BD75] text-white rounded-full px-2 py-2 shadow-sm mb-2">
             <button
               onClick={() =>
-                qty <= 1
-                  ? dispatch(removeFromCart({ id, silent: true }))
-                  : dispatch(decreaseQty({ id, silent: true }))
+                dispatch(
+                  removeFromCart({
+                    id,
+                    size: items[items.length - 1]?.size, // remove last added variant
+                    silent: true,
+                  })
+                )
               }
               className="text-xl font-bold px-2"
             >
@@ -134,7 +133,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
               className="w-10 text-center bg-transparent outline-none text-white font-semibold"
             />
             <button
-              onClick={() => dispatch(increaseQty({ id, silent: true }))}
+              onClick={() => setOpenSizeDrawer(true)}
               className="text-xl font-bold px-2"
             >
               +
@@ -143,7 +142,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
         )}
       </div>
 
-      {/* SIZE DRAWER */}
       <SizeSelectorDrawer
         opened={openSizeDrawer}
         onClose={() => setOpenSizeDrawer(false)}

@@ -14,35 +14,57 @@ type CartItem = {
   color?: string;
 };
 
-type AdjustPayload = { id: string | number; size?: string; color?: string; silent?: boolean };
+type AdjustPayload = {
+  id: string | number;
+  size?: string;
+  color?: string;
+  silent?: boolean;
+};
 type AddPayload = CartItem & { silent?: boolean };
 
 type CartState = { items: CartItem[]; isOpen: boolean };
 const initialState: CartState = { items: [], isOpen: false };
 
-const sameVariant = (a: CartItem, b: { id: CartItem["id"]; size?: string; color?: string }) =>
-  a.id === b.id && (a.size ?? "") === (b.size ?? "") && (a.color ?? "") === (b.color ?? "");
+const sameVariant = (
+  a: CartItem,
+  b: { id: CartItem["id"]; size?: string; color?: string }
+) =>
+  a.id === b.id &&
+  (a.size ?? "") === (b.size ?? "") &&
+  (a.color ?? "") === (b.color ?? "");
 
 const cartSlice = createSlice({
   name: "cart",
   initialState,
   reducers: {
-    openCart(state) { state.isOpen = true; },
-    closeCart(state) { state.isOpen = false; },
+    openCart(state) {
+      state.isOpen = true;
+    },
+    closeCart(state) {
+      state.isOpen = false;
+    },
 
     addToCart(state, action: PayloadAction<AddPayload>) {
       const { silent, ...p } = action.payload;
       const existing = state.items.find((it) => sameVariant(it, p));
-      if (existing) existing.qty += p.qty ?? 1;
-      else state.items.push({ ...p, title: p.title ?? p.productName ?? "Product", qty: p.qty ?? 1 });
-      if (!silent) state.isOpen = true;              // ← respect silent
+      if (existing) {
+        existing.qty += p.qty ?? 1;
+      } else {
+        state.items.push({
+          ...p,
+          title: p.title ?? p.productName ?? "Product",
+          qty: p.qty ?? 1,
+        });
+      }
+      if (!silent) state.isOpen = true;
     },
 
+    // ✅ increaseQty restored
     increaseQty(state, action: PayloadAction<AdjustPayload>) {
       const { silent, ...p } = action.payload;
       const it = state.items.find((x) => sameVariant(x, p));
       if (it) it.qty += 1;
-      if (!silent) state.isOpen = true;              // ← respect silent
+      if (!silent) state.isOpen = true;
     },
 
     decreaseQty(state, action: PayloadAction<AdjustPayload>) {
@@ -53,18 +75,29 @@ const cartSlice = createSlice({
         if (it.qty > 1) it.qty -= 1;
         else state.items.splice(idx, 1);
       }
-      if (!silent) state.isOpen = true;              // ← respect silent
+      if (!silent) state.isOpen = true;
     },
 
     removeFromCart(state, action: PayloadAction<AdjustPayload>) {
       const { silent, ...p } = action.payload;
       const idx = state.items.findIndex((x) => sameVariant(x, p));
       if (idx >= 0) state.items.splice(idx, 1);
-      if (!silent) state.isOpen = true;              // ← respect silent
+      if (!silent) state.isOpen = true;
     },
-    clearCart(state) { state.items = []; },
+
+    clearCart(state) {
+      state.items = [];
+    },
   },
 });
 
-export const { openCart, closeCart, addToCart, increaseQty, decreaseQty, removeFromCart, clearCart } = cartSlice.actions;
+export const {
+  openCart,
+  closeCart,
+  addToCart,
+  increaseQty,   // ✅ re-exported
+  decreaseQty,
+  removeFromCart,
+  clearCart,
+} = cartSlice.actions;
 export default cartSlice.reducer;

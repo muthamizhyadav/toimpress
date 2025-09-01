@@ -13,7 +13,7 @@ const axiosInstance = axios.create({
 // Step-2: Create request, response & error handlers
 const requestHandler = (request:any) => {
   request.headers["Access-Control-Allow-Origin"] = "*";
-  request.headers.accesstoken = localStorage.getItem("token");
+  request.headers.authorization = `Bearer ${localStorage.getItem("token")}`;
   return request;
 };
 

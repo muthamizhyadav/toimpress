@@ -6,4 +6,6 @@ export const GET_PRODUCTS_DETAILS = API_URL + "products/product/detail/";
 
 export const PLACE_ORDER = API_URL + "/order/placeorder"
 
+export const GET_ORDERS = API_URL + ""
+
 export const LOGIN = API_URL + "auth/login";

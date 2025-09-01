@@ -1,11 +1,9 @@
-// components/SizeSelectorDrawer.tsx
 import React, { useMemo, useState } from "react";
 import { Drawer, Button, Badge } from "@mantine/core";
-import { useNavigate } from "react-router-dom";
 
 export type SizeOption = {
   band: number;
-  cups: ("A" | "B" | "C" | "D" | "DD" | "E")[];
+  cups: string[];
   underband?: string;
   overbust?: string;
 };
@@ -20,14 +18,30 @@ type Props = {
   options?: SizeOption[];
 };
 
-const fallbackOptions: SizeOption[] = [
-  { band: 32, cups: ["B", "C", "D"], underband: "68-72 cm", overbust: "83-86 cm" },
-  { band: 34, cups: ["B", "C", "D"], underband: "73-77 cm", overbust: "88-91 cm" },
-  { band: 36, cups: ["B", "C", "D"], underband: "78-82 cm", overbust: "93-96 cm" },
-  { band: 38, cups: ["B", "C", "D"], underband: "83-87 cm", overbust: "98-101 cm" },
-  { band: 40, cups: ["B", "C", "D"], underband: "88-92 cm", overbust: "103-106 cm" },
-  { band: 42, cups: ["B", "C", "D"], underband: "93-97 cm", overbust: "108-111 cm" },
+const BAND_TABLE: any[] = [
+  { band: 28, underBust: [58, 62], overBustByCup: { A: [72, 74], B: [74, 76], C: [76, 78], D: [78, 80] } },
+  { band: 30, underBust: [63, 67], overBustByCup: { A: [77, 79], B: [79, 81], C: [81, 83], D: [83, 85] } },
+  { band: 32, underBust: [68, 72], overBustByCup: { A: [82, 84], B: [84, 86], C: [86, 88], D: [88, 90] } },
+  { band: 34, underBust: [73, 77], overBustByCup: { A: [87, 89], B: [89, 91], C: [91, 93], D: [93, 95] } },
+  { band: 36, underBust: [78, 82], overBustByCup: { A: [92, 94], B: [94, 96], C: [96, 98], D: [98, 100] } },
+  { band: 38, underBust: [83, 87], overBustByCup: { A: [97, 99], B: [99, 101], C: [101, 103], D: [103, 105] } },
+  { band: 40, underBust: [88, 92], overBustByCup: { A: [102, 104], B: [104, 106], C: [106, 108], D: [108, 110] } },
+  { band: 42, underBust: [93, 97], overBustByCup: { A: [107, 109], B: [109, 111], C: [111, 113], D: [113, 115] } },
 ];
+
+// ✅ build SizeOptions dynamically from BAND_TABLE
+const buildOptionsFromBandTable = (): SizeOption[] =>
+  BAND_TABLE.map((b) => {
+    const cups = Object.keys(b.overBustByCup); // ["A","B","C","D"]
+    return {
+      band: b.band,
+      cups,
+      underband: `${b.underBust[0]}–${b.underBust[1]} cm`,
+      overbust: `${Math.min(...Object.values(b.overBustByCup).map((r) => r[0]))}–${Math.max(
+        ...Object.values(b.overBustByCup).map((r) => r[1])
+      )} cm`,
+    };
+  });
 
 export default function SizeSelectorDrawer({
   opened,
@@ -36,12 +50,10 @@ export default function SizeSelectorDrawer({
   productTitle,
   price,
   imageUrl,
-  options = fallbackOptions,
+  options = buildOptionsFromBandTable(),
 }: Props) {
   const [band, setBand] = useState<number | null>(null);
   const [cup, setCup] = useState<string | null>(null);
-  const [sizeConfirmed, setSizeConfirmed] = useState(false);
-  const navigate = useNavigate();
 
   const cupList = useMemo(() => {
     const found = options.find((o) => o.band === band);
@@ -54,24 +66,13 @@ export default function SizeSelectorDrawer({
     if (!band || !cup) return;
     const label = `${band}${cup}`;
     onConfirm({ band, cup, label });
-    setSizeConfirmed(true); // now show Proceed / Keep Shopping
+    resetState();
+    onClose(); // ✅ close immediately after adding
   };
 
   const resetState = () => {
     setBand(null);
     setCup(null);
-    setSizeConfirmed(false);
-  };
-
-  const handleKeepShopping = () => {
-    resetState();
-    onClose();
-  };
-
-  const handleProceedToCart = () => {
-    resetState();
-    onClose();
-    navigate("/cart"); // 👈 or "/checkout"
   };
 
   return (
@@ -99,91 +100,75 @@ export default function SizeSelectorDrawer({
         </div>
       </div>
 
-      {!sizeConfirmed ? (
-        <>
-          {/* BAND */}
-          <div className="mt-2">
-            <div className="text-sm font-semibold mb-2">BAND</div>
-            <div className="flex flex-wrap gap-2">
-              {options.map((o) => (
-                <button
-                  key={o.band}
-                  onClick={() => {
-                    setBand(o.band);
-                    setCup(null);
-                  }}
-                  className={`px-4 py-2 rounded-xl border text-sm transition
+      {/* BAND */}
+      <div className="mt-2">
+        <div className="text-sm font-semibold mb-2">BAND</div>
+        <div className="flex flex-wrap gap-2">
+          {options.map((o) => (
+            <button
+              key={o.band}
+              onClick={() => {
+                setBand(o.band);
+                setCup(null);
+              }}
+              className={`px-4 py-2 rounded-xl border text-sm transition
                 ${band === o.band ? "bg-[#96BD75] text-white border-[#96BD75]" : "bg-white border-gray-300"}`}
-                >
-                  {o.band}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* helper */}
-          {bandInfo?.underband && bandInfo?.overbust && (
-            <div className="mt-2 text-xs text-gray-600">
-              Underband: <span className="underline">{bandInfo.underband}</span> &nbsp;|&nbsp; Over Bust:{" "}
-              <span className="underline">{bandInfo.overbust}</span>
-            </div>
-          )}
-
-          {/* SIZE (cup) */}
-          <div className="mt-5">
-            <div className="text-sm font-semibold mb-2">SIZE</div>
-            <div className="flex flex-wrap gap-2">
-              {(band ? cupList : []).map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setCup(c)}
-                  disabled={!band}
-                  className={`px-4 py-2 rounded-xl border text-sm transition
-                ${cup === c ? "bg-[#96BD75] text-white border-[#96BD75]" : "bg-white border-gray-300"}
-                ${!band ? "opacity-50 cursor-not-allowed" : ""}`}
-                >
-                  {band}
-                  {c}
-                </button>
-              ))}
-              {!band && <Badge variant="light" size="lg">Select a band first</Badge>}
-            </div>
-          </div>
-
-          {/* actions */}
-          <div className="mt-6 flex gap-2">
-            <Button variant="default" onClick={onClose} className="flex-1 rounded-full">Cancel</Button>
-            <Button
-              className="flex-1 bg-[#96BD75] hover:bg-[#86ad65] rounded-full"
-              onClick={confirmSize}
-              disabled={!band || !cup}
             >
-              Add to cart
-            </Button>
-          </div>
-        </>
-      ) : (
-        // ✅ Show after Add to cart
-        <div className="mt-6 flex flex-col gap-3">
-          <Button
-            fullWidth
-            radius="xl"
-            color="green"
-            onClick={handleProceedToCart}
-          >
-            Proceed to Cart
-          </Button>
-          <Button
-            fullWidth
-            radius="xl"
-            variant="outline"
-            color="gray"
-            onClick={handleKeepShopping}
-          >
-            Keep Shopping
-          </Button>
+              {o.band}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* helper */}
+      {bandInfo?.underband && bandInfo?.overbust && (
+        <div className="mt-2 text-xs text-gray-600">
+          Under-bust: <span className="underline">{bandInfo.underband}</span> &nbsp;|&nbsp; Over-bust:{" "}
+          <span className="underline">{bandInfo.overbust}</span>
         </div>
       )}
+
+      {/* SIZE (cup) */}
+      <div className="mt-5">
+        <div className="text-sm font-semibold mb-2">SIZE</div>
+        <div className="flex flex-wrap gap-2">
+          {(band ? cupList : []).map((c) => (
+            <button
+              key={c}
+              onClick={() => setCup(c)}
+              disabled={!band}
+              className={`px-4 py-2 rounded-xl border text-sm transition
+                ${cup === c ? "bg-[#96BD75] text-white border-[#96BD75]" : "bg-white border-gray-300"}
+                ${!band ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
+              {band}
+              {c}
+            </button>
+          ))}
+          {!band && <Badge variant="light" size="lg">Select a band first</Badge>}
+        </div>
+      </div>
+
+      {/* actions */}
+      <div className="mt-6 flex gap-2">
+        <Button
+          variant="default"
+          onClick={() => {
+            resetState();
+            onClose();
+          }}
+          className="flex-1 rounded-full"
+        >
+          Cancel
+        </Button>
+        <Button
+          className="flex-1 bg-[#96BD75] hover:bg-[#86ad65] rounded-full"
+          onClick={confirmSize}
+          disabled={!band || !cup}
+        >
+          Add to cart
+        </Button>
+      </div>
     </Drawer>
   );
 }

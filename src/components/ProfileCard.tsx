@@ -14,10 +14,12 @@ import {
   IconMapPin,
   IconPencil,
   IconPlus,
+  IconLogout,
 } from "@tabler/icons-react";
 import { useMediaQuery } from "@mantine/hooks";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import type { RootState } from "../redux/store";
+import { saveAddress, logout } from "../redux/features/authSlice"; // ✅ import logout
 import { useState } from "react";
 
 type Address = {
@@ -34,9 +36,9 @@ type Address = {
 
 export default function ProfileCard() {
   const isMobile = useMediaQuery("(max-width: 768px)");
-  const { user } = useSelector((state: RootState) => state.auth);
+  const { user, userAddress } = useSelector((state: RootState) => state.auth);
+  const dispatch = useDispatch();
 
-  const [address, setAddress] = useState<Address | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
   const [form, setForm] = useState<Address>({
@@ -51,7 +53,6 @@ export default function ProfileCard() {
     landmark: "",
   });
 
-  // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const openAdd = () => {
@@ -71,8 +72,8 @@ export default function ProfileCard() {
   };
 
   const openEdit = () => {
-    if (!address) return;
-    setForm(address);
+    if (!userAddress) return;
+    setForm(userAddress as Address);
     setErrors({});
     setModalOpen(true);
   };
@@ -93,14 +94,18 @@ export default function ProfileCard() {
 
     if (Object.keys(newErrors).length > 0) return;
 
-    setAddress(form);
+    dispatch(saveAddress(form));
     setModalOpen(false);
+  };
+
+  const handleLogout = () => {
+    dispatch(logout());
   };
 
   return (
     <>
       <SimpleGrid
-        cols={{ base: 1, sm: 2 }} // 👈 base = mobile, sm = ≥640px
+        cols={{ base: 1, sm: 2 }}
         spacing="lg"
         p={10}
         className="max-w-5xl mx-auto w-full"
@@ -124,6 +129,14 @@ export default function ProfileCard() {
               <Text size="sm" c="dimmed">
                 {user?.email || "No email available"}
               </Text>
+              <Button
+                size="xs"
+                color="red"
+                leftSection={<IconLogout size={14} />}
+                onClick={handleLogout}
+              >
+                Logout
+              </Button>
             </Stack>
           </Group>
         </Card>
@@ -134,7 +147,7 @@ export default function ProfileCard() {
             <Text size="lg" fw={600}>
               Saved Address
             </Text>
-            {address ? (
+            {userAddress ? (
               <Button
                 size="xs"
                 variant="subtle"
@@ -146,7 +159,7 @@ export default function ProfileCard() {
             ) : null}
           </Group>
 
-          {address ? (
+          {userAddress ? (
             <Stack spacing="xs">
               <Group align="flex-start" spacing="sm">
                 <ThemeIcon size={32} radius="xl" variant="light" color="green">
@@ -155,18 +168,18 @@ export default function ProfileCard() {
                 <Stack spacing={2}>
                   <Text fw={500}>Address</Text>
                   <Text size="sm" c="dimmed">
-                    {address.line1}, {address.line2}
+                    {userAddress.line1}, {userAddress.line2}
                   </Text>
                   <Text size="sm" c="dimmed">
-                    {address.city}, {address.state}, {address.country} -{" "}
-                    {address.pincode}
+                    {userAddress.city}, {userAddress.state},{" "}
+                    {userAddress.country} - {userAddress.pincode}
                   </Text>
                   <Text size="sm" c="dimmed">
-                    Phone: +91 {address.phone}
+                    Phone: +91 {userAddress.phone}
                   </Text>
-                  {address.landmark && (
+                  {userAddress.landmark && (
                     <Text size="sm" c="dimmed">
-                      Landmark: {address.landmark}
+                      Landmark: {userAddress.landmark}
                     </Text>
                   )}
                 </Stack>
@@ -180,7 +193,7 @@ export default function ProfileCard() {
               leftSection={<IconPlus size={16} />}
               onClick={openAdd}
             >
-              + Add New Address
+              Add New Address
             </Button>
           )}
         </Card>
@@ -190,7 +203,7 @@ export default function ProfileCard() {
       <Modal
         opened={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={address ? "Edit Address" : "Add Address"}
+        title={userAddress ? "Edit Address" : "Add Address"}
         centered
       >
         <Stack>

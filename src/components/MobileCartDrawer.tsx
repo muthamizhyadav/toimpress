@@ -3,8 +3,6 @@ import { useNavigate } from "react-router-dom";
 import type { RootState } from "../redux/store";
 import {
   closeCart,
-  decreaseQty,
-  increaseQty,
   removeFromCart,
 } from "../redux/features/cartSlice";
 import {
@@ -17,7 +15,7 @@ import {
   Group,
   Stack,
 } from "@mantine/core";
-import { IconTrash, IconMinus, IconPlus } from "@tabler/icons-react";
+import { IconTrash } from "@tabler/icons-react";
 
 type DisplayItem = {
   id: string | number;
@@ -25,17 +23,14 @@ type DisplayItem = {
   productName: string;
   price: number;
   originalPrice?: number;
-  quantity: number;
-  size?: string;   // ★ carry through
-  color?: string;  // ★ carry through
+  qty: number;
+  size?: string;
+  color?: string;
 };
 
 function CartItemRow({ item }: { item: DisplayItem }) {
   const dispatch = useDispatch();
-
-  // compute discount %
-  const hasDiscount =
-    item.originalPrice && item.originalPrice > item.price;
+  const hasDiscount = item.originalPrice && item.originalPrice > item.price;
   const discountPct = hasDiscount
     ? Math.round(((item.originalPrice - item.price) / item.originalPrice) * 100)
     : 0;
@@ -43,11 +38,7 @@ function CartItemRow({ item }: { item: DisplayItem }) {
   return (
     <Box w="100%">
       <Group align="flex-start" justify="center">
-        <Box
-          w={70}
-          h={90}
-          style={{ borderRadius: 8, overflow: "hidden", flexShrink: 0 }}
-        >
+        <Box w={70} h={90} style={{ borderRadius: 8, overflow: "hidden", flexShrink: 0 }}>
           <img
             src={item.imageUrl}
             alt={item.productName}
@@ -59,8 +50,6 @@ function CartItemRow({ item }: { item: DisplayItem }) {
           <Text size="sm" fw={500} lineClamp={2}>
             {item.productName}
           </Text>
-
-          {/* show size & color */}
           {(item.size || item.color) && (
             <Text size="xs" c="dimmed">
               {item.size && <span>Size: {item.size}</span>}
@@ -68,20 +57,13 @@ function CartItemRow({ item }: { item: DisplayItem }) {
               {item.color && <span>Color: {item.color}</span>}
             </Text>
           )}
-
           <Group gap="xs" mt={2}>
-            <Text size="sm" fw={600}>
-              ₹{item.price}
-            </Text>
+            <Text size="sm" fw={600}>₹{item.price}</Text>
             {item.originalPrice && (
-              <Text size="xs" c="dimmed" td="line-through">
-                ₹{item.originalPrice}
-              </Text>
+              <Text size="xs" c="dimmed" td="line-through">₹{item.originalPrice}</Text>
             )}
             {hasDiscount && (
-              <Text size="xs" c="green" fw={600}>
-                {discountPct}% OFF
-              </Text>
+              <Text size="xs" c="green" fw={600}>{discountPct}% OFF</Text>
             )}
           </Group>
         </Stack>
@@ -104,52 +86,10 @@ function CartItemRow({ item }: { item: DisplayItem }) {
           <IconTrash size={16} />
         </ActionIcon>
       </Group>
-
-      <Group mt="xs" justify="right">
-        <ActionIcon
-          variant="outline"
-          size="sm"
-          color="green"
-          onClick={() =>
-            dispatch(
-              decreaseQty({
-                id: item.id,
-                size: item.size,
-                color: item.color,
-                silent: true,
-              })
-            )
-          }
-        >
-          <IconMinus size={14} />
-        </ActionIcon>
-        <Button variant="light" size="sm" radius="xl" disabled>
-          {item.quantity}
-        </Button>
-        <ActionIcon
-          variant="outline"
-          size="sm"
-          color="green"
-          onClick={() =>
-            dispatch(
-              increaseQty({
-                id: item.id,
-                size: item.size,
-                color: item.color,
-                silent: true,
-              })
-            )
-          }
-        >
-          <IconPlus size={14} />
-        </ActionIcon>
-      </Group>
-
       <Divider mt="sm" />
     </Box>
   );
 }
-
 
 export function MobileCartDrawer() {
   const dispatch = useDispatch();
@@ -162,8 +102,8 @@ export function MobileCartDrawer() {
     productName: it.title ?? it.productName ?? "Product",
     price: it.salePrice ?? it.price ?? 0,
     originalPrice: it.salePrice ? it.price : undefined,
-    quantity: it.qty ?? it.quantity ?? 1,
-    size: it.size,     // ★ keep variant keys so reducers can match
+    qty: it.qty ?? 1,
+    size: it.size,
     color: it.color,
   }));
 
@@ -197,9 +137,11 @@ export function MobileCartDrawer() {
 
         <div className="flex-grow overflow-y-auto space-y-6">
           {displayItems.length === 0 ? (
-            <Text className="text-center" color="dimmed">Your cart is empty</Text>
+            <Text className="text-center" c="dimmed">Your cart is empty</Text>
           ) : (
-            displayItems.map((item) => <CartItemRow key={`${item.id}-${item.size ?? ""}-${item.color ?? ""}`} item={item} />) // ★ stable key with variant
+            displayItems.map((item, idx) => (
+              <CartItemRow key={`${item.id}-${item.size ?? ""}-${item.color ?? ""}-${idx}`} item={item} />
+            ))
           )}
         </div>
 
