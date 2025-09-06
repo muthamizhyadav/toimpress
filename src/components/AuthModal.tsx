@@ -7,7 +7,6 @@ import {
   Image,
   TextInput,
   Container,
-  Box,
   Tabs,
   PinInput,
 } from "@mantine/core";
@@ -16,8 +15,9 @@ import { useState } from "react";
 import { useMediaQuery } from "@mantine/hooks";
 import ToImpressLogo from "../../src/assets/svg/ToImpressLogo.svg";
 import { useDispatch } from "react-redux";
-import { login } from "../redux/features/authSlice"; // ✅ corrected import
-import { LOGIN } from "../api/api.ts";
+import { login } from "../redux/features/authSlice";
+import axios from "axios";
+import { GET_OTP, VERIFY_OTP } from "../api/api.ts";
 import { useAuth } from "../assets/hooks/useAuth";
 
 const AuthModal = () => {
@@ -25,13 +25,10 @@ const AuthModal = () => {
   const dispatch = useDispatch();
   const { isAuthenticated } = useAuth();
 
+  // allow switching between login & signup panels if you want
   const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
 
-  // LOGIN STATES
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-
-  // SIGNUP STATES
+  // OTP / Mobile states (used for both login & signup)
   const [mobile, setMobile] = useState("");
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
@@ -41,69 +38,145 @@ const AuthModal = () => {
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
 
   const isMobile = useMediaQuery("(max-width: 768px)");
 
-  // 🔹 Handle Login
-  const handleLogin = async () => {
+  // helper: sanitize numeric input and optionally limit length
+  const onlyDigits = (value: string, maxLen?: number) => {
+    const digits = value.replace(/\D/g, "");
+    return typeof maxLen === "number" ? digits.slice(0, maxLen) : digits;
+  };
+
+  // Send OTP (POST { mobile } to GET_OTP)
+  const handleSendOtp = async () => {
     setError(null);
-    setLoading(true);
+    const sanitized = onlyDigits(mobile);
+    // require exactly 10 digits for mobile
+    if (!sanitized || sanitized.length !== 10) {
+      setError("Enter a valid 10-digit mobile number");
+      return;
+    }
 
     try {
-      const response = await fetch(LOGIN, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: username, password }),
+      setSendingOtp(true);
+      // payload: { mobile: "8124732811" } as requested
+      const resp = await axios.post(GET_OTP, { mobile: sanitized });
+
+      // If response is 200 treat as success; check for autogent and otp in resp.data
+      if (resp.status === 200) {
+        const data = resp.data || {};
+        setOtpSent(true);
+        setError(null);
+        // keep sanitized mobile in state
+        setMobile(sanitized);
+
+        // If backend provides autogent true and otp value, auto-populate the OTP input.
+        // IMPORTANT: We DO NOT auto-verify. User still needs to press Verify OTP.
+        if (
+          data.autogent === true &&
+          (typeof data.otp === "string" || typeof data.otp === "number") &&
+          String(data.otp).trim() !== ""
+        ) {
+          // sanitize OTP just in case and limit to 6 digits
+          setOtp(onlyDigits(String(data.otp), 6));
+        } else {
+          // clear previous OTP if any (ensures fresh entry)
+          setOtp("");
+        }
+      } else {
+        setError("Failed to send OTP. Please try again.");
+      }
+    } catch (err: any) {
+      console.error("Send OTP error:", err);
+      setError(
+        err?.response?.data?.message ||
+          "Unable to send OTP. Please try again later."
+      );
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  // Verify OTP (POST { mobile, otp } to VERIFY_OTP)
+  const handleVerifyOtp = async () => {
+    setError(null);
+    const sanitizedOtp = onlyDigits(otp);
+    if (!sanitizedOtp || sanitizedOtp.length !== 6) {
+      setError("Enter the 6-digit numeric OTP");
+      return;
+    }
+
+    try {
+      setVerifyingOtp(true);
+      // payload: { mobile: "8124732811", otp: "799048" } as requested
+      const resp = await axios.post(VERIFY_OTP, {
+        mobile: onlyDigits(mobile),
+        otp: sanitizedOtp,
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        const { user, tokens } = data;
-        localStorage.setItem("token", tokens.access.token);
-        dispatch(login({ user, tokens }));
-        navigate("/");
+      if (resp.status === 200) {
+        const data = resp.data;
+        // If this is sign-up flow, show profile step instead of auto-login (based on activeTab)
+        if (activeTab === "signup" && !profileStep) {
+          // Move to profile creation step (you might want to use server response to prefill)
+          setProfileStep(true);
+          setError(null);
+          return;
+        }
+
+        // For login flow (or after signup verify + profile created), log the user in if server returns tokens
+        const { user, tokens } = data || {};
+        if (tokens?.access?.token) {
+          localStorage.setItem("token", tokens.access.token);
+          dispatch(login({ user, tokens }));
+          navigate("/");
+        } else {
+          // If server doesn't return tokens, still consider OTP verified and let user proceed
+          navigate("/");
+        }
       } else {
-        setError("Invalid credentials. Please try again.");
+        setError("OTP verification failed. Please try again.");
       }
-    } catch (err) {
-      setError("Something went wrong. Please try again later.");
-      console.error(err);
+    } catch (err: any) {
+      console.error("Verify OTP error:", err);
+      setError(
+        err?.response?.data?.message || "OTP verification failed. Please try again."
+      );
     } finally {
-      setLoading(false);
+      setVerifyingOtp(false);
     }
   };
 
-  // 🔹 Handle Sign Up / OTP Flow
-  const handleSendOtp = () => {
-    if (!mobile || mobile.length < 10) {
-      setError("Enter a valid mobile number");
-      return;
-    }
-    setOtpSent(true);
-    setError(null);
-    // TODO: call backend API to send OTP
-  };
-
-  const handleVerifyOtp = () => {
-    if (otp.length < 4) {
-      setError("Enter the OTP");
-      return;
-    }
-    setProfileStep(true);
-    setError(null);
-    // TODO: verify OTP with backend
-  };
-
-  const handleCreateProfile = () => {
+  // Create profile (for signup flow after OTP verification)
+  const handleCreateProfile = async () => {
     if (!profileName || !profileEmail) {
       setError("Enter your name and email");
       return;
     }
     setError(null);
+    setLoading(true);
 
-    // TODO: Call API to create user profile with mobile, profileName, profileEmail
-    alert("Profile created successfully 🎉");
-    navigate("/");
+    try {
+      // TODO: call your backend endpoint to create/update profile.
+      // Example (uncomment & replace PROFILE_CREATE_ENDPOINT):
+      // const resp = await axios.post(PROFILE_CREATE_ENDPOINT, {
+      //   mobile: onlyDigits(mobile), name: profileName, email: profileEmail
+      // });
+      // const { user, tokens } = resp.data;
+      // localStorage.setItem("token", tokens.access.token);
+      // dispatch(login({ user, tokens }));
+
+      // For now, we show success and navigate as placeholder
+      alert("Profile created successfully 🎉");
+      navigate("/");
+    } catch (err) {
+      console.error("Create profile error:", err);
+      setError("Failed to create profile. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -124,57 +197,100 @@ const AuthModal = () => {
         >
           <Tabs
             value={activeTab}
-            onChange={(v) => setActiveTab(v as "login" | "signup")}
+            onChange={(val) => {
+              // val can be string; cast to allowed union
+              if (val === "login" || val === "signup") setActiveTab(val);
+            }}
             variant="pills"
             radius="xl"
             defaultValue="login"
           >
-            <Tabs.List grow>
-              <Tabs.Tab value="login">Login</Tabs.Tab>
-              <Tabs.Tab value="signup">Sign Up</Tabs.Tab>
-            </Tabs.List>
+            {/* Custom header instead of Tabs.List */}
+            <Text
+              ta="center"
+              size="xl"
+              fw={700}
+              mb="md"
+              sx={{
+                background: "linear-gradient(135deg, #96BD75 0%, #659D50 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              {activeTab === "signup" ? "Sign up with OTP" : "Login with OTP"}
+            </Text>
 
-            {/* LOGIN TAB */}
+            {/* LOGIN TAB - OTP based */}
             <Tabs.Panel value="login" pt="md">
-              <Stack>
-                <TextInput
-                  placeholder="Enter Email"
-                  value={username}
-                  onChange={(e) => setUsername(e.currentTarget.value)}
-                  radius="xl"
-                  size="md"
-                />
-                <TextInput
-                  placeholder="Enter Password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.currentTarget.value)}
-                  radius="xl"
-                  size="md"
-                />
-                {error && (
-                  <Text c="red" size="sm" ta="center">
-                    {error}
-                  </Text>
-                )}
-                <Button
-                  w="100%"
-                  radius="xl"
-                  size="md"
-                  onClick={handleLogin}
-                  loading={loading}
-                  styles={{
-                    root: {
-                      background:
-                        "linear-gradient(135deg, #96BD75 0%, #659D50 100%)",
-                      color: "white",
-                      fontWeight: 600,
-                    },
-                  }}
-                >
-                  Login
-                </Button>
-              </Stack>
+              {!otpSent ? (
+                <Stack>
+                  <TextInput
+                    placeholder="Enter Mobile Number"
+                    value={mobile}
+                    onChange={(e) => {
+                      // allow only digits and limit to 10 chars
+                      setMobile(onlyDigits(e.currentTarget.value, 10));
+                    }}
+                    radius="xl"
+                    size="md"
+                    inputMode="numeric"
+                    maxLength={10}
+                  />
+                  <Button
+                    radius="xl"
+                    size="md"
+                    onClick={handleSendOtp}
+                    loading={sendingOtp}
+                    styles={{
+                      root: {
+                        background:
+                          "linear-gradient(135deg, #96BD75 0%, #659D50 100%)",
+                        color: "white",
+                        fontWeight: 600,
+                      },
+                    }}
+                  >
+                    Send OTP
+                  </Button>
+                </Stack>
+              ) : (
+                <Stack align="center">
+                  <Text ta="center">Enter the 6-digit OTP sent to {mobile}</Text>
+                  <PinInput
+                    length={6}
+                    value={otp}
+                    onChange={(val) => {
+                      // ensure numeric only and max length 6
+                      setOtp(onlyDigits(val, 6));
+                    }}
+                    radius="xl"
+                    size="lg"
+                    // hint mobile browsers to show numeric keyboard
+                    inputMode="numeric"
+                  />
+                  <Button
+                    radius="xl"
+                    size="md"
+                    onClick={handleVerifyOtp}
+                    loading={verifyingOtp}
+                    styles={{
+                      root: {
+                        background:
+                          "linear-gradient(135deg, #96BD75 0%, #659D50 100%)",
+                        color: "white",
+                        fontWeight: 600,
+                      },
+                    }}
+                  >
+                    Verify OTP
+                  </Button>
+                </Stack>
+              )}
+              {error && (
+                <Text c="red" size="sm" ta="center" mt="sm">
+                  {error}
+                </Text>
+              )}
             </Tabs.Panel>
 
             {/* SIGN UP TAB */}
@@ -184,14 +300,19 @@ const AuthModal = () => {
                   <TextInput
                     placeholder="Enter Mobile Number"
                     value={mobile}
-                    onChange={(e) => setMobile(e.currentTarget.value)}
+                    onChange={(e) =>
+                      setMobile(onlyDigits(e.currentTarget.value, 10))
+                    }
                     radius="xl"
                     size="md"
+                    inputMode="numeric"
+                    maxLength={10}
                   />
                   <Button
                     radius="xl"
                     size="md"
                     onClick={handleSendOtp}
+                    loading={sendingOtp}
                     styles={{
                       root: {
                         background:
@@ -206,18 +327,20 @@ const AuthModal = () => {
                 </Stack>
               ) : !profileStep ? (
                 <Stack align="center">
-                  <Text ta="center">Enter the OTP sent to {mobile}</Text>
+                  <Text ta="center">Enter the 6-digit OTP sent to {mobile}</Text>
                   <PinInput
-                    length={4}
+                    length={6}
                     value={otp}
-                    onChange={setOtp}
+                    onChange={(val) => setOtp(onlyDigits(val, 6))}
                     radius="xl"
                     size="lg"
+                    inputMode="numeric"
                   />
                   <Button
                     radius="xl"
                     size="md"
                     onClick={handleVerifyOtp}
+                    loading={verifyingOtp}
                     styles={{
                       root: {
                         background:
@@ -250,6 +373,7 @@ const AuthModal = () => {
                     radius="xl"
                     size="md"
                     onClick={handleCreateProfile}
+                    loading={loading}
                     styles={{
                       root: {
                         background:

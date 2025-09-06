@@ -1,10 +1,7 @@
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import type { RootState } from "../redux/store";
-import {
-  closeCart,
-  removeFromCart,
-} from "../redux/features/cartSlice";
+import { closeCart, removeFromCart } from "../redux/features/cartSlice";
 import {
   Button,
   Text,
@@ -38,7 +35,11 @@ function CartItemRow({ item }: { item: DisplayItem }) {
   return (
     <Box w="100%">
       <Group align="flex-start" justify="center">
-        <Box w={70} h={90} style={{ borderRadius: 8, overflow: "hidden", flexShrink: 0 }}>
+        <Box
+          w={70}
+          h={90}
+          style={{ borderRadius: 8, overflow: "hidden", flexShrink: 0 }}
+        >
           <img
             src={item.imageUrl}
             alt={item.productName}
@@ -58,12 +59,18 @@ function CartItemRow({ item }: { item: DisplayItem }) {
             </Text>
           )}
           <Group gap="xs" mt={2}>
-            <Text size="sm" fw={600}>₹{item.price}</Text>
+            <Text size="sm" fw={600}>
+              ₹{item.price}
+            </Text>
             {item.originalPrice && (
-              <Text size="xs" c="dimmed" td="line-through">₹{item.originalPrice}</Text>
+              <Text size="xs" c="dimmed" td="line-through">
+                ₹{item.originalPrice}
+              </Text>
             )}
             {hasDiscount && (
-              <Text size="xs" c="green" fw={600}>{discountPct}% OFF</Text>
+              <Text size="xs" c="green" fw={600}>
+                {discountPct}% OFF
+              </Text>
             )}
           </Group>
         </Stack>
@@ -94,7 +101,22 @@ function CartItemRow({ item }: { item: DisplayItem }) {
 export function MobileCartDrawer() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
+  // get cart and auth from store; flatten userAddress safely
   const { items, isOpen } = useSelector((state: RootState) => state.cart);
+  const { user, userAddress: storedUserAddress } = useSelector(
+    (state: RootState) => ({
+      user: state.auth.user as any,
+      userAddress: state.auth.userAddress as any, // may be object or null
+    })
+  );
+
+  // Flattening: prefer saved userAddress, otherwise fall back to user.address[0] from API
+  const flatUserAddress: any =
+    storedUserAddress ??
+    (user && Array.isArray((user as any).address) && (user as any).address.length > 0
+      ? (user as any).address[0]
+      : null);
 
   const displayItems: DisplayItem[] = (items || []).map((it: any) => ({
     id: it.id,
@@ -108,8 +130,17 @@ export function MobileCartDrawer() {
   }));
 
   const goToCheckout = () => {
+    // close drawer first
     dispatch(closeCart());
-    navigate("/checkout");
+
+    // if address exists, proceed; otherwise redirect user to account page to add address
+    if (flatUserAddress) {
+      navigate("/checkout");
+    } else {
+      // keep UX smooth: send user to account page where they can add address
+      // you may want to show a toast informing why—left out for brevity
+      navigate("/account");
+    }
   };
 
   return (
@@ -133,14 +164,21 @@ export function MobileCartDrawer() {
       }}
     >
       <div className="flex flex-col h-full p-4">
-        <Text className="text-center" size="lg" fw={600} mb="lg">Your Cart</Text>
+        <Text className="text-center" size="lg" fw={600} mb="lg">
+          Your Cart
+        </Text>
 
         <div className="flex-grow overflow-y-auto space-y-6">
           {displayItems.length === 0 ? (
-            <Text className="text-center" c="dimmed">Your cart is empty</Text>
+            <Text className="text-center" c="dimmed">
+              Your cart is empty
+            </Text>
           ) : (
             displayItems.map((item, idx) => (
-              <CartItemRow key={`${item.id}-${item.size ?? ""}-${item.color ?? ""}-${idx}`} item={item} />
+              <CartItemRow
+                key={`${item.id}-${item.size ?? ""}-${item.color ?? ""}-${idx}`}
+                item={item}
+              />
             ))
           )}
         </div>

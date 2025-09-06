@@ -8,4 +8,10 @@ export const PLACE_ORDER = API_URL + "/order/placeorder"
 
 export const GET_ORDERS = API_URL + ""
 
+export const GET_OTP = API_URL+ "users/login/request-otp";
+export const VERIFY_OTP = API_URL + "Users/login/verify-otp";
+
+export const UPDATE_PROFILE = API_URL + "users";
+
+
 export const LOGIN = API_URL + "auth/login";
