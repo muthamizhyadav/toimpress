@@ -20,7 +20,7 @@ export default function ContactUsContent() {
                 <Stack gap={2}>
                   <Text fw={500}>Phone</Text>
                   <Text size="sm" c="dimmed">
-                    +91 8124732811
+                    +91 70104 47947
                   </Text>
                 </Stack>
               </Group>
@@ -35,7 +35,7 @@ export default function ContactUsContent() {
                 <Stack gap={2}>
                   <Text fw={500}>Email</Text>
                   <Text size="sm" c="dimmed">
-                    innovaturetechenginneers@gmail.com
+                    30B/10 VANAMOORTHY LINGAMPILLAI STREET, CHETTIYARPATTI, Virudhunagar - 626122, Tamil Nadu.
                   </Text>
                 </Stack>
               </Group>
