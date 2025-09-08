@@ -2,8 +2,9 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { MantineProvider, createTheme } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
 import { ModalsProvider } from "@mantine/modals";
+import { motion } from "framer-motion";
 
-import Home from "../pages/Home";
+import Maintenance from "../pages/Maintenance";
 import Product from "../pages/Product/Product";
 import NotFound from "../pages/NotFound";
 import Login from "../pages/Login/login";
@@ -30,7 +31,7 @@ const customTheme = createTheme({
       "#c2c9c2",
       "#a3ad9f",
       "#859280",
-      "#667664",
+      "#667764",
       "#475b47",
       "#29402a",
       "#1e351f",
@@ -52,6 +53,40 @@ const customTheme = createTheme({
   },
 });
 
+const pageVariants = {
+  initial: {
+    opacity: 0,
+    y: 50,
+  },
+  in: {
+    opacity: 1,
+    y: 0,
+  },
+  out: {
+    opacity: 0,
+    y: -50,
+  },
+};
+
+const pageTransition = {
+  type: "spring",
+  stiffness: 50,
+  damping: 20,
+};
+
+// Wrap routes with motion.div for animations
+const AnimatedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <motion.div
+    initial="initial"
+    animate="in"
+    exit="out"
+    variants={pageVariants}
+    transition={pageTransition as any} // Temporary fix for type mismatch
+  >
+    {children}
+  </motion.div>
+);
+
 const AppRoutes = () => {
   return (
     <MantineProvider theme={customTheme} defaultColorScheme="light">
@@ -65,62 +100,82 @@ const AppRoutes = () => {
               <Route
                 path="/"
                 element={
-                    <Home />
+                  <AnimatedRoute>
+                    <Maintenance />
+                  </AnimatedRoute>
                 }
               />
               <Route
                 path="/product"
                 element={
+                  <AnimatedRoute>
                     <Product />
+                  </AnimatedRoute>
                 }
               />
                <Route
                 path="/about"
                 element={
+                  <AnimatedRoute>
                     <AboutUsHome />
+                  </AnimatedRoute>
                 }
               />
 
                <Route
                 path="/sitemap"
                 element={
+                  <AnimatedRoute>
                     <SiteMapPage />
+                  </AnimatedRoute>
                 }
               />
               <Route
                 path="/account"
                 element={
+                  <AnimatedRoute>
                     <Profile />
+                  </AnimatedRoute>
                 }
               />
                <Route
                 path="/contact"
                 element={
+                  <AnimatedRoute>
                     <ContactUs />
+                  </AnimatedRoute>
                 }
               />
                <Route
                 path="/checkout"
                 element={
+                  <AnimatedRoute>
                     <Checkout />
+                  </AnimatedRoute>
                 }
               />
               <Route
                 path="/orders"
                 element={
+                  <AnimatedRoute>
                     <Orders />
+                  </AnimatedRoute>
                 }
               />
               <Route
                 path="/fit"
                 element={
+                  <AnimatedRoute>
                     <FindYourFitPage />
+                  </AnimatedRoute>
                 }
               />
               <Route
                 path="/category"
                 element={
+                  <AnimatedRoute>
                     <CategoryPage />
+                  </AnimatedRoute>
                 }
               />
               <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
