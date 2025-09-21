@@ -10,8 +10,9 @@ import {
   Tabs,
   PinInput,
 } from "@mantine/core";
+import { showNotification } from "@mantine/notifications";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMediaQuery } from "@mantine/hooks";
 import ToImpressLogo from "../../src/assets/svg/ToImpressLogo.svg";
 import { useDispatch } from "react-redux";
@@ -42,6 +43,7 @@ const AuthModal = () => {
   const [verifyingOtp, setVerifyingOtp] = useState(false);
 
   const isMobile = useMediaQuery("(max-width: 768px)");
+  
 
   // helper: sanitize numeric input and optionally limit length
   const onlyDigits = (value: string, maxLen?: number) => {
@@ -49,13 +51,17 @@ const AuthModal = () => {
     return typeof maxLen === "number" ? digits.slice(0, maxLen) : digits;
   };
 
-  // Send OTP (POST { mobile } to GET_OTP)
   const handleSendOtp = async () => {
     setError(null);
     const sanitized = onlyDigits(mobile);
     // require exactly 10 digits for mobile
     if (!sanitized || sanitized.length !== 10) {
       setError("Enter a valid 10-digit mobile number");
+      showNotification({
+        title: "Invalid mobile",
+        message: "Please enter a valid 10-digit mobile number.",
+        color: "red",
+      });
       return;
     }
 
@@ -69,11 +75,14 @@ const AuthModal = () => {
         const data = resp.data || {};
         setOtpSent(true);
         setError(null);
-        // keep sanitized mobile in state
         setMobile(sanitized);
 
-        // If backend provides autogent true and otp value, auto-populate the OTP input.
-        // IMPORTANT: We DO NOT auto-verify. User still needs to press Verify OTP.
+        showNotification({
+          title: "OTP sent",
+          message: `OTP has been sent to ${sanitized}`,
+          color: "green",
+        });
+
         if (
           data.autogent === true &&
           (typeof data.otp === "string" || typeof data.otp === "number") &&
@@ -81,30 +90,49 @@ const AuthModal = () => {
         ) {
           // sanitize OTP just in case and limit to 6 digits
           setOtp(onlyDigits(String(data.otp), 6));
+          showNotification({
+            title: "OTP auto-filled",
+            message: "OTP was provided by server and auto-filled.",
+            color: "green",
+          });
         } else {
           // clear previous OTP if any (ensures fresh entry)
           setOtp("");
         }
       } else {
         setError("Failed to send OTP. Please try again.");
+        showNotification({
+          title: "Failed to send OTP",
+          message: "Please try again later.",
+          color: "red",
+        });
       }
     } catch (err: any) {
       console.error("Send OTP error:", err);
-      setError(
+      const msg =
         err?.response?.data?.message ||
-          "Unable to send OTP. Please try again later."
-      );
+        "Unable to send OTP. Please try again later.";
+      setError(msg);
+      showNotification({
+        title: "Send OTP error",
+        message: msg,
+        color: "red",
+      });
     } finally {
       setSendingOtp(false);
     }
   };
 
-  // Verify OTP (POST { mobile, otp } to VERIFY_OTP)
   const handleVerifyOtp = async () => {
     setError(null);
     const sanitizedOtp = onlyDigits(otp);
     if (!sanitizedOtp || sanitizedOtp.length !== 6) {
       setError("Enter the 6-digit numeric OTP");
+      showNotification({
+        title: "Invalid OTP",
+        message: "Please enter the 6-digit numeric OTP.",
+        color: "red",
+      });
       return;
     }
 
@@ -123,6 +151,11 @@ const AuthModal = () => {
           // Move to profile creation step (you might want to use server response to prefill)
           setProfileStep(true);
           setError(null);
+          showNotification({
+            title: "OTP verified",
+            message: "OTP verified. Please complete your profile.",
+            color: "green",
+          });
           return;
         }
 
@@ -131,28 +164,52 @@ const AuthModal = () => {
         if (tokens?.access?.token) {
           localStorage.setItem("token", tokens.access.token);
           dispatch(login({ user, tokens }));
+          showNotification({
+            title: "Logged in",
+            message: "You have been logged in successfully.",
+            color: "green",
+          });
           navigate("/");
         } else {
           // If server doesn't return tokens, still consider OTP verified and let user proceed
+          showNotification({
+            title: "OTP verified",
+            message: "OTP verified successfully.",
+            color: "green",
+          });
           navigate("/");
         }
       } else {
         setError("OTP verification failed. Please try again.");
+        showNotification({
+          title: "Verification failed",
+          message: "OTP verification failed. Please try again.",
+          color: "red",
+        });
       }
     } catch (err: any) {
       console.error("Verify OTP error:", err);
-      setError(
-        err?.response?.data?.message || "OTP verification failed. Please try again."
-      );
+      const msg =
+        err?.response?.data?.message || "OTP verification failed. Please try again.";
+      setError(msg);
+      showNotification({
+        title: "Verify OTP error",
+        message: msg,
+        color: "red",
+      });
     } finally {
       setVerifyingOtp(false);
     }
   };
 
-  // Create profile (for signup flow after OTP verification)
   const handleCreateProfile = async () => {
     if (!profileName || !profileEmail) {
       setError("Enter your name and email");
+      showNotification({
+        title: "Missing details",
+        message: "Please enter both name and email to continue.",
+        color: "red",
+      });
       return;
     }
     setError(null);
@@ -168,12 +225,22 @@ const AuthModal = () => {
       // localStorage.setItem("token", tokens.access.token);
       // dispatch(login({ user, tokens }));
 
-      // For now, we show success and navigate as placeholder
-      alert("Profile created successfully 🎉");
+      showNotification({
+        title: "Profile created",
+        message: "Profile created successfully 🎉",
+        color: "green",
+      });
+      // navigate after success
       navigate("/");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Create profile error:", err);
-      setError("Failed to create profile. Please try again.");
+      const msg = err?.response?.data?.message || "Failed to create profile. Please try again.";
+      setError(msg);
+      showNotification({
+        title: "Profile creation failed",
+        message: msg,
+        color: "red",
+      });
     } finally {
       setLoading(false);
     }

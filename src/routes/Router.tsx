@@ -21,6 +21,8 @@ import AboutUsHome from "../pages/About/AboutUsHome";
 import SiteMapPage from "../pages/SiteMap/SiteMap";
 import ContactUs from "../pages/ContactUs/ContactUs";
 import Checkout from "../pages/Checkout/Checkout";
+import Home from "../pages/Home";
+import OrderSuccess from "../pages/Checkout/OrderSuccess";
 
 
 // Custom theme
@@ -90,18 +92,26 @@ const AnimatedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 const AppRoutes = () => {
   return (
     <MantineProvider theme={customTheme} defaultColorScheme="light">
-      <Notifications position="top-right" />
+      <Notifications position="top-center"  />
       <ModalsProvider>
         <AuthProvider>
           <BrowserRouter>
             <ScrollToTop />
             <Routes>
               <Route path="/login" element={<Login />} />
-              <Route
+              {/* <Route
                 path="/"
                 element={
                   <AnimatedRoute>
                     <Maintenance />
+                  </AnimatedRoute>
+                }
+              /> */}
+               <Route
+                path="/"
+                element={
+                  <AnimatedRoute>
+                    <Home />
                   </AnimatedRoute>
                 }
               />
@@ -178,6 +188,16 @@ const AppRoutes = () => {
                   </AnimatedRoute>
                 }
               />
+
+               <Route
+                path="/order-success"
+                element={
+                  <AnimatedRoute>
+                    <OrderSuccess />
+                  </AnimatedRoute>
+                }
+              />
+              
               <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="*" element={<NotFound />} />

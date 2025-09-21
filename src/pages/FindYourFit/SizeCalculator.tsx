@@ -9,11 +9,13 @@ import {
   Group,
   Stack,
   SegmentedControl,
+  Tabs,
 } from "@mantine/core";
 import { useMemo, useState } from "react";
 import { useMediaQuery } from "@mantine/hooks";
 import BodySize from "../../assets/svg/BodySize.svg";
 
+// ---------------- BRA SIZE LOGIC ----------------
 type CupLetter = "A" | "B" | "C" | "D";
 type BandCol = {
   band: 28 | 30 | 32 | 34 | 36 | 38 | 40 | 42;
@@ -36,17 +38,35 @@ const inRange = (v: number, [lo, hi]: [number, number]) => v >= lo && v <= hi;
 const cmToIn = (cm: number) => +(cm / 2.54).toFixed(1);
 const inToCm = (inch: number) => inch * 2.54;
 
+// ---------------- PANTY SIZE LOGIC ----------------
+const PANTY_SIZES = [
+  { label: "XS", hip: [75, 82] },
+  { label: "S", hip: [83, 89] },
+  { label: "M", hip: [90, 97] },
+  { label: "L", hip: [98, 104] },
+  { label: "XL", hip: [105, 112] },
+  { label: "2XL", hip: [113, 119] },
+  { label: "3XL", hip: [120, 127] },
+  { label: "4XL", hip: [128, 134] },
+  { label: "5XL", hip: [135, 142] },
+  { label: "6XL", hip: [143, 149] },
+];
+
 export default function SizeCalculator() {
+  const [tab, setTab] = useState<"bra" | "panties">("bra");
   const [unit, setUnit] = useState<"cm" | "inch">("cm");
   const [underBust, setUnderBust] = useState<string>("");
   const [overBust, setOverBust] = useState<string>("");
+  const [hip, setHip] = useState<string>("");
+
   const isMobile = useMediaQuery("(max-width: 640px)");
 
-  // generate dropdown values dynamically
+  // Dropdown values for bra calc
   const { underOptions, overOptions } = useMemo(() => {
-    const underMin = 58, underMax = 97;
-    const overMin = 72, overMax = 115;
-
+    const underMin = 58,
+      underMax = 97;
+    const overMin = 72,
+      overMax = 115;
     const toLabel = (n: number) => (unit === "cm" ? `${n}` : cmToIn(n).toString());
 
     const under = Array.from({ length: underMax - underMin + 1 }, (_, i) => {
@@ -62,7 +82,7 @@ export default function SizeCalculator() {
     return { underOptions: under, overOptions: over };
   }, [unit]);
 
-  // convert back to cm for logic
+  // convert input back to cm
   const underBustCm = useMemo(() => {
     if (!underBust) return null;
     const num = parseFloat(underBust);
@@ -75,8 +95,14 @@ export default function SizeCalculator() {
     return unit === "cm" ? num : Math.round(inToCm(num));
   }, [overBust, unit]);
 
-  // calculate size
-  const result = useMemo(() => {
+  const hipCm = useMemo(() => {
+    if (!hip) return null;
+    const num = parseFloat(hip);
+    return unit === "cm" ? num : Math.round(inToCm(num));
+  }, [hip, unit]);
+
+  // calculate bra result
+  const braResult = useMemo(() => {
     if (underBustCm == null || overBustCm == null) return null;
     const col = BAND_TABLE.find((b) => inRange(underBustCm, b.underBust));
     if (!col) return { label: "—", note: "Under-bust out of chart range" };
@@ -91,233 +117,356 @@ export default function SizeCalculator() {
     return { label: `${col.band}${cup}`, note: null as string | null };
   }, [underBustCm, overBustCm]);
 
+  // calculate panty result
+  const pantyResult = useMemo(() => {
+    if (hipCm == null) return null;
+    const size = PANTY_SIZES.find((s) => inRange(hipCm, s.hip));
+    return size ? size.label : "—";
+  }, [hipCm]);
+
   return (
     <Box w={isMobile ? "100%" : "70vw"} mx="auto" p="md">
       <Text ta="center" fw={600} size="lg" mb="xs">
-        Calculate your size here
+        Size Calculator
       </Text>
 
-      {/* Toggle for cm/inch */}
-     <Group justify="center" mb="md" w="100%">
-          <SegmentedControl
-            fullWidth
-            value={unit}
-            onChange={(v) => {
-              setUnit(v as "cm" | "inch");
-              setUnderBust("");   // clear
-              setOverBust("");    // clear
+      <Tabs
+        value={tab}
+        onChange={(v) => {
+          setTab(v as "bra" | "panties");
+          setUnderBust("");
+          setOverBust("");
+          setHip("");
+        }}
+      >
+        <Tabs.List grow mb="md">
+          <Tabs.Tab
+            value="bra"
+            style={{
+              backgroundColor: tab === "bra" ? "#96BD75" : "transparent",
+              color: tab === "bra" ? "white" : "black",
+              fontWeight: 600,
+              borderRadius: 8,
             }}
-            data={[
-              { label: "CM", value: "cm" },
-              { label: "INCH", value: "inch" },
-            ]}
-          />
-      </Group>
+          >
+            Bra Size
+          </Tabs.Tab>
+          <Tabs.Tab
+            value="panties"
+            style={{
+              backgroundColor: tab === "panties" ? "#96BD75" : "transparent",
+              color: tab === "panties" ? "white" : "black",
+              fontWeight: 600,
+              borderRadius: 8,
+            }}
+          >
+            Panty Size
+          </Tabs.Tab>
+        </Tabs.List>
 
-      {/* Inputs */}
-      <Group align="stretch" wrap={isMobile ? "wrap" : "nowrap"} gap="lg" mb="md">
-        <Box w={isMobile ? "100%" : "50%"} style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <Image src={BodySize} alt="Body Measurement Guide" w="100%" h={isMobile ? 240 : 380} fit="contain" />
-        </Box>
+        {/* BRA SIZE TAB */}
+        <Tabs.Panel value="bra">
+          <Group justify="center" mb="md" w="100%">
+            <SegmentedControl
+              fullWidth
+              value={unit}
+              onChange={(v) => {
+                setUnit(v as "cm" | "inch");
+                setUnderBust("");
+                setOverBust("");
+              }}
+              data={[
+                { label: "CM", value: "cm" },
+                { label: "INCH", value: "inch" },
+              ]}
+            />
+          </Group>
 
-        <Box w={isMobile ? "100%" : "50%"} style={{ display: "flex", flexDirection: "column" }}>
-          <Stack gap="md">
+          <Group align="stretch" wrap={isMobile ? "wrap" : "nowrap"} gap="lg" mb="md">
+            <Box
+              w={isMobile ? "100%" : "50%"}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
+            >
+              <Image src={BodySize} alt="Body Measurement Guide" w="100%" h={isMobile ? 240 : 380} fit="contain" />
+            </Box>
 
-            {/* Under-Bust */}
-            <Stack gap={6}>
-              <Text fw={600} size="sm">Under-Bust ({unit})</Text>
-              <Select
-                key={`under-${unit}`}   // 🔑 force reset on unit change
-                placeholder={`Select (${unit})`}
-                data={underOptions}
-                value={underBust}
-                onChange={(v) => setUnderBust(v || "")}
-                searchable
-              />
-              {overBust && !underBust && <Text size="xs" c="red">Please select your under-bust</Text>}
-            </Stack>
+            <Box w={isMobile ? "100%" : "50%"} style={{ display: "flex", flexDirection: "column" }}>
+              <Stack gap="md">
+                <Stack gap={6}>
+                  <Text fw={600} size="sm">
+                    Under-Bust ({unit})
+                  </Text>
+                  <Select
+                    key={`under-${unit}`}
+                    placeholder={`Select (${unit})`}
+                    data={underOptions}
+                    value={underBust}
+                    onChange={(v) => setUnderBust(v || "")}
+                    searchable
+                  />
+                </Stack>
 
-            {/* Over-Bust */}
-            <Stack gap={6}>
-              <Text fw={600} size="sm">Over-Bust ({unit})</Text>
-              <Select
-                key={`over-${unit}`}    // 🔑 force reset on unit change
-                placeholder={`Select (${unit})`}
-                data={overOptions}
-                value={overBust}
-                onChange={(v) => setOverBust(v || "")}
-                searchable
-              />
-              {underBust && !overBust && <Text size="xs" c="red">Please select your over-bust</Text>}
-            </Stack>
+                <Stack gap={6}>
+                  <Text fw={600} size="sm">
+                    Over-Bust ({unit})
+                  </Text>
+                  <Select
+                    key={`over-${unit}`}
+                    placeholder={`Select (${unit})`}
+                    data={overOptions}
+                    value={overBust}
+                    onChange={(v) => setOverBust(v || "")}
+                    searchable
+                  />
+                </Stack>
+              </Stack>
 
+              <Box mt="sm" ta="center">
+                {underBust && overBust ? (
+                  <>
+                    <Text fw={700} size="sm">
+                      YOUR BRA SIZE IS
+                    </Text>
+                    <Text fz={36} fw={900} c="red">
+                      {braResult?.label ?? "—"}
+                    </Text>
+                    {braResult?.note && <Text size="xs" c="dimmed">{braResult.note}</Text>}
+                  </>
+                ) : (
+                  <Text size="sm" c="dimmed">
+                    Select both values to see your size
+                  </Text>
+                )}
+              </Box>
+            </Box>
+          </Group>
 
+          {/* Size Chart */}
+          <Card withBorder radius="lg" mt="xl" p="lg">
+            <Text fw={700} ta="center" mb="md" size="xl">
+              Bra Size Chart ({unit.toUpperCase()})
+            </Text>
+
+            {isMobile ? (
+              <Stack gap="md">
+                {BAND_TABLE.map((b) => (
+                  <Card key={b.band} withBorder radius="md" p="md">
+                    <Text fw={700} size="md" mb="xs">
+                      Bra Size {b.band}
+                    </Text>
+                    <Text size="sm" c="dimmed">
+                      Under-bust:{" "}
+                      {unit === "cm"
+                        ? `${b.underBust[0]}–${b.underBust[1]} cm`
+                        : `${cmToIn(b.underBust[0])}–${cmToIn(b.underBust[1])} in`}
+                    </Text>
+                    <Divider my="xs" />
+                    <Stack gap={4}>
+                      {(["A", "B", "C", "D"] as CupLetter[]).map((cup) => {
+                        const [lo, hi] = b.overBustByCup[cup];
+
+                        const isSelected =
+                          braResult &&
+                          braResult.label.includes(String(b.band)) &&
+                          braResult.label.endsWith(cup);
+
+                        return (
+                          <Group
+                            key={`${b.band}-${cup}`}
+                            justify="space-between"
+                            style={{
+                              border: `2px solid ${isSelected ? "var(--mantine-color-red-6)" : "#ddd"}`,
+                              borderRadius: 6,
+                              padding: "4px 8px",
+                            }}
+                          >
+                            <Text size="sm" fw={500}>
+                              Cup {cup}
+                            </Text>
+                            <Text size="sm">
+                              {unit === "cm" ? `${lo}–${hi} cm` : `${cmToIn(lo)}–${cmToIn(hi)} in`}
+                            </Text>
+                          </Group>
+                        );
+                      })}
+                    </Stack>
+                  </Card>
+                ))}
+              </Stack>
+            ) : (
+              <>
+                <Group gap="xs" wrap="nowrap" mb="xs" align="center">
+                  <Box w={140}>
+                    <Badge variant="light">Bra Size</Badge>
+                  </Box>
+                  <Group gap="xs" wrap="wrap">
+                    {BAND_TABLE.map((b) => (
+                      <Card
+                        key={b.band}
+                        p="xs"
+                        radius="sm"
+                        withBorder
+                        style={{
+                          borderColor: braResult?.label.includes(String(b.band)) ? "var(--mantine-color-red-6)" : undefined,
+                        }}
+                      >
+                        <Text fw={700} size="sm">
+                          {b.band}
+                        </Text>
+                      </Card>
+                    ))}
+                  </Group>
+                </Group>
+
+                <Group gap="xs" wrap="nowrap" mb="xs" align="center">
+                  <Box w={140}>
+                    <Text size="sm" c="dimmed">
+                      Under-bust ({unit})
+                    </Text>
+                  </Box>
+                  <Group gap="xs" wrap="wrap">
+                    {BAND_TABLE.map((b) => (
+                      <Card
+                        key={b.band}
+                        p="xs"
+                        radius="sm"
+                        withBorder
+                        style={{
+                          borderColor: braResult?.label.includes(String(b.band)) ? "var(--mantine-color-red-6)" : undefined,
+                        }}
+                      >
+                        <Text size="sm">
+                          {unit === "cm"
+                            ? `${b.underBust[0]}–${b.underBust[1]}`
+                            : `${cmToIn(b.underBust[0])}–${cmToIn(b.underBust[1])}`}
+                        </Text>
+                      </Card>
+                    ))}
+                  </Group>
+                </Group>
+
+                <Divider my="sm" />
+
+                <Group align="start" wrap="nowrap" gap="xs">
+                  <Box w={140}>
+                    <Stack gap={8}>
+                      {(["A", "B", "C", "D"] as CupLetter[]).map((cup) => (
+                        <Card key={cup} p="xs" radius="sm" withBorder>
+                          <Text fw={700} size="sm">
+                            {cup}
+                          </Text>
+                        </Card>
+                      ))}
+                    </Stack>
+                  </Box>
+
+                  <Group gap="xs" align="start">
+                    {BAND_TABLE.map((b) => (
+                      <Stack key={b.band} gap={8}>
+                        {(["A", "B", "C", "D"] as CupLetter[]).map((cup) => {
+                          const [lo, hi] = b.overBustByCup[cup];
+
+                          const isSelected =
+                            braResult &&
+                            braResult.label.includes(String(b.band)) &&
+                            braResult.label.endsWith(cup);
+
+                          return (
+                            <Card
+                              key={`${b.band}-${cup}`}
+                              p="xs"
+                              radius="sm"
+                              withBorder
+                              style={{
+                                border: `2px solid ${isSelected ? "var(--mantine-color-red-6)" : "#ddd"}`,
+                              }}
+                            >
+                              <Text size="sm">{unit === "cm" ? `${lo}–${hi}` : `${cmToIn(lo)}–${cmToIn(hi)}`}</Text>
+                            </Card>
+                          );
+                        })}
+                      </Stack>
+                    ))}
+                  </Group>
+                </Group>
+              </>
+            )}
+          </Card>
+        </Tabs.Panel>
+
+        {/* PANTY SIZE TAB */}
+        <Tabs.Panel value="panties">
+          <Group justify="center" mb="md" w="100%">
+            <SegmentedControl
+              fullWidth
+              value={unit}
+              onChange={(v) => {
+                setUnit(v as "cm" | "inch");
+                setHip("");
+              }}
+              data={[
+                { label: "CM", value: "cm" },
+                { label: "INCH", value: "inch" },
+              ]}
+            />
+          </Group>
+
+          <Stack gap="md" align="center">
+            <Text fw={600} size="sm">
+              Hip Measurement ({unit})
+            </Text>
+            <Select
+              key={`hip-${unit}`}
+              placeholder={`Select hip size (${unit})`}
+              data={Array.from({ length: 149 - 75 + 1 }, (_, i) => {
+                const cm = 75 + i;
+                const val = unit === "cm" ? cm.toString() : cmToIn(cm).toString();
+                return { value: val, label: val };
+              })}
+              value={hip}
+              onChange={(v) => setHip(v || "")}
+              searchable
+            />
+
+            {hip && (
+              <>
+                <Text fw={700} size="sm">
+                  YOUR PANTY SIZE IS
+                </Text>
+                <Text fz={36} fw={900} c="red">
+                  {pantyResult}
+                </Text>
+              </>
+            )}
           </Stack>
 
-          <Box mt="sm" ta="center">
-            {underBust && overBust ? (
-              <>
-                <Text fw={700} size="sm">YOUR BRA SIZE IS</Text>
-                <Text fz={36} fw={900} c="red">{result?.label ?? "—"}</Text>
-                {result?.note && <Text size="xs" c="dimmed">{result.note}</Text>}
-              </>
-            ) : (
-              <Text size="sm" c="dimmed">Select both values to see your size</Text>
-            )}
-          </Box>
-        </Box>
-      </Group>
-
-      {/* Size Chart */}
-      <Card withBorder radius="lg" mt="xl" p="lg">
-  <Text fw={700} ta="center" mb="md" size="xl">
-    Bra Size Chart ({unit.toUpperCase()})
-  </Text>
-
-  {isMobile ? (
-    <Stack gap="md">
-      {BAND_TABLE.map((b) => (
-        <Card key={b.band} withBorder radius="md" padding="md">
-          <Text fw={700} size="md" mb="xs">Bra Size {b.band}</Text>
-          <Text size="sm" c="dimmed">
-            Under-bust: {unit === "cm"
-              ? `${b.underBust[0]}–${b.underBust[1]} cm`
-              : `${cmToIn(b.underBust[0])}–${cmToIn(b.underBust[1])} in`}
-          </Text>
-          <Divider my="xs" />
-          <Stack gap={4}>
-            {(["A", "B", "C", "D"] as CupLetter[]).map((cup) => {
-              const [lo, hi] = b.overBustByCup[cup];
-
-              // ✅ Highlight selected cell even if unit is inches
-              const isSelected =
-                result &&
-                result.label.includes(String(b.band)) &&
-                result.label.endsWith(cup);
-
-              return (
+          <Card withBorder radius="lg" mt="xl" p="lg">
+            <Text fw={700} ta="center" mb="md" size="xl">
+              Panty Size Chart ({unit.toUpperCase()})
+            </Text>
+            <Stack gap="sm">
+              {PANTY_SIZES.map((s) => (
                 <Group
-                  key={`${b.band}-${cup}`}
+                  key={s.label}
                   justify="space-between"
                   style={{
-                    border: `2px solid ${
-                      isSelected ? "var(--mantine-color-red-6)" : "#ddd"
-                    }`,
+                    border: `2px solid ${pantyResult === s.label ? "var(--mantine-color-red-6)" : "#ddd"}`,
                     borderRadius: 6,
-                    padding: "4px 8px",
+                    padding: "6px 12px",
                   }}
                 >
-                  <Text size="sm" fw={500}>Cup {cup}</Text>
-                  <Text size="sm">
-                    {unit === "cm" ? `${lo}–${hi} cm` : `${cmToIn(lo)}–${cmToIn(hi)} in`}
+                  <Text fw={600}>{s.label}</Text>
+                  <Text>
+                    {unit === "cm" ? `${s.hip[0]}–${s.hip[1]} cm` : `${cmToIn(s.hip[0])}–${cmToIn(s.hip[1])} in`}
                   </Text>
                 </Group>
-              );
-            })}
-          </Stack>
-        </Card>
-      ))}
-    </Stack>
-  ) : (
-    <>
-      <Group gap="xs" wrap="nowrap" mb="xs" align="center">
-        <Box w={140}><Badge variant="light">Bra Size</Badge></Box>
-        <Group gap="xs" wrap="wrap">
-          {BAND_TABLE.map((b) => (
-            <Card
-              key={b.band}
-              padding="xs"
-              radius="sm"
-              withBorder
-              style={{
-                borderColor:
-                  result?.label.includes(String(b.band))
-                    ? "var(--mantine-color-red-6)"
-                    : undefined,
-              }}
-            >
-              <Text fw={700} size="sm">{b.band}</Text>
-            </Card>
-          ))}
-        </Group>
-      </Group>
-
-      <Group gap="xs" wrap="nowrap" mb="xs" align="center">
-        <Box w={140}><Text size="sm" c="dimmed">Under-bust ({unit})</Text></Box>
-        <Group gap="xs" wrap="wrap">
-          {BAND_TABLE.map((b) => (
-            <Card
-              key={b.band}
-              padding="xs"
-              radius="sm"
-              withBorder
-              style={{
-                borderColor:
-                  result?.label.includes(String(b.band))
-                    ? "var(--mantine-color-red-6)"
-                    : undefined,
-              }}
-            >
-              <Text size="sm">
-                {unit === "cm"
-                  ? `${b.underBust[0]}–${b.underBust[1]}`
-                  : `${cmToIn(b.underBust[0])}–${cmToIn(b.underBust[1])}`}
-              </Text>
-            </Card>
-          ))}
-        </Group>
-      </Group>
-
-      <Divider my="sm" />
-
-      <Group align="start" wrap="nowrap" gap="xs">
-        <Box w={140}>
-          <Stack gap={8}>
-            {(["A", "B", "C", "D"] as CupLetter[]).map((cup) => (
-              <Card key={cup} padding="xs" radius="sm" withBorder>
-                <Text fw={700} size="sm">{cup}</Text>
-              </Card>
-            ))}
-          </Stack>
-        </Box>
-
-        <Group gap="xs" align="start">
-          {BAND_TABLE.map((b) => (
-            <Stack key={b.band} gap={8}>
-              {(["A", "B", "C", "D"] as CupLetter[]).map((cup) => {
-                const [lo, hi] = b.overBustByCup[cup];
-
-                // ✅ Highlight selected band + cup
-                const isSelected =
-                  result &&
-                  result.label.includes(String(b.band)) &&
-                  result.label.endsWith(cup);
-
-                return (
-                  <Card
-                    key={`${b.band}-${cup}`}
-                    padding="xs"
-                    radius="sm"
-                    withBorder
-                    style={{
-                      border: `2px solid ${
-                        isSelected ? "var(--mantine-color-red-6)" : "#ddd"
-                      }`,
-                    }}
-                  >
-                    <Text size="sm">
-                      {unit === "cm" ? `${lo}–${hi}` : `${cmToIn(lo)}–${cmToIn(hi)}`}
-                    </Text>
-                  </Card>
-                );
-              })}
+              ))}
             </Stack>
-          ))}
-        </Group>
-      </Group>
-    </>
-  )}
-      </Card>
+          </Card>
+        </Tabs.Panel>
+
+
+      </Tabs>
     </Box>
   );
 }

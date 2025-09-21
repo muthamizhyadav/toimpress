@@ -10,8 +10,8 @@ import { GET_PRODUCTS } from "../../api/api";
 // ✅ Single source of truth for categories and IDs
 const categoryList = [
   { name: "Bra", id: 1 },
-  { name: "Elite", id: 2 },
-  { name: "Panty", id: 3 },
+  { name: "Panty", id: 2 },
+  { name: "Elite", id: 3 },
   { name: "Combo", id: 4 },
   { name: "New Arrivals", id: 5 },
 ];
@@ -187,6 +187,7 @@ useEffect(() => {
                         rating={4.5}
                         isNew={false}
                         isOnSale={product.salePrice < product.price}
+                        category={product.category}
                       />
                     </Carousel.Slide>
                   ))}

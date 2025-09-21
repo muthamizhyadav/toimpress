@@ -1,14 +1,16 @@
+// components/Header.tsx
 import { Burger } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { MobileMenuDrawer, UseMobileMenuDrawer } from "./MobileMenuDrawer";
 import { MobileCartDrawer } from "./MobileCartDrawer";
 import { useAuth } from "../assets/hooks/useAuth";
 import { IconUserFilled } from "@tabler/icons-react";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { openCart } from "../redux/features/cartSlice";
-import type { RootState } from "../redux/store";
+import axiosInstance from "../api/axiosInstance"; // adjust path if needed
+import { API_GET_UPDATE } from "../api/api";
 
 export default function Header() {
   const navigate = useNavigate();
@@ -19,14 +21,8 @@ export default function Header() {
   const menu = UseMobileMenuDrawer();
 
   const dispatch = useDispatch();
-  const items = useSelector((s: RootState) => s.cart.items);
-
-  const [searchTerm, setSearchTerm] = useState(""); // 🔎 search state
-
-  const cartCount = useMemo(
-    () => items.reduce((sum, it) => sum + (it.qty ?? it.quantity ?? 0), 0),
-    [items]
-  );
+  const [cartCount, setCartCount] = useState<number>(0);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const isSelected = (id: string) =>
     selectedId === id ? "font-bold underline text-[#122F15]" : "text-[#252C32]";
@@ -36,9 +32,54 @@ export default function Header() {
     menu.close();
   };
 
-  useEffect(() => {
-    // placeholder if needed later
+  const computeCountFromItems = (items: any[] = []) =>
+    items.reduce((sum, it) => sum + (it.qty ?? it.quantity ?? 0), 0);
+
+  const fetchCartCount = useCallback(async (signal?: AbortSignal) => {
+    try {
+      const resp = await axiosInstance.get(API_GET_UPDATE, { signal });
+      const payload = resp.data ?? resp;
+      let items: any[] = [];
+
+
+      if (Array.isArray(payload)) {
+        items = payload;
+      } else if (payload && Array.isArray(payload.items)) {
+        items = payload.items;
+      } else if (payload && Array.isArray(payload.data)) {
+        items = payload.data;
+      } else if (payload && payload.data && Array.isArray(payload.data.items)) {
+        items = payload.data.items;
+      }
+
+      const count =payload?.data.length || 0
+      setCartCount(count);
+    } catch (err: any) {
+      if (err?.name === "CanceledError" || err?.name === "AbortError") return;
+      console.warn("Failed to fetch cart count:", err);
+      setCartCount(0);
+    }
   }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchCartCount(controller.signal);
+
+    // Re-fetch when window gains focus
+    const onFocus = () => fetchCartCount();
+
+    // Listen for product-level cart updates (ProductCard dispatches this)
+    const onCartUpdated = () => fetchCartCount();
+
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("cart:updated", onCartUpdated);
+
+    return () => {
+      controller.abort();
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("cart:updated", onCartUpdated);
+    };
+  }, [isAuthenticated, fetchCartCount]);
 
   return (
     <>
@@ -55,15 +96,19 @@ export default function Header() {
             {/* Cart Icon with Badge */}
             <div
               className="relative mr-4 cursor-pointer"
-              onClick={() => dispatch(openCart())}
+              onClick={() => {
+                // Optionally refresh before opening
+                fetchCartCount();
+                dispatch(openCart());
+              }}
             >
-              {/* cart svg */}
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                 <path
                   d="M5 3C4.73478 3 4.48043 3.10536 4.29289 3.29289C4.10536 3.48043 4 3.73478 4 4C4 4.26522 4.10536 4.51957 4.29289 4.70711C4.48043 4.89464 4.73478 5 5 5H6.22L6.525 6.222L7.893 11.694L7 12.586C5.74 13.846 6.632 16 8.414 16H17C17.2652 16 17.5196 15.8946 17.7071 15.7071C17.8946 15.5196 18 15.2652 18 15C18 14.7348 17.8946 14.4804 17.7071 14.2929C17.5196 14.1054 17.2652 14 17 14H8.414L9.414 13H16C16.1857 13 16.3676 12.9481 16.5255 12.8504C16.6834 12.7528 16.811 12.6131 16.894 12.447L19.894 6.447C19.9702 6.29458 20.0061 6.12522 19.9985 5.95501C19.9908 5.78479 19.9398 5.61935 19.8502 5.47439C19.7606 5.32944 19.6355 5.20977 19.4867 5.12674C19.3379 5.04372 19.1704 5.00009 19 5H8.28L7.97 3.757C7.91583 3.54075 7.79095 3.34881 7.61521 3.21166C7.43946 3.0745 7.22293 3.00001 7 3H5ZM18 18.5C18 18.8978 17.842 19.2794 17.5607 19.5607C17.2794 19.842 16.8978 20 16.5 20C16.1022 20 15.7206 19.842 15.4393 19.5607C15.158 19.2794 15 18.8978 15 18.5C15 18.1022 15.158 17.7206 15.4393 17.4393C15.7206 17.158 16.1022 17 16.5 17C16.8978 17 17.2794 17.158 17.5607 17.4393C17.842 17.7206 18 18.1022 18 18.5ZM8.5 20C8.89782 20 9.27936 19.842 9.56066 19.5607C9.84196 19.2794 10 18.8978 10 18.5C10 18.1022 9.84196 17.7206 9.56066 17.4393C9.27936 17.158 8.89782 17 8.5 17C8.10218 17 7.72064 17.158 7.43934 17.4393C7.15804 17.7206 7 18.1022 7 18.5C7 18.8978 7.15804 19.2794 7.43934 19.5607C7.72064 19.842 8.10218 20 8.5 20Z"
                   fill="#122F15"
                 />
               </svg>
+
               {cartCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-[#8BB06E] text-white text-[10px] px-1.5 py-[2px] rounded-full">
                   {cartCount}
@@ -71,21 +116,14 @@ export default function Header() {
               )}
             </div>
 
-            <Burger
-              opened={menu.opened}
-              onClick={menu.open}
-              aria-label="Open menu"
-            />
+            <Burger opened={menu.opened} onClick={menu.open} aria-label="Open menu" />
           </div>
         )}
 
-        {/* Drawers */}
         <MobileMenuDrawer opened={menu.opened} onClose={menu.close} />
         <MobileCartDrawer />
 
-        {/* Desktop area */}
         <div className="hidden lg:flex ml-5 flex-col gap-5 w-full md:flex md:flex-col md:gap-5 md:w-full">
-          {/* search + actions */}
           <div className="hidden lg:w-full lg:flex md:flex md:w-full ">
             <div className="hidden md:flex md:w-full lg:w-full lg:flex">
               <input
@@ -96,7 +134,6 @@ export default function Header() {
                 className="lg:w-[100%] h-[40px] rounded-full bg-white pl-3"
               />
               <button className="bg-lightgreen h-[40px] ml-[-30px] cursor-pointer rounded-3xl px-5 z-50">
-                {/* search icon */}
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                   <path
                     fillRule="evenodd"
@@ -110,25 +147,13 @@ export default function Header() {
 
             <div className="hidden md:flex md:w-full lg:w-full lg:flex ">
               <div className="hidden lg:w-[100%] lg:flex lg:justify-around lg:items-center ">
-                {/* Orders */}
-                <div
-                  className="flex cursor-pointer"
-                  onClick={() => handleNavigation("orders")}
-                >
+                <div className="flex cursor-pointer" onClick={() => handleNavigation("orders")}>
                   <span className="ml-2 text-[#252C32]"> Orders </span>
                 </div>
-                {/* Favorites */}
-                <div
-                  className="flex cursor-pointer"
-                  onClick={() => handleNavigation("category?id=1")}
-                >
+                <div className="flex cursor-pointer" onClick={() => handleNavigation("category?id=1")}>
                   <span className="ml-2 text-[#252C32] "> Favorites </span>
                 </div>
-                {/* Cart */}
-                <div
-                  className="relative flex cursor-pointer"
-                  onClick={() => dispatch(openCart())}
-                >
+                <div className="relative flex cursor-pointer" onClick={() => { fetchCartCount(); dispatch(openCart()); }}>
                   {cartCount > 0 && (
                     <span className="absolute -top-1 -right-1 bg-[#8BB06E] text-white text-[10px] px-1.5 py-[2px] rounded-full">
                       {cartCount}
@@ -153,37 +178,21 @@ export default function Header() {
             </div>
           </div>
 
-          {/* Category nav */}
           <div className="hidden md:flex gap-5 w-full">
             <ul className="flex justify-center w-[50%] gap-10">
-              <li
-                className={`text-sm cursor-pointer ${isSelected("1")}`}
-                onClick={() => handleNavigation("category?id=1")}
-              >
+              <li className={`text-sm cursor-pointer ${isSelected("1")}`} onClick={() => handleNavigation("category?id=1")}>
                 Brassiere
               </li>
-              <li
-                className={`text-sm cursor-pointer ${isSelected("2")}`}
-                onClick={() => handleNavigation("category?id=2")}
-              >
+              <li className={`text-sm cursor-pointer ${isSelected("2")}`} onClick={() => handleNavigation("category?id=2")}>
                 Panties
               </li>
-              <li
-                className={`text-sm cursor-pointer ${isSelected("4")}`}
-                onClick={() => handleNavigation("category?id=4")}
-              >
+              <li className={`text-sm cursor-pointer ${isSelected("4")}`} onClick={() => handleNavigation("category?id=4")}>
                 New Arrivals
               </li>
-              <li
-                className={`text-sm cursor-pointer ${isSelected("5")}`}
-                onClick={() => handleNavigation("category?id=5")}
-              >
+              <li className={`text-sm cursor-pointer ${isSelected("5")}`} onClick={() => handleNavigation("category?id=5")}>
                 Elite
               </li>
-              <li
-                className={`text-sm cursor-pointer ${isSelected("6")}`}
-                onClick={() => handleNavigation("category?id=6")}
-              >
+              <li className={`text-sm cursor-pointer ${isSelected("6")}`} onClick={() => handleNavigation("category?id=6")}>
                 Combo Offer
               </li>
             </ul>
@@ -191,12 +200,9 @@ export default function Header() {
         </div>
       </header>
 
-      {/* 🔎 Search Results Overlay */}
       {searchTerm && (
         <div className="absolute top-[80px] md:top-[112px] left-0 w-screen h-[200px] bg-white shadow-lg z-40 p-4 overflow-y-auto">
-          <p className="font-semibold mb-2">
-            Search results for "{searchTerm}"
-          </p>
+          <p className="font-semibold mb-2">Search results for "{searchTerm}"</p>
           <ul className="space-y-2">
             <li className="cursor-pointer hover:text-green-600">Result 1</li>
             <li className="cursor-pointer hover:text-green-600">Result 2</li>

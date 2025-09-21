@@ -1,3 +1,4 @@
+// Login.tsx
 import {
   Button,
   Paper,
@@ -11,23 +12,37 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useMediaQuery } from "@mantine/hooks";
-// import ToImpressLogo from "../../assets/svg/ToImpressLogo.svg";
 import { useDispatch } from "react-redux";
+import { showNotification } from "@mantine/notifications";
+import { IconCheck, IconX } from "@tabler/icons-react";
+
 import { LOGIN } from "../../api/api.ts";
 import axiosInstance from "../../api/axiosInstance.ts";
+// import ToImpressLogo from "../../assets/svg/ToImpressLogo.svg";
+// import { login } from "../../store/authSlice"; // <-- ensure you have your login action imported
 
 const Login = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const isMobile = useMediaQuery("(max-width: 768px)");
 
   const handleLogin = async () => {
-    setError(null);
+    // simple front-end validation
+    if (!username.trim() || !password.trim()) {
+      showNotification({
+        title: "Missing credentials",
+        message: "Please enter both username and password.",
+        color: "red",
+        icon: <IconX size={18} />,
+        autoClose: 4000,
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -36,17 +51,40 @@ const Login = () => {
       const response = await axiosInstance.post(LOGIN, body);
 
       if (response && response.status === 200) {
-        // Assuming API returns { user, token }
         const { user, token } = response.data;
 
-        dispatch(login({ user, token }));
+
+        showNotification({
+          title: "Login successful",
+          message: `Welcome ${user?.name ?? user?.username ?? ""}`,
+          color: "green",
+          icon: <IconCheck size={18} />,
+          autoClose: 3000,
+        });
+
         navigate("/");
       } else {
-        setError("Invalid credentials. Please try again.");
+        showNotification({
+          title: "Invalid credentials",
+          message: "Username or password is incorrect. Please try again.",
+          color: "red",
+          icon: <IconX size={18} />,
+          autoClose: 4000,
+        });
       }
-    } catch (err) {
-      setError("Something went wrong. Please try again later.");
-      console.error(err);
+    } catch (err: any) {
+      const apiMessage =
+        err?.response?.data?.message ?? "Something went wrong. Please try again later.";
+
+      showNotification({
+        title: "Login failed",
+        message: apiMessage,
+        color: "red",
+        icon: <IconX size={18} />,
+        autoClose: 5000,
+      });
+
+      console.error("Login error:", err);
     } finally {
       setLoading(false);
     }
@@ -89,12 +127,6 @@ const Login = () => {
               size="md"
             />
 
-            {error && (
-              <Text c="red" size="sm" ta="center">
-                {error}
-              </Text>
-            )}
-
             <Stack w="100%" align="center">
               <Button
                 w="80%"
@@ -112,7 +144,7 @@ const Login = () => {
                 Login
               </Button>
             </Stack>
-            </Stack>
+          </Stack>
         </Paper>
       </Stack>
     </Container>

@@ -10,10 +10,10 @@ import Panties_Logo from "../assets/images/Panties_Logo.jpg";
 type Category = { label: string; icon: string; id: string };
 
 const categories: Category[] = [
-  { id: "1", label: "ELITE",        icon: Elite_Logo },
   { id: "1", label: "BRA",          icon: Bra_Logo },
   { id: "2", label: "PANTIES",      icon: Panties_Logo },
   { id: "5", label: "COMBO",        icon: Lingerie_Logo },
+  { id: "3", label: "ELITE",        icon: Elite_Logo },
   { id: "4", label: "NEW ARRIVALS", icon: New_Arrivals_Logo },
 ];
 
