@@ -260,15 +260,32 @@ export default function ProductPage() {
       }
     } catch (err: any) {
       console.error("Add to cart API error:", err);
-      showNotification({
-        title: "Add failed",
-        message: err?.response?.data?.message ?? err?.message ?? "Unable to add to cart",
-        color: "red",
-        icon: <IconX size={16} />,
-      });
+
+      const status = err?.response?.status;
+      const apiMessage = err?.response?.data?.message ?? err?.message ?? "Unable to add to cart";
+
+      if (status === 401 || status === 403) {
+        showNotification({
+          title: "Please login",
+          message: "You need to login to add items to cart.",
+          color: "blue",
+          icon: <IconX size={16} />,
+          autoClose: 3000,
+        });
+        navigate("/account");
+      } else {
+        showNotification({
+          title: "Add failed",
+          message: apiMessage,
+          color: "red",
+          icon: <IconX size={16} />,
+        });
+      }
     } finally {
       setAdding(mapKey, false);
     }
+
+
   };
 
   // main product handlers

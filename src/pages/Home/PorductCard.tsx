@@ -169,17 +169,30 @@ const ProductCard: React.FC<ProductCardProps> = ({
         });
       }
     } catch (err: any) {
-      const apiMessage = err?.response?.data?.message ?? err?.message ?? "Unable to add item.";
-      showNotification({
-        title: "Add failed",
-        message: apiMessage,
-        color: "red",
-        icon: <IconX size={18} />,
-        autoClose: 4000,
-      });
-      console.error("Add to cart error:", err);
-    } finally {
-      setSubmitting(false);
+      const status = err?.response?.status;
+      const apiMessage = err?.response?.data?.message ?? err?.message ?? "Unable to update cart.";
+
+      if (status === 401 || status === 403) {
+        showNotification({
+          title: "Please login",
+          message: "You need to login to update your cart.",
+          color: "blue",
+          icon: <IconInfoCircle size={18} />,
+        });
+        navigate("/account");
+      } else {
+        showNotification({
+          title: "Update failed",
+          message: apiMessage,
+          color: "red",
+          icon: <IconX size={18} />,
+        });
+      }
+
+      console.error("Increment/Decrement error:", err);
+    }
+    finally {
+          setSubmitting(false);
     }
   };
 
