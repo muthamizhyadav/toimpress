@@ -112,8 +112,8 @@ export default function OrderSuccess() {
 
         <Divider />
 
-        <Text size="sm" c="dimmed">Items</Text>
-        <Stack spacing="xs">
+        {/* <Text size="sm" c="dimmed">Items</Text> */}
+        {/* <Stack spacing="xs">
           {Array.isArray(items) && items.length ? (
             items.map((it: any, idx: number) => {
               const title = it?.title ?? it?.productName ?? it?.name ?? it?.product ?? "Product";
@@ -132,7 +132,7 @@ export default function OrderSuccess() {
           ) : (
             <Text size="sm" c="dimmed">No item details available.</Text>
           )}
-        </Stack>
+        </Stack> */}
       </Stack>
     );
   };

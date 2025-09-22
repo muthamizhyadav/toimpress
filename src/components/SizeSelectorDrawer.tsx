@@ -1,6 +1,7 @@
 // components/SizeSelectorDrawer.tsx
 import React, { useEffect, useMemo, useState } from "react";
 import { Drawer, Button, Badge } from "@mantine/core";
+import { useNavigate } from "react-router-dom";
 
 export type SizeOption = {
   band: number;
@@ -76,6 +77,8 @@ export default function SizeSelectorDrawer({
   const [cup, setCup] = useState<string | null>(null);
   const [pantySize, setPantySize] = useState<string | null>(null);
 
+  const navigate = useNavigate();
+
   // compute cup list and band info
   const cupList = useMemo(() => {
     const found = options.find((o) => o.band === band);
@@ -133,13 +136,32 @@ export default function SizeSelectorDrawer({
     setPantySize(null);
   };
 
+  // Close handler that resets state then calls parent onClose
+  const handleClose = () => {
+    resetState();
+    onClose();
+  };
+
+  // Checkout flow: confirm selection (if valid) then navigate to checkout and close drawer.
+  // Note: onConfirm in parent may be async; we call it and then navigate immediately.
+  const handleCheckout = () => {
+    // validate and call onConfirm
+    if (mode === "Brassiere") {
+      if (!band || !cup) return;
+    } else {
+      if (!pantySize) return;
+    }
+
+    confirmSize();
+    // navigate to checkout
+    navigate("/checkout");
+    handleClose();
+  };
+
   return (
     <Drawer
       opened={opened}
-      onClose={() => {
-        resetState();
-        onClose();
-      }}
+      onClose={handleClose}
       position="right"
       overlayProps={{ opacity: 0.25, blur: 2 }}
       size="lg"
@@ -260,7 +282,7 @@ export default function SizeSelectorDrawer({
         </>
       )}
 
-      {/* actions */}
+      {/* actions - primary action row (Add to cart) */}
       <div className="mt-6 flex gap-2">
         <Button
           variant="default"
@@ -274,10 +296,49 @@ export default function SizeSelectorDrawer({
         </Button>
         <Button
           className="flex-1 bg-[#96BD75] hover:bg-[#86ad65] rounded-full"
-          onClick={confirmSize}
+          onClick={() => {
+            confirmSize();
+            // keep drawer open — parent may close after processing
+          }}
           disabled={mode === "Brassiere" ? !band || !cup : !pantySize}
         >
           Add to cart
+        </Button>
+      </div>
+
+      {/* sticky footer with Go to checkout */}
+      <div
+        style={{
+          position: "sticky",
+          bottom: 50,
+          left: 0,
+          right: 0,
+          display: "flex",
+          gap: 8,
+          paddingTop: 12,
+          paddingBottom: 8,
+          background: "transparent",
+          borderTop: "1px solid rgba(0,0,0,0.06)",
+          marginTop: "150px"
+      }}
+      >
+        <Button
+          variant="outline"
+          onClick={() => {
+            resetState();
+            onClose();
+          }}
+          style={{ flex: 1, borderRadius: 999 }}
+        >
+          Continue shopping
+        </Button>
+
+        <Button
+          onClick={handleCheckout}
+          style={{ flex: 1, background: "#96BD75", color: "#fff", borderRadius: 999 }}
+          disabled={mode === "Brassiere" ? !band || !cup : !pantySize}
+        >
+          Go to checkout
         </Button>
       </div>
     </Drawer>

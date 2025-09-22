@@ -17,9 +17,19 @@ import {
   Paper,
   Card,
   Divider,
+  Drawer,
+  ScrollArea,
+  CloseButton,
 } from "@mantine/core";
 import { useEffect, useMemo, useState } from "react";
-import { IconTruck, IconPackage, IconMinus, IconPlus, IconX, IconCheck } from "@tabler/icons-react";
+import {
+  IconTruck,
+  IconPackage,
+  IconMinus,
+  IconPlus,
+  IconX,
+  IconCheck,
+} from "@tabler/icons-react";
 import { useMediaQuery } from "@mantine/hooks";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { GET_PRODUCTS_DETAILS, API_CART } from "../../api/api";
@@ -81,6 +91,9 @@ export default function ProductPage() {
 
   // loading state per-product to prevent double clicks
   const [addingMap, setAddingMap] = useState<Record<string, boolean>>({});
+
+  // Return / Exchange policy drawer state
+  const [openReturnPolicy, setOpenReturnPolicy] = useState(false);
 
   // fetch data
   useEffect(() => {
@@ -520,7 +533,7 @@ export default function ProductPage() {
           </Box>
 
           {/* Actions */}
-          <Group mt="lg" gap="sm">
+          <Group mt="lg" gap="sm" align="center">
             {currentQty > 0 ? (
               <Group
                 gap="xs"
@@ -603,9 +616,23 @@ export default function ProductPage() {
                 >
                   Buy Now
                 </Button>
+
+               
               </>
             )}
           </Group>
+
+           <Button
+                  variant="subtle"
+                  size="sm"
+                  onClick={() => setOpenReturnPolicy(true)}
+                  sx={{
+                    color: DARK_GREEN,
+                    borderColor: DARK_GREEN,
+                  }}
+                >
+                  Return / Exchange policy
+                </Button>
 
           {/* Trust badges */}
           <Group mt="md" gap="lg">
@@ -732,6 +759,67 @@ export default function ProductPage() {
         imageUrl={drawerProduct ? ((drawerProduct.images && drawerProduct.images[0]) || drawerProduct.image || "") : (mainImage || imagesInput?.[0] || "")}
         options={drawerProduct ? buildSizeOptionsForProduct(drawerProduct) : (sizeOptions.length ? sizeOptions : undefined)}
       />
+
+      {/* Return / Exchange Policy Drawer (bottom on mobile, right on desktop) */}
+      <Drawer
+        opened={openReturnPolicy}
+        onClose={() => setOpenReturnPolicy(false)}
+        withCloseButton={false}
+        padding="md"
+        position={isMobile ? "bottom" : "right"}
+        size={isMobile ? "60%" : 420}
+        overlayOpacity={0.45}
+        lockScroll
+        title={
+          <Group position="apart" align="center" style={{ width: "100%" }}>
+            <Text fw={700}>QUICK CONTACT : +91 70104 47947</Text>
+            <CloseButton onClick={() => setOpenReturnPolicy(false)} />
+          </Group>
+        }
+      >
+        <ScrollArea style={{ height: isMobile ? "100%" : 520, paddingRight: 8 }}>
+          <Stack spacing="md">
+            <Title order={5}>15 DAYS Exchange</Title>
+
+            <Stack spacing="sm">
+              <Text>1. Product(s) can be exchanged if faulty/damaged or any size issue.</Text>
+
+              <Text>
+                2. Due to the intimate nature and hygienic standards of certain items,
+                we regret that it is not possible for us to accept returns on Briefs,
+                Panties, Cami Bras and some of the accessories.
+              </Text>
+
+              <Text>
+                3. Exchange / Return request must be made within 15 working days
+                from the date of product delivery.
+              </Text>
+
+              <Text>
+                4. In the interests of hygiene, we may refuse returns where it's
+                obvious that the item has been worn, washed or soiled.
+              </Text>
+
+              <Text>
+                5. If you need your product(s) to be exchanged / Returned, Go To My Orders Section
+              </Text>
+
+            </Stack>
+
+            {/* small footer badges similar to product page */}
+            <Group mt="md" spacing="lg">
+              <Group>
+                <ThemeIcon variant="light" color="green"><IconTruck /></ThemeIcon>
+                <Text size="sm">Fast & Free Delivery</Text>
+              </Group>
+              <Group>
+                <ThemeIcon variant="light" color="green"><IconPackage /></ThemeIcon>
+                <Text size="sm">Discreet Packaging</Text>
+              </Group>
+            </Group>
+          </Stack>
+        </ScrollArea>
+      </Drawer>
     </Container>
   );
 }

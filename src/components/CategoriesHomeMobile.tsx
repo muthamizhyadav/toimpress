@@ -37,7 +37,7 @@ export default function CategoriesHomeMobile() {
             shadow="sm"
             radius="md"
             withBorder
-            onClick={() => handleNavigation(`/category?id=${item.id}`)} // 👈 Navigate on card click
+            onClick={() => handleNavigation(`/category?id=${item.label}`)} // 👈 Navigate on card click
             style={{
               cursor: "pointer",
               textAlign: "center",

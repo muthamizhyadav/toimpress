@@ -1,74 +1,118 @@
-import { Box, Container, Flex, Grid, Group, Stack, Text } from "@mantine/core";
-import { Link } from "react-router-dom";
-import { IconPhone, IconMail } from "@tabler/icons-react";
+import React from "react";
+import {
+  Box,
+  Container,
+  Grid,
+  Group,
+  Stack,
+  Text,
+  Anchor,
+  Divider,
+  Image,
+} from "@mantine/core";
+import { IconPhone, IconMail, IconLocation } from "@tabler/icons-react";
 import Logo from "../../../public/logo.png"
+
+
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
   const endYear = currentYear > 2025 ? currentYear : 2026;
 
   return (
-    <Box bg="gray.1" pt="xl" pb="70px">
+    <Box bg="#FBFBF9" pt="48px" pb="48px" sx={{ borderTop: "1px solid #E9ECEF" }}>
       <Container size="xl">
-        {/* Top section with logo & contact */}
-        <Grid gutter="xl">
-          {/* Left: Logo & Contact */}
-          <Grid.Col span={{ base: 12, md: 6 }}>
-            <Stack>
-              <img
-                src={Logo}
-                alt="Company Logo"
-                className="md:w-[106px] md:h-[65px] w-[80px] h-[50px]"
-              />
+        {/* Top grid: logo / about / contact */}
+        <Grid gutter="xl" align="start">
+          <Grid.Col xs={12} md={4}>
+            <Stack spacing="sm">
+              <Group align="center" spacing="sm">
+                {/* Use public path so CRA / Vite serve it from root */}
+                 <img
+                    src={Logo}
+                    alt="Company Logo"
+                    className="md:w-[106px] md:h-[65px] w-[80px] h-[50px]"
+                  />
+                <div>
+                  <Text weight={700} size="sm">To Impress</Text>
+                  <Text size="xs" color="dimmed">by Ponpreatha Textiles</Text>
+                </div>
+              </Group>
 
-              <Group gap="md" mt="sm">
-                <Group gap={6}>
-                  <IconPhone size={18} />
-                  <Text size="sm">
-                    <strong>+91 8124732811</strong>
+              <Text size="sm" color="dimmed" mt="xs">
+                Quality innerwear crafted with comfort and style — designed in India.
+              </Text>
+            </Stack>
+          </Grid.Col>
+
+          <Grid.Col xs={12} md={4}>
+            <Stack spacing="xs">
+              <Text weight={700} size="sm">Contact</Text>
+
+              <Group spacing="sm" align="flex-start" noWrap>
+                <IconPhone size={18} aria-hidden />
+                <div>
+                  <Anchor component="a" href="tel:+917010447947" style={{ display: "block" }}>
+                    <Text weight={600} size="sm">+91 70104 47947</Text>
+                  </Anchor>
+                  <Text size="xs" color="dimmed">Mon — Sun, 9:30 AM — 6:30 PM</Text>
+                </div>
+              </Group>
+
+              <Group spacing="sm" align="flex-start" noWrap>
+                <IconMail size={18} aria-hidden />
+                <div>
+                  <Anchor component="a" href="mailto:info@toimpress.in" style={{ display: "block" }}>
+                    <Text weight={600} size="sm"> toimpress.sales@gmail.com </Text>
+                  </Anchor>
+                  <Text size="xs" color="dimmed">We reply within 24 hours</Text>
+                </div>
+              </Group>
+            </Stack>
+          </Grid.Col>
+
+          <Grid.Col xs={12} md={4}>
+            <Stack spacing="xs">
+              <Text weight={700} size="sm">Visit Us</Text>
+
+              <Group spacing="sm" align="flex-start" noWrap>
+                <IconLocation size={18} aria-hidden />
+                <div>
+                  <Anchor
+                    component="a"
+                    href="https://www.google.com/maps/search/?api=1&query=30B%2F10+VANAMOORTHY+LINGAMPILLAI+STREET+CHETTIYARPATTI+Virudhunagar+626122"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Open address in Google Maps"
+                    style={{ display: "block" }}
+                  >
+                    <Text weight={600} size="sm">
+                      30B/10 Vanamoorthy Lingampillai St, Chettiyarpatti
+                    </Text>
+                  </Anchor>
+                  <Text size="xs" color="dimmed">
+                    Virudhunagar - 626122, Tamil Nadu
                   </Text>
-                </Group>
-                <Group gap={6}>
-                  <IconMail size={18} />
-                  <Text size="sm">
-                    <strong>innovaturetechenginneers@gmail.com</strong>
-                  </Text>
-                </Group>
+                </div>
               </Group>
             </Stack>
           </Grid.Col>
         </Grid>
 
-        {/* Bottom Bar */}
-        <Flex
-          justify="space-between"
-          align="center"
-          wrap="wrap"
-          mt="xl"
-          pt="md"
-          style={{ borderTop: "1px solid #e9ecef" }}
-        >
-          {/* <Group gap="lg" mt="sm">
-            <Text size="xs" c="dimmed">
-              <Link to="/about">About us</Link>
-            </Text>
-            <Text size="xs" c="dimmed">
-              <Link to="/contact">Contact</Link>
-            </Text>
-            <Text size="xs" c="dimmed">
-              <Link to="/privacy-policy">Privacy Policy</Link>
-            </Text>
-            <Text size="xs" c="dimmed">
-              <Link to="/sitemap">Sitemap</Link>
-            </Text>
-            <Text size="xs" c="dimmed">
-              <Link to="/terms-and-conditions">Terms & Conditions</Link>
-            </Text>
-          </Group> */}
-          <Text size="xs" c="dimmed" mt="sm">
-            © {endYear}, All Rights Reserved
+        <Divider my="xl" />
+
+        {/* Bottom row */}
+        <Group position="apart" align="center" spacing="xl" noWrap>
+          <Text size="xs" color="dimmed">
+            © {endYear} To Impress by Ponpreatha Textiles. All rights reserved.
           </Text>
-        </Flex>
+
+          <Group spacing="md" className="hidden sm:flex">
+            <Anchor component={Anchor} href="/terms" size="xs" color="dimmed">Terms</Anchor>
+            <Anchor component={Anchor} href="/privacy" size="xs" color="dimmed">Privacy</Anchor>
+            <Anchor component={Anchor} href="/contact" size="xs" color="dimmed">Contact</Anchor>
+          </Group>
+        </Group>
       </Container>
     </Box>
   );

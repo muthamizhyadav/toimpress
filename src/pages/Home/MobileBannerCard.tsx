@@ -28,7 +28,7 @@ const MobileBannerCard: React.FC<MobileBannerCardProps> = ({
       className={`relative rounded-md overflow-hidden w-full ${
         isDesktop ? "h-60" : "h-[400px]"
       }`}
-      onClick={() => handleNavigation("category?id=1")}
+      onClick={() => handleNavigation("category?name=Brassiere")}
     >
       <img
         src={imageUrl}

@@ -6,11 +6,12 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { MobileMenuDrawer, UseMobileMenuDrawer } from "./MobileMenuDrawer";
 import { MobileCartDrawer } from "./MobileCartDrawer";
 import { useAuth } from "../assets/hooks/useAuth";
-import { IconUserFilled } from "@tabler/icons-react";
+import { IconCheck, IconUserFilled, IconX } from "@tabler/icons-react";
 import { useDispatch } from "react-redux";
 import { openCart } from "../redux/features/cartSlice";
 import axiosInstance from "../api/axiosInstance"; // adjust path if needed
-import { API_GET_UPDATE } from "../api/api";
+import { API_GET_CATEGORIES, API_GET_UPDATE } from "../api/api";
+import { showNotification } from "@mantine/notifications";
 
 export default function Header() {
   const navigate = useNavigate();
@@ -24,13 +25,53 @@ export default function Header() {
   const [cartCount, setCartCount] = useState<number>(0);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const isSelected = (id: string) =>
+  // NEW: categories state
+  const [categories, setCategories] = useState<
+    Array<{ _id: string; categoryTitle: string; imageUrl?: string; active?: boolean }>
+  >([]);
+
+  console.log(categories, "categories")
+
+  // isSelected now works with category _id strings
+  const isSelected = (id: string | null) =>
     selectedId === id ? "font-bold underline text-[#122F15]" : "text-[#252C32]";
 
   const handleNavigation = (str?: string) => {
     navigate(`/${str ?? ""}`);
     menu.close();
   };
+
+  const getCategories = async () => {
+    try {
+      const resp = await axiosInstance.get(API_GET_CATEGORIES);
+      // response shape might be resp.data or resp
+      const payload = resp?.data ?? resp;
+
+      // if API returns an array directly:
+      if (Array.isArray(payload)) {
+        setCategories(payload);
+      } else if (payload && Array.isArray(payload.data)) {
+        setCategories(payload.data);
+      } else {
+        // fallback: try to find array inside response
+        const foundArray = Object.values(payload).find((v) => Array.isArray(v)) as any;
+        if (foundArray) setCategories(foundArray);
+      }
+
+      return payload;
+    } catch (error: any) {
+      showNotification({
+        title: "Error",
+        message: error?.response?.data?.message || "Failed to fetch categories.",
+        color: "red",
+        icon: <IconX size={16} />,
+      });
+    }
+  };
+
+  useEffect(() => {
+    getCategories();
+  }, []);
 
   const computeCountFromItems = (items: any[] = []) =>
     items.reduce((sum, it) => sum + (it.qty ?? it.quantity ?? 0), 0);
@@ -40,7 +81,6 @@ export default function Header() {
       const resp = await axiosInstance.get(API_GET_UPDATE, { signal });
       const payload = resp.data ?? resp;
       let items: any[] = [];
-
 
       if (Array.isArray(payload)) {
         items = payload;
@@ -52,7 +92,8 @@ export default function Header() {
         items = payload.data.items;
       }
 
-      const count =payload?.data.length || 0
+      // best-effort to compute count
+      const count = computeCountFromItems(items) || (Array.isArray(payload?.data) ? payload.data.length : 0);
       setCartCount(count);
     } catch (err: any) {
       if (err?.name === "CanceledError" || err?.name === "AbortError") return;
@@ -150,7 +191,7 @@ export default function Header() {
                 <div className="flex cursor-pointer" onClick={() => handleNavigation("orders")}>
                   <span className="ml-2 text-[#252C32]"> Orders </span>
                 </div>
-                <div className="flex cursor-pointer" onClick={() => handleNavigation("category?id=1")}>
+                <div className="flex cursor-pointer" onClick={() => handleNavigation("category?name=Brassiere")}>
                   <span className="ml-2 text-[#252C32] "> Favorites </span>
                 </div>
                 <div className="relative flex cursor-pointer" onClick={() => { fetchCartCount(); dispatch(openCart()); }}>
@@ -179,22 +220,24 @@ export default function Header() {
           </div>
 
           <div className="hidden md:flex gap-5 w-full">
-            <ul className="flex justify-center w-[50%] gap-10">
-              <li className={`text-sm cursor-pointer ${isSelected("1")}`} onClick={() => handleNavigation("category?id=1")}>
-                Brassiere
-              </li>
-              <li className={`text-sm cursor-pointer ${isSelected("2")}`} onClick={() => handleNavigation("category?id=2")}>
-                Panties
-              </li>
-              <li className={`text-sm cursor-pointer ${isSelected("4")}`} onClick={() => handleNavigation("category?id=4")}>
-                New Arrivals
-              </li>
-              <li className={`text-sm cursor-pointer ${isSelected("5")}`} onClick={() => handleNavigation("category?id=5")}>
-                Elite
-              </li>
-              <li className={`text-sm cursor-pointer ${isSelected("6")}`} onClick={() => handleNavigation("category?id=6")}>
-                Combo Offer
-              </li>
+            <ul className="flex justify-center gap-10">
+              {/* Render dynamic categories here */}
+              {categories.length > 0 ? (
+                categories.map((cat) => (
+                  <li
+                    key={cat._id}
+                    className={`text-sm cursor-pointer ${isSelected(cat._id)}`}
+                    onClick={() => handleNavigation(`category?name=${cat.categoryTitle}`)}
+                  >
+                    {cat.categoryTitle}
+                  </li>
+                ))
+              ) : (
+                // fallback while loading or if no categories
+                <>
+                  loading
+                </>
+              )}
             </ul>
           </div>
         </div>

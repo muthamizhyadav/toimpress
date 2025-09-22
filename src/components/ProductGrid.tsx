@@ -1,77 +1,120 @@
-import React, { useState, useEffect } from "react";
-import InfiniteScroll from "react-infinite-scroll-component";
-import {
-  Card,
-  Skeleton,
-  Text,
-} from "@mantine/core";
-import { useSearchParams } from "react-router-dom";
+// components/ProductGrid.tsx
+import React, { useEffect, useRef, useState } from "react";
 import { useMediaQuery } from "@mantine/hooks";
-import ProductCard from "../pages/Home/PorductCard";
+import InfiniteScroll from "react-infinite-scroll-component";
+import { Text } from "@mantine/core";
+import ProductCard from "../pages/Home/PorductCard"; // adjust path if needed
 
-export interface Product {
-  id: number;
+export type Product = {
+  id: string | number;
   title: string;
-  price: number;
-  originalPrice: number;
-  imageUrl: string;
+  price?: number;
+  originalPrice?: number;
+  imageUrl?: string;
   isNew?: boolean;
   discount?: number;
-}
-
-interface ProductGridProps {
-  fetchProducts: (
-    offset: number,
-    limit: number,
-    categoryId: string
-  ) => Promise<Product[]>;
-}
-
-const categoryMap: Record<string, string> = {
-  "1": "Brassiere",
-  "2": "Panties",
-  "3": "Shimmer Leggings",
-  "4": "New Arrivals",
-  "5": "Elite",
-  "6": "Combo Offer",
 };
 
-const ProductGrid: React.FC<ProductGridProps> = ({ fetchProducts }) => {
-  const isMobile = useMediaQuery("(max-width: 640px)");
-  const [searchParams] = useSearchParams();
-  const id = searchParams.get("id") || "1";
-  const category = categoryMap[id] || "Unknown";
+type ProductGridProps = {
+  fetchProducts: (offset: number, limit: number, categoryName: string) => Promise<Product[]>;
+  categoryName: string; // mandatory — grid will re-fetch when this changes
+  pageSize?: number;
+};
 
+const SkeletonGrid: React.FC<{ count: number; isMobile: boolean }> = ({ count, isMobile }) => {
+  const cols = isMobile ? 2 : 4;
+  const rows = Math.ceil(count / cols);
+  const items = new Array(rows * cols).fill(0);
+
+  return (
+    <div style={{ width: isMobile ? "95%" : "70%", margin: "0 auto" }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
+          gap: 20,
+        }}
+      >
+        {items.map((_, i) => (
+          <div
+            key={i}
+            style={{
+              height: 260,
+              borderRadius: 8,
+              background: "#f3f4f6",
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+              padding: 12,
+            }}
+          >
+            <div style={{ height: 160, background: "#e6e7e9", borderRadius: 6 }} />
+            <div style={{ height: 14, background: "#e6e7e9", width: "70%", borderRadius: 4 }} />
+            <div style={{ height: 12, background: "#e6e7e9", width: "40%", borderRadius: 4 }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const ProductGrid: React.FC<ProductGridProps> = ({ fetchProducts, categoryName, pageSize = 16 }) => {
+  const isMobile = useMediaQuery("(max-width: 640px)");
   const [items, setItems] = useState<Product[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [offset, setOffset] = useState(0);
-  const limit = 16;
+  const limit = pageSize;
 
+  // requestId prevents stale responses from overwriting newer state
+  const requestIdRef = useRef(0);
+
+  // Reset and initial load when categoryName changes
   useEffect(() => {
-    resetAndLoad();
-  }, [id]);
+    const currentRequestId = ++requestIdRef.current;
 
-  const resetAndLoad = async () => {
     setItems([]);
     setOffset(0);
     setHasMore(true);
-    const newItems = await fetchProducts(0, limit, id);
-    setItems(newItems);
-    if (newItems.length < limit) setHasMore(false);
-    setOffset(limit);
-  };
+
+    (async () => {
+      try {
+        const newItems = await fetchProducts(0, limit, categoryName || "");
+        console.log(newItems, "newItems")
+        if (currentRequestId !== requestIdRef.current) return; // stale
+        setItems(newItems);
+        setOffset(newItems.length);
+        setHasMore(newItems.length >= limit);
+      } catch (err) {
+        console.error("resetAndLoad error:", err);
+        if (currentRequestId !== requestIdRef.current) return;
+        setItems([]);
+        setHasMore(false);
+      }
+    })();
+
+    // cleanup not needed — next effect run increments requestIdRef, ignoring earlier responses
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryName]);
 
   const loadMore = async () => {
-    const newItems = await fetchProducts(offset, limit, id);
-    setItems((prev) => [...prev, ...newItems]);
-    setOffset((prev) => prev + limit);
-    if (newItems.length < limit) setHasMore(false);
+    const baseRequestId = ++requestIdRef.current;
+    try {
+      const newItems = await fetchProducts(offset, limit, categoryName || "");
+      if (baseRequestId !== requestIdRef.current) return; // stale
+      setItems((prev) => [...prev, ...newItems]);
+      setOffset((prev) => prev + newItems.length);
+      if (newItems.length < limit) setHasMore(false);
+    } catch (err) {
+      console.error("loadMore error:", err);
+      if (baseRequestId !== requestIdRef.current) return;
+      setHasMore(false);
+    }
   };
 
   return (
     <div style={{ padding: isMobile ? "10px 15px" : "2rem" }}>
-      <Text size="40px" fw={700} align="center" mb="lg" tt="capitalize">
-        {category}
+      <Text size="40px" fw={700} align="center" mb="lg" style={{ textTransform: "capitalize" }}>
+        {categoryName || "All Products"}
       </Text>
 
       <InfiniteScroll
@@ -89,10 +132,8 @@ const ProductGrid: React.FC<ProductGridProps> = ({ fetchProducts }) => {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: isMobile
-                ? "repeat(2, 1fr)"
-                : "repeat(4, 1fr)",
-              gap: "20px",
+              gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
+              gap: 20,
             }}
           >
             {items.map((item) => (
@@ -104,43 +145,14 @@ const ProductGrid: React.FC<ProductGridProps> = ({ fetchProducts }) => {
                   price={item.price}
                   originalPrice={item.originalPrice}
                   isNew={item.isNew}
-                  isOnSale={item.price < item.originalPrice} rating={0}                />
+                  isOnSale={Boolean(item.originalPrice && item.price && item.price < item.originalPrice)}
+                  rating={0}
+                />
               </div>
             ))}
           </div>
         </div>
       </InfiniteScroll>
-    </div>
-  );
-};
-
-const SkeletonGrid = ({
-  count,
-  isMobile,
-}: {
-  count: number;
-  isMobile: boolean;
-}) => {
-  return (
-    <div style={{ width: isMobile ? "95%" : "70%", margin: "0 auto" }}>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: isMobile
-            ? "repeat(2, 1fr)"
-            : "repeat(4, 1fr)",
-          gap: "20px",
-        }}
-      >
-        {Array.from({ length: count }).map((_, index) => (
-          <Card key={index} shadow="sm" padding="lg" radius="md" withBorder>
-            <Skeleton height={isMobile ? 150 : 220} />
-            <Skeleton height={20} mt="md" radius="xl" />
-            <Skeleton height={16} mt={10} width="60%" radius="xl" />
-            <Skeleton height={36} mt="md" radius="xl" />
-          </Card>
-        ))}
-      </div>
     </div>
   );
 };

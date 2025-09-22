@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { Carousel } from "@mantine/carousel";
 import { useMediaQuery } from "@mantine/hooks";
 import axiosInstance from "../../api/axiosInstance";
@@ -11,10 +11,11 @@ interface Banner {
   description: string;
   url: string;
   active: boolean;
+  bannerType?: "mobile" | "desktop" | string;
 }
 
 const HomeBanner: React.FC = () => {
-  const isMobile = useMediaQuery("(max-width: 768px)");
+  const isMobile = useMediaQuery("(max-width: 640px)");
   const [banners, setBanners] = useState<Banner[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);
   const emblaRef = useRef<any>(null);
@@ -25,7 +26,7 @@ const HomeBanner: React.FC = () => {
     try {
       const response = await axiosInstance.get(GET_HOME_BANNER);
       if (response?.data) {
-        setBanners(response?.data);
+        setBanners(response.data);
       }
     } catch (error) {
       console.error("Failed to fetch banners:", error);
@@ -36,81 +37,111 @@ const HomeBanner: React.FC = () => {
     getAllBanners();
   }, []);
 
+  const visibleBanners = useMemo(() => {
+    const wanted = isMobile ? "mobile" : "desktop";
+    const filtered = banners.filter((b) => b.bannerType === wanted && b.active);
+    if (filtered.length > 0) return filtered;
+    const other = banners.filter((b) => b.bannerType !== wanted && b.active);
+    if (other.length > 0) return other;
+    return banners.filter((b) => b.active);
+  }, [banners, isMobile]);
+
   const handleNavigation = (str?: string) => {
+    if (!str) return;
     navigate(`/${str}`);
   };
 
-  // autoplay logic
   useEffect(() => {
-    if (banners.length > 0 && emblaRef.current) {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      intervalRef.current = setInterval(() => {
-        setCurrentSlide((prev) => (prev + 1) % banners.length);
-      }, 3000);
+    if (visibleBanners.length === 0) {
+      setCurrentSlide(0);
+      return;
     }
+
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % visibleBanners.length);
+    }, 3000);
+
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
+      intervalRef.current = null;
     };
-  }, [banners]);
+  }, [visibleBanners]);
 
   useEffect(() => {
-    if (emblaRef.current) {
-      emblaRef.current.scrollTo(currentSlide);
+    if (emblaRef.current && typeof emblaRef.current.scrollTo === "function") {
+      try {
+        emblaRef.current.scrollTo(currentSlide);
+      } catch {
+        /* ignore scroll errors */
+      }
     }
   }, [currentSlide]);
 
-  return (
-    <div
-      className={`relative w-full rounded-2xl overflow-hidden ${
-        isMobile ? "h-[220px]" : "aspect-[16/9] max-h-[820px]"
-      }`}
-    >
-      <Carousel
-        withIndicators={false}
-        withControls={false}
-        loop
-        slideSize="100%"
-        slideGap={0}
-        getEmblaApi={(api) => (emblaRef.current = api)}
-        className="w-full h-full"
-      >
-        {banners.map((banner) => (
-          <Carousel.Slide
-            key={banner._id}
-            onClick={() => handleNavigation("category?id=1")}
-          >
-            <img
-              src={banner.url}
-              alt={banner.title}
-              className="w-full h-full object-cover"
-            />
-          </Carousel.Slide>
-        ))}
-      </Carousel>
+  // Outer full-bleed wrapper
+  const bleedStyle: React.CSSProperties = {
+    position: "relative",
+    left: "50%",
+    right: "50%",
+    marginLeft: "-50vw",
+    marginRight: "-50vw",
+    width: "100vw",
+    overflow: "hidden",
+  };
 
-      {/* Example overlay (optional) */}
-      {/*
-      <div className="absolute left-4 sm:left-8 top-1/2 -translate-y-1/2 text-left p-4">
-        <h1 className="mb-2">
-          <img src={Logo} alt="TO IMPRESS" className="h-6 sm:h-8 md:h-10 lg:h-12" />
-        </h1>
-        <p
-          className={`${
-            isMobile ? "text-[12px]" : "text-[40px]"
-          } font-semibold text-gray-800 leading-tight`}
+  // Inner container: desktop uses aspect ratio, mobile uses your exact dimensions
+  const innerStyle: React.CSSProperties = isMobile
+    ? {
+        width: "100%", // always full width on small screen
+        height: "620px", // your given mobile height
+        minWidth: "479px", // min mobile width
+        maxWidth: "100vw",
+        marginLeft: "auto",
+        marginRight: "auto",
+        borderRadius: 0,
+        overflow: "hidden",
+      }
+    : {
+        width: "clamp(479px, 100vw, 1920px)",
+        aspectRatio: "1920 / 741",
+        marginLeft: "auto",
+        marginRight: "auto",
+        borderRadius: 16,
+        overflow: "hidden",
+      };
+
+  return (
+    <div style={bleedStyle}>
+      <div style={innerStyle} className="relative">
+        <Carousel
+          withIndicators={false}
+          withControls={false}
+          loop
+          slideSize="100%"
+          slideGap={0}
+          getEmblaApi={(api) => (emblaRef.current = api)}
+          className="w-full h-full"
         >
-          Finding the <span className="text-green-500">Perfect Fit</span> Has Never Been This Simple!
-        </p>
-        <button
-          className={`bg-green-500 hover:bg-green-600 text-white font-bold rounded-full shadow-lg transition duration-300 ease-in-out mt-3 ${
-            isMobile ? "py-2 px-4 text-[12px]" : "py-3 px-6 text-base"
-          }`}
-          onClick={() => navigate("/fit")}
-        >
-          Calculate Your Size
-        </button>
+          {visibleBanners.map((banner) => (
+            <Carousel.Slide
+              key={banner._id}
+              onClick={() => handleNavigation("category?name=Brassiere")}
+              style={{ width: "100%", height: "100%", cursor: "pointer" }}
+            >
+              <img
+                src={banner.url}
+                alt={banner.title}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: isMobile ? "contain" : "cover",
+                  display: "block",
+                }}
+              />
+            </Carousel.Slide>
+          ))}
+        </Carousel>
       </div>
-      */}
     </div>
   );
 };

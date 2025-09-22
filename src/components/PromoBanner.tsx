@@ -25,7 +25,7 @@ function BannerCard({ headline, percent, tail, label }: Banner) {
 
   return (
     <Box
-      onClick={() => navigate("/category?id=1")} // 👈 navigate on click
+      onClick={() => navigate("/category?name=Brassiere")} // 👈 navigate on click
       style={{
         background: DARK,
         borderRadius: 16,

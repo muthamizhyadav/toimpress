@@ -1,3 +1,4 @@
+// src/pages/Checkout.tsx
 import {
   Container,
   Grid,
@@ -17,7 +18,7 @@ import {
   Badge,
   Paper,
 } from "@mantine/core";
-import { IconMinus, IconPlus, IconTrash, IconInfoCircle } from "@tabler/icons-react";
+import { IconMinus, IconPlus, IconTrash, IconInfoCircle, IconRefresh } from "@tabler/icons-react";
 import { useMemo, useState, useEffect, useCallback } from "react";
 import axiosInstance from "../../api/axiosInstance";
 import SmallHeader from "../../components/SmallHeader";
@@ -35,13 +36,13 @@ import { useSelector } from "react-redux";
 const RAZORPAY_KEY_ID = import.meta.env.VITE_RZP_KEY_ID as string;
 const CREATE_ORDER_URL = "/payments/razorpay/order";
 const VERIFY_URL = "/payments/razorpay/verify";
-const SERVER_CREATE_ORDER_URL = "/orders"; 
-const DELHIVERY_SHIPMENT_URL = "/delhivery/shipment"; 
+const SERVER_CREATE_ORDER_URL = "/orders";
+const DELHIVERY_SHIPMENT_URL = "/delhivery/shipment";
 
 // GST percent (5%)
 const GST_PERCENT = 0.05;
-const COD_TOKEN = 100; 
-const COD_SHIPPING = 50; 
+const COD_TOKEN = 100;
+const COD_SHIPPING = 50;
 
 // Colour tokens requested
 const DARK_GREEN = "#133215";
@@ -216,6 +217,8 @@ export default function Checkout() {
   // Redux selectors (adapt to your store shape if needed)
   const reduxUser = useSelector((state: any) => state.auth?.user ?? state.user?.user ?? null);
   const reduxAddress = useSelector((state: any) => state.auth?.user?.address ?? state.user?.user?.address ?? state.address ?? null);
+
+  console.log(reduxUser, "reduxUser")
 
   const [user, setUser] = useState<any>(null);
   const [storedUserAddress, setStoredUserAddress] = useState<any>(null);
@@ -527,6 +530,7 @@ export default function Checkout() {
         product: it.productId ?? it.id,
         quantity: it.qty,
         selectedSize: it.size ?? undefined,
+        productUrl: it.image ?? ''
       })),
       shippingAddress: shippingAddress ?? {},
       billingAddress: billingAddress ?? shippingAddress ?? {},
@@ -570,24 +574,25 @@ export default function Checkout() {
     meta?: any;
   }) {
     // build address fields tolerant to different shapes
-    const name = address?.name ?? address?.fullname ?? reduxUser?.name ?? "Customer";
+    const reduxUserData = reduxUser?.address?.[0] ?? address;
+    const name = reduxUserData?.name ?? "Customer";
     const streetParts: string[] = [];
-    if (address?.street) streetParts.push(address.street);
-    if (address?.addressLine1) streetParts.push(address.addressLine1);
-    if (address?.addressLine2) streetParts.push(address.addressLine2);
-    if (address?.add) streetParts.push(address.add);
-    if (address?.city) streetParts.push(address.city);
-    const add = streetParts.join(", ") || (address?.add ?? "");
-    const pin = address?.pinCode ?? address?.pin ?? address?.zipCode ?? address?.zipcode ?? "";
-    const city = address?.city ?? "";
-    const state = address?.state ?? "";
-    const country = address?.country ?? "India";
-    const phone = address?.phone ?? address?.mobile ?? reduxUser?.mobile ?? reduxUser?.phone ?? "0000000000";
+    if (reduxUserData?.street) streetParts.push(reduxUserData.street);
+    if (reduxUserData?.line1) streetParts.push(reduxUserData.line1);
+    if (reduxUserData?.line2) streetParts.push(reduxUserData.line2);
+    if (reduxUserData?.city) streetParts.push(reduxUserData.city);
+    if (reduxUserData?.state) streetParts.push(reduxUserData.state);
+    const add = streetParts.join(", ") || (reduxUserData?.street ?? "");
+    const pin = reduxUserData?.zip ?? address?.pin ?? address?.zipCode ?? address?.zipcode ?? "";
+    const city = reduxUserData?.city ?? "";
+    const state = reduxUserData?.state ?? "";
+    const country = reduxUserData?.country ?? "India";
+    const phone = reduxUserData?.phone ?? address?.mobile ?? reduxUser?.mobile ?? reduxUser?.phone ?? "0000000000";
 
     const products_desc = items.map((it) => `${it.title} x${it.qty}`).join(", ");
     const quantity = items.reduce((s, it) => s + (it.qty ?? 0), 0).toString();
     const total_amount = String(totalsLocal?.grandTotal ?? totalsLocal?.subtotal ?? 0);
-    const cod_amount = paymentMethod === "COD" ? String(totalsLocal?.amountToChargeOnDelivery ?? totalsLocal?.grandTotal ?? 0) : "0";
+    const cod_amount = paymentMethod === "COD" || paymentMethod === "cod_token" ? String(totalsLocal?.amountToChargeOnDelivery ?? totalsLocal?.grandTotal ?? 0) : "0";
     const order_date = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
 
     const shipments = [
@@ -599,7 +604,7 @@ export default function Checkout() {
         state,
         country,
         phone: String(phone),
-        order: orderNumber,
+        orderId: orderNumber,
         products_desc,
         cod_amount,
         order_date,
@@ -609,7 +614,7 @@ export default function Checkout() {
     ];
 
     const token =
-      (reduxUser && (reduxUser.token ?? reduxUser.accessAccess??reduxUser.accessToken??reduxUser.authToken)) ?? null; // tolerant
+      (reduxUser && (reduxUser.token ?? reduxUser.accessToken ?? reduxUser.authToken)) ?? null;
 
     const headers: any = { "Content-Type": "application/json" };
     if (token) headers.Authorization = `Bearer ${token}`;
@@ -686,15 +691,19 @@ export default function Checkout() {
                 });
               }
 
-              // Attempt to create delhivery shipment if we have an order number
+              // Attempt to create delhivery shipment if we have an order identifier
               try {
-                const orderNumber =
-                  (createdOrder && (createdOrder.orderNumber ?? createdOrder.data?.orderNumber ?? createdOrder.orderId ?? createdOrder.id)) ??
-                  (createdOrder?.orderId ?? createdOrder?.id ?? `ORDER${Date.now()}`);
+                const serverOrderId =
+                  createdOrder?.data?.id ||
+                  createdOrder?.id ||
+                  createdOrder?.orderNumber ||
+                  createdOrder?.orderId ||
+                  (createdOrder && (createdOrder.data?.orderNumber || createdOrder.data?.orderId)) ||
+                  `ORDER${Date.now()}`;
 
-                if (orderNumber) {
+                if (serverOrderId) {
                   await createDelhiveryShipment({
-                    orderNumber: String(orderNumber),
+                    orderNumber: String(serverOrderId),
                     items,
                     address: flatUserAddress,
                     paymentMethod: "online",
@@ -791,13 +800,17 @@ export default function Checkout() {
 
         // create delhivery shipment with cod amount = orderTotal
         try {
-          const orderNumber =
-            (createdOrder && (createdOrder.orderNumber ?? createdOrder.data?.orderNumber ?? createdOrder.orderId ?? createdOrder.id)) ??
-            (createdOrder?.orderId ?? createdOrder?.id ?? `ORDER${Date.now()}`);
+          const serverOrderId =
+            createdOrder?.data?.id ||
+            createdOrder?.id ||
+            createdOrder?.orderNumber ||
+            createdOrder?.orderId ||
+            (createdOrder && (createdOrder.data?.orderNumber || createdOrder.data?.orderId)) ||
+            `ORDER${Date.now()}`;
 
-          if (orderNumber) {
+          if (serverOrderId) {
             await createDelhiveryShipment({
-              orderNumber: String(orderNumber),
+              orderNumber: String(serverOrderId),
               items,
               address: flatUserAddress,
               paymentMethod: "cod",
@@ -884,13 +897,17 @@ export default function Checkout() {
 
               // create delhivery shipment; send cod_amount = remainingAmount
               try {
-                const orderNumber =
-                  (createdOrder && (createdOrder.orderNumber ?? createdOrder.data?.orderNumber ?? createdOrder.orderId ?? createdOrder.id)) ??
-                  (createdOrder?.orderId ?? createdOrder?.id ?? `ORDER${Date.now()}`);
+                const serverOrderId =
+                  createdOrder?.data?.id ||
+                  createdOrder?.id ||
+                  createdOrder?.orderNumber ||
+                  createdOrder?.orderId ||
+                  (createdOrder && (createdOrder.data?.orderNumber || createdOrder.data?.orderId)) ||
+                  `ORDER${Date.now()}`;
 
-                if (orderNumber) {
+                if (serverOrderId) {
                   await createDelhiveryShipment({
-                    orderNumber: String(orderNumber),
+                    orderNumber: String(serverOrderId),
                     items,
                     address: flatUserAddress,
                     paymentMethod: "cod_token",
@@ -990,43 +1007,6 @@ export default function Checkout() {
                       return null;
                     })}
                   </SimpleGrid>
-
-                  <Card withBorder mt="md" p="md">
-                    <Text fw={700} mb="sm">Apply Coupons</Text>
-                    <Group>
-                      <TextInput
-                        placeholder="Enter coupon code (e.g. SAVE10)"
-                        value={couponCode}
-                        onChange={(e) => setCouponCode(e.currentTarget.value)}
-                        style={{ flex: 1 }}
-                      />
-                      {!appliedCoupon ? (
-                        <Button
-                          onClick={applyCoupon}
-                          sx={{
-                            backgroundColor: LIGHT_GREEN,
-                            color: DARK_GREEN,
-                            "&:hover": { backgroundColor: "#84a864" },
-                          }}
-                        >
-                          Apply
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          onClick={removeCoupon}
-                          sx={{
-                            borderColor: LIGHT_GREEN,
-                            color: DARK_GREEN,
-                            "&:hover": { backgroundColor: "#f2fbf2" },
-                          }}
-                        >
-                          Remove
-                        </Button>
-                      )}
-                    </Group>
-                  </Card>
-
                 </Box>
               </Grid.Col>
 

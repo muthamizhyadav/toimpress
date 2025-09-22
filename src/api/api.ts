@@ -12,11 +12,14 @@ export const GET_OTP = API_URL+ "users/login/request-otp";
 export const VERIFY_OTP = API_URL + "Users/login/verify-otp";
 
 export const UPDATE_PROFILE = API_URL + "users";
+export const GET_PROFILE = API_URL + "users";
 export const API_CART = API_URL + "cart";
 export const API_CART_UPDATE = API_URL + "cart";
 
 export const API_GET_UPDATE = API_URL + "cart";
 export const API_DELETE_CART_PRODUCTS = "cart/"
 
+export const API_GET_CATEGORIES = "category"
+export const API_GET_CATEGORIES_PRODUCTS = "products/products/category/";
 
 export const LOGIN = API_URL + "auth/login";

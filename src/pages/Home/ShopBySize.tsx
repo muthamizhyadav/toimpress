@@ -24,7 +24,7 @@ export default function ShopBySize() {
 
   const handleNavigation = (size: string) => {
     // pass the size along so listing can pre-filter
-    navigate(`/category?id=1&size=${encodeURIComponent(size)}`);
+    navigate(`/category?name=Brassiere&size=${encodeURIComponent(size)}`);
   };
 
   return (
