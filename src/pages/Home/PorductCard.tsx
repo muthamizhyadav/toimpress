@@ -5,8 +5,9 @@ import { useNavigate } from "react-router-dom";
 import SizeSelectorDrawer from "../../components/SizeSelectorDrawer";
 import { showNotification } from "@mantine/notifications";
 import { IconCheck, IconX, IconInfoCircle } from "@tabler/icons-react";
-import { API_CART, API_GET_UPDATE } from "../../api/api";
+import { API_CART } from "../../api/api";
 import axiosInstance from "../../api/axiosInstance";
+import { useSelector } from "react-redux";
 
 // Colour tokens
 const DARK_GREEN = "#133215";
@@ -69,9 +70,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [lastSize, setLastSize] = useState<string | undefined>(undefined);
 
+  // authoritative cart items from redux (used to compute existing qty)
+  const cartItems: any[] = useSelector((s: any) => (s?.cart?.items ?? []) as any[]);
+
   const handleNavigation = () => navigate(`/product/?id=${id}`);
 
-  // derive qty from response payload if possible
+  // derive qty from response payload if possible (keeps local display accurate)
   const deriveQtyFromResponse = (respData: any) => {
     try {
       const payload = respData?.data ?? respData ?? {};
@@ -119,7 +123,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
     }
   };
 
-  // central POST helper
+  // central POST helper (sets absolute quantity for a variant)
   const postCartQuantity = async (newQuantity: number, selectedSize?: string) => {
     const body = {
       productId: String(id),
@@ -133,24 +137,42 @@ const ProductCard: React.FC<ProductCardProps> = ({
     return resp;
   };
 
+  // helper to find existing qty for this product+variant from redux
+  const getExistingQtyForVariant = (variantLabel?: string) => {
+    const label = variantLabel ?? "";
+    const found = cartItems.find((it: any) => {
+      const sameId = String(it.id) === String(id) || String(it.productId ?? "") === String(id);
+      const sameSize = (it.size ?? "") === (label ?? "");
+      const sameColor = (it.color ?? "") === (selectedColor ?? "");
+      return sameId && sameSize && sameColor;
+    });
+    return Number(found?.qty ?? 0);
+  };
+
   // handle confirm from drawer (initial add)
-  const handleConfirmSize = async (sel: { band: number; cup: string; label: string }) => {
+  // We ALWAYS compute authoritative existing qty from redux at the moment of confirm
+  const handleConfirmSize = async (sel: { band: number; cup: string; label: string; quantity?: number }) => {
     const chosen = sel.label;
     try {
       setSubmitting(true);
-      const response = await postCartQuantity(1, chosen);
 
-      if (response?.status === 200) {
+      // authoritative existing qty (from redux) — ensure we use this to compute absolute quantity to send
+      const existing = getExistingQtyForVariant(chosen);
+      const qtyToSend = existing + 1; // user clicked add -> increment by one
+
+      const response = await postCartQuantity(qtyToSend, chosen);
+
+      if (response?.status === 200 || response?.status === 201) {
         setLastSize(chosen);
 
         // best-effort update qty from API response
         const derived = deriveQtyFromResponse(response.data);
         if (!derived) {
-          // fallback: increment local qty by 1
-          setQty((q) => q + 1);
+          // fallback: set local qty to qtyToSend
+          setQty(qtyToSend);
         }
 
-        // notify header to re-fetch authoritative count
+        // notify other parts of the app to refresh if needed
         window.dispatchEvent(new Event("cart:updated"));
 
         showNotification({
@@ -190,13 +212,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
       }
 
       console.error("Increment/Decrement error:", err);
-    }
-    finally {
-          setSubmitting(false);
+    } finally {
+      setSubmitting(false);
+      // NOTE: intentionally do NOT close the drawer here so user can add more variants
     }
   };
 
-  // + handler
+  // + handler (explicit increment button)
   const handleAddMore = async () => {
     if (!lastSize) {
       setOpenSizeDrawer(true);
@@ -205,10 +227,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
     try {
       setSubmitting(true);
-      const nextQty = qty + 1;
+      // use redux-authoritative current qty (not local stale state)
+      const existing = getExistingQtyForVariant(lastSize);
+      const nextQty = existing + 1;
       const response = await postCartQuantity(nextQty, lastSize);
 
-      if (response?.status === 200) {
+      if (response?.status === 200 || response?.status === 201) {
         const derived = deriveQtyFromResponse(response.data);
         if (!derived) {
           setQty(nextQty);
@@ -244,7 +268,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
   // - handler
   const handleDecrement = async () => {
-    if (qty <= 0) return;
     if (!lastSize) {
       showNotification({
         title: "No variant selected",
@@ -257,10 +280,11 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
     try {
       setSubmitting(true);
-      const nextQty = Math.max(0, qty - 1);
+      const existing = getExistingQtyForVariant(lastSize);
+      const nextQty = Math.max(0, existing - 1);
       const response = await postCartQuantity(nextQty, lastSize);
 
-      if (response?.status === 200) {
+      if (response?.status === 200 || response?.status === 201) {
         const derived = deriveQtyFromResponse(response.data);
         if (!derived) {
           setQty(nextQty);
@@ -298,7 +322,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const showImagePromo = !!promo && !promo.applied;
 
   return (
-    <div className="rounded-xl shadow p-2 bg-white flex flex-col w-full">
+    <div className="rounded-xl shadow p-2 bg-white flex flex-col w-full h-full">
       <div
         className="relative w-full aspect-[4/4] overflow-hidden rounded-lg"
         onClick={handleNavigation}
@@ -308,33 +332,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
           {isOnSale && <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">Sale!</span>}
           {isNew && <span className="bg-cyan-500 text-white text-xs px-2 py-0.5 rounded-full">New</span>}
         </div>
-
-        {showImagePromo && (
-          <div
-            className="absolute right-2 bottom-2 z-20"
-            style={{
-              backgroundColor: "#f3fbf4",
-              border: `1px solid ${LIGHT_GREEN}`,
-              padding: "6px 8px",
-              borderRadius: 8,
-              boxShadow: "0 2px 6px rgba(0,0,0,0.06)",
-              maxWidth: "90%",
-            }}
-          >
-            <div style={{ whiteSpace: "nowrap", display: "flex", gap: 6, alignItems: "center" }}>
-              <span style={{ color: DARK_GREEN, fontWeight: 700, fontSize: 10 }}>
-                Buy above ₹{promo?.threshold ?? 1499}
-              </span>
-              <span style={{ color: DARK_GREEN, fontWeight: 700, fontSize: 10 }}>
-                get {promo?.discountPercent ?? 30}% off
-              </span>
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="mt-1 px-1 flex flex-col justify-between flex-grow gap-1">
-        <div>
+        <div className="flex-grow">
           <p className="text-sm md:text-base line-clamp-2 font-medium">
             {productName}
             {lastSize && <span className="text-xs ml-2 text-gray-600">({lastSize})</span>}
@@ -358,15 +359,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
           >
             {submitting ? "Adding..." : "Add to cart"}
           </button>
-
-          {/* Qty controls if qty > 0 */}
-          {/* {qty > 0 && (
-            <div className="flex items-center justify-between mt-2 gap-2">
-              <button className="px-3 py-1 border rounded" onClick={handleDecrement} disabled={submitting}>-</button>
-              <div>{qty} in cart</div>
-              <button className="px-3 py-1 border rounded" onClick={handleAddMore} disabled={submitting}>+</button>
-            </div>
-          )} */}
         </div>
       </div>
 
@@ -379,6 +371,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
         imageUrl={imageUrl}
         category={category}
         options={sizeOptions}
+        productId={id}
+        selectedColor={selectedColor}
       />
     </div>
   );

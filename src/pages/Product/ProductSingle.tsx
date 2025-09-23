@@ -195,7 +195,7 @@ export default function ProductPage() {
 
   const currentCartItem = cartItems?.find(
     (it: any) =>
-      it.id === productId &&
+      String(it.id) === String(productId) &&
       (it.size ?? "") === (selectedSize || "") &&
       (it.color ?? "") === (selectedColor || "")
   );
@@ -284,8 +284,6 @@ export default function ProductPage() {
     } finally {
       setAdding(mapKey, false);
     }
-
-
   };
 
   // main product handlers
@@ -340,6 +338,18 @@ export default function ProductPage() {
       }));
   };
 
+  // helper: get existing qty for a given pid/size/color from redux (authoritative)
+  const getExistingQtyForVariant = (pid: string | number, size?: string | undefined, color?: string | undefined) => {
+    if (!pid) return 0;
+    const found = cartItems.find((it: any) => {
+      const sameId = String(it.id) === String(pid) || String(it.productId ?? "") === String(pid);
+      const sameSize = (it.size ?? "") === (size ?? "");
+      const sameColor = (it.color ?? "") === (color ?? "");
+      return sameId && sameSize && sameColor;
+    });
+    return Number(found?.qty ?? 0);
+  };
+
   // similar product add — if it needs size, open drawer; otherwise call API directly
   const handleAddSimilarClicked = (p: any) => {
     const pid = p._id ?? p.id ?? String(p.product ?? Date.now());
@@ -378,12 +388,16 @@ export default function ProductPage() {
   };
 
   // when drawer confirms for a similar product
-  const onDrawerConfirm = async (sel: { band: number; cup: string; label: string }) => {
+  // sel now may contain quantity (but we compute authoritative qty here)
+  const onDrawerConfirm = async (sel: { band: number; cup: string; label: string; quantity?: number }) => {
     const chosen = sel.label;
-    // if drawerProduct is null => it was main product (we still support)
+
+    // if drawerProduct is null => it was main product
     if (!drawerProduct) {
-      // main product flow
-      const payload = makeCartPayload(chosen, 1);
+      // main product flow: compute existing qty for main product & selected size/color
+      const existing = getExistingQtyForVariant(productId as string, chosen, selectedColor || undefined);
+      const qtyToSend = existing + 1;
+      const payload = makeCartPayload(chosen, qtyToSend);
       await addToCartApi(payload, undefined, "current");
       setOpenSizeDrawer(false);
       return;
@@ -392,11 +406,16 @@ export default function ProductPage() {
     // similar product flow
     const p = drawerProduct;
     const pid = p._id ?? p.id ?? String(p.product ?? Date.now());
+    const thisColor = (p.selectedColors && p.selectedColors[0]) || undefined;
+    // authoritative existing qty from redux
+    const existing = getExistingQtyForVariant(pid, chosen, thisColor);
+    const qtyToSend = existing + 1;
+
     const payload = {
       productId: pid,
-      quantity: 1,
+      quantity: qtyToSend,
       selectedSize: chosen,
-      selectedColor: (p.selectedColors && p.selectedColors[0]) || undefined,
+      selectedColor: thisColor,
     };
     const reduxItem = {
       id: pid,
@@ -407,9 +426,9 @@ export default function ProductPage() {
       price: p.salePrice ?? p.price,
       originalPrice: p.price,
       rating: 0,
-      qty: 1,
+      qty: qtyToSend,
       size: chosen,
-      color: (p.selectedColors && p.selectedColors[0]) || undefined,
+      color: thisColor,
       silent: true,
     };
 
@@ -425,7 +444,7 @@ export default function ProductPage() {
   };
 
   // -------------------
-  // JSX
+  // JSX (unchanged from your version)
   // -------------------
   return (
     <Container size="xl" py="md">
@@ -633,8 +652,6 @@ export default function ProductPage() {
                 >
                   Buy Now
                 </Button>
-
-               
               </>
             )}
           </Group>
@@ -775,6 +792,8 @@ export default function ProductPage() {
         price={drawerProduct ? (drawerProduct.salePrice ?? drawerProduct.price) : (salePriceInput ?? priceInput)}
         imageUrl={drawerProduct ? ((drawerProduct.images && drawerProduct.images[0]) || drawerProduct.image || "") : (mainImage || imagesInput?.[0] || "")}
         options={drawerProduct ? buildSizeOptionsForProduct(drawerProduct) : (sizeOptions.length ? sizeOptions : undefined)}
+        productId={drawerProduct ? (drawerProduct._id ?? drawerProduct.id) : productId}
+        selectedColor={drawerProduct ? ((drawerProduct.selectedColors && drawerProduct.selectedColors[0]) || undefined) : selectedColor}
       />
 
       {/* Return / Exchange Policy Drawer (bottom on mobile, right on desktop) */}

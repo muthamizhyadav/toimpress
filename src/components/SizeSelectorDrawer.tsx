@@ -1,7 +1,7 @@
-// components/SizeSelectorDrawer.tsx
 import React, { useEffect, useMemo, useState } from "react";
 import { Drawer, Button, Badge } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 
 export type SizeOption = {
   band: number;
@@ -13,12 +13,18 @@ export type SizeOption = {
 type Props = {
   opened: boolean;
   onClose: () => void;
-  onConfirm: (payload: { band: number; cup: string; label: string }) => void;
+  /**
+   * onConfirm now receives quantity (optional) computed by drawer.
+   * Parent should use sel.quantity (if provided) as the desired quantity to send to API.
+   */
+  onConfirm: (payload: { band: number; cup: string; label: string; quantity?: number }) => void;
   productTitle: string;
   price: number;
   imageUrl: string;
   options?: SizeOption[];
   category?: string | any;
+  productId?: string | number; // NEW: used to lookup current variant qty in redux
+  selectedColor?: string | undefined; // NEW: used to lookup exact variant in redux
 };
 
 const BAND_TABLE: any[] = [
@@ -67,6 +73,8 @@ export default function SizeSelectorDrawer({
   category,
   imageUrl,
   options = buildOptionsFromBandTable(),
+  productId,
+  selectedColor,
 }: Props) {
   // internal mode union
   type Mode = "Brassiere" | "Panties" | "Both";
@@ -78,6 +86,9 @@ export default function SizeSelectorDrawer({
   const [pantySize, setPantySize] = useState<string | null>(null);
 
   const navigate = useNavigate();
+
+  // get redux cart items to compute current qty per variant
+  const cartItems: any[] = useSelector((s: any) => (s?.cart?.items ?? []) as any[]);
 
   // compute cup list and band info
   const cupList = useMemo(() => {
@@ -112,11 +123,29 @@ export default function SizeSelectorDrawer({
     // don't forcibly change mode if parent didn't specify; keep current selection
   }, [category]);
 
+  // helper: compute existing qty for current variant from redux cart
+  const getExistingQtyForVariant = (variantLabel?: string) => {
+    if (!productId) return 0;
+    const label = variantLabel ?? "";
+    // find exact match: id equality + size + color
+    const found = cartItems.find((it) => {
+      // cart's `id` field may contain product id; tolerant matching
+      const sameId = String(it.id) === String(productId) || String(it.productId ?? "") === String(productId);
+      const sameSize = (it.size ?? "") === (label ?? "");
+      const sameColor = (it.color ?? "") === (selectedColor ?? "");
+      return sameId && sameSize && sameColor;
+    });
+    return Number(found?.qty ?? 0);
+  };
+
   const confirmSize = () => {
     if (mode === "Brassiere") {
       if (!band || !cup) return;
       const label = `${band}${cup}`;
-      onConfirm({ band, cup, label });
+      // compute existing qty and return quantity = existing + 1
+      const existing = getExistingQtyForVariant(label);
+      const quantity = existing + 1;
+      onConfirm({ band, cup, label, quantity });
       return;
     }
 
@@ -124,8 +153,10 @@ export default function SizeSelectorDrawer({
       if (!pantySize) return;
       const sizeObj = PANTY_SIZES.find((s) => s.label === pantySize)!;
       const label = `${sizeObj.label} (${sizeObj.hip})`;
+      const existing = getExistingQtyForVariant(sizeObj.label);
+      const quantity = existing + 1;
       // keep payload shape: band=0 marks panty
-      onConfirm({ band: 0, cup: sizeObj.label, label });
+      onConfirm({ band: 0, cup: sizeObj.label, label, quantity });
       return;
     }
   };
@@ -143,9 +174,7 @@ export default function SizeSelectorDrawer({
   };
 
   // Checkout flow: confirm selection (if valid) then navigate to checkout and close drawer.
-  // Note: onConfirm in parent may be async; we call it and then navigate immediately.
   const handleCheckout = () => {
-    // validate and call onConfirm
     if (mode === "Brassiere") {
       if (!band || !cup) return;
     } else {

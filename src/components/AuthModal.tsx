@@ -9,10 +9,11 @@ import {
   Container,
   Tabs,
   PinInput,
+  Group,
 } from "@mantine/core";
 import { showNotification } from "@mantine/notifications";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMediaQuery } from "@mantine/hooks";
 import ToImpressLogo from "../../src/assets/svg/ToImpressLogo.svg";
 import { useDispatch } from "react-redux";
@@ -20,6 +21,8 @@ import { login } from "../redux/features/authSlice";
 import axios from "axios";
 import { GET_OTP, VERIFY_OTP } from "../api/api.ts";
 import { useAuth } from "../assets/hooks/useAuth";
+
+const RESEND_DELAY_SECONDS = 30;
 
 const AuthModal = () => {
   const navigate = useNavigate();
@@ -42,14 +45,49 @@ const AuthModal = () => {
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
 
+  const [resendTimer, setResendTimer] = useState<number>(0);
+  const resendIntervalRef = useRef<number | null>(null);
+
   const isMobile = useMediaQuery("(max-width: 768px)");
-  
 
   // helper: sanitize numeric input and optionally limit length
   const onlyDigits = (value: string, maxLen?: number) => {
     const digits = value.replace(/\D/g, "");
     return typeof maxLen === "number" ? digits.slice(0, maxLen) : digits;
   };
+
+  // starts or restarts the resend countdown
+  const startResendCountdown = (seconds = RESEND_DELAY_SECONDS) => {
+    // clear any existing interval
+    if (resendIntervalRef.current) {
+      window.clearInterval(resendIntervalRef.current);
+      resendIntervalRef.current = null;
+    }
+    setResendTimer(seconds);
+    resendIntervalRef.current = window.setInterval(() => {
+      setResendTimer((prev) => {
+        if (prev <= 1) {
+          // clear interval when reach 0
+          if (resendIntervalRef.current) {
+            window.clearInterval(resendIntervalRef.current);
+            resendIntervalRef.current = null;
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  useEffect(() => {
+    return () => {
+      // cleanup on unmount
+      if (resendIntervalRef.current) {
+        window.clearInterval(resendIntervalRef.current);
+        resendIntervalRef.current = null;
+      }
+    };
+  }, []);
 
   const handleSendOtp = async () => {
     setError(null);
@@ -76,6 +114,9 @@ const AuthModal = () => {
         setOtpSent(true);
         setError(null);
         setMobile(sanitized);
+
+        // start 30s resend countdown
+        startResendCountdown(RESEND_DELAY_SECONDS);
 
         showNotification({
           title: "OTP sent",
@@ -246,6 +287,86 @@ const AuthModal = () => {
     }
   };
 
+  // UI helpers
+  const renderSendOtpBlock = () => (
+    <Stack>
+      <TextInput
+        placeholder="Enter Mobile Number"
+        value={mobile}
+        onChange={(e) => {
+          // allow only digits and limit to 10 chars
+          setMobile(onlyDigits(e.currentTarget.value, 10));
+        }}
+        radius="xl"
+        size="md"
+        inputMode="numeric"
+        maxLength={10}
+      />
+      <Button
+        radius="xl"
+        size="md"
+        onClick={handleSendOtp}
+        loading={sendingOtp}
+        styles={{
+          root: {
+            background: "linear-gradient(135deg, #96BD75 0%, #659D50 100%)",
+            color: "white",
+            fontWeight: 600,
+          },
+        }}
+      >
+        Send OTP
+      </Button>
+    </Stack>
+  );
+
+  const renderOtpEntryBlock = () => (
+    <Stack align="center" spacing="md" style={{ width: "100%" }}>
+      <Text ta="center">Enter the 6-digit OTP sent to {mobile}</Text>
+
+      <PinInput
+        length={6}
+        value={otp}
+        onChange={(val) => {
+          // ensure numeric only and max length 6
+          setOtp(onlyDigits(val, 6));
+        }}
+        radius="xl"
+        size="lg"
+        inputMode="numeric"
+      />
+
+      <Group position="apart" style={{ width: "100%" }}>
+        <Button
+          radius="xl"
+          size="md"
+          onClick={handleVerifyOtp}
+          loading={verifyingOtp}
+          styles={{
+            root: {
+              background: "linear-gradient(135deg, #96BD75 0%, #659D50 100%)",
+              color: "white",
+              fontWeight: 600,
+            },
+          }}
+        >
+          Verify OTP
+        </Button>
+
+        {/* Resend button + timer */}
+        <Button
+          radius="xl"
+          size="md"
+          variant="subtle"
+          onClick={handleSendOtp}
+          disabled={sendingOtp || resendTimer > 0}
+        >
+          {resendTimer > 0 ? `Resend OTP (${resendTimer}s)` : "Resend OTP"}
+        </Button>
+      </Group>
+    </Stack>
+  );
+
   return (
     <Container size="xs" px="md" py={isMobile ? 40 : 80}>
       <Stack align="center" gap="lg">
@@ -289,70 +410,8 @@ const AuthModal = () => {
 
             {/* LOGIN TAB - OTP based */}
             <Tabs.Panel value="login" pt="md">
-              {!otpSent ? (
-                <Stack>
-                  <TextInput
-                    placeholder="Enter Mobile Number"
-                    value={mobile}
-                    onChange={(e) => {
-                      // allow only digits and limit to 10 chars
-                      setMobile(onlyDigits(e.currentTarget.value, 10));
-                    }}
-                    radius="xl"
-                    size="md"
-                    inputMode="numeric"
-                    maxLength={10}
-                  />
-                  <Button
-                    radius="xl"
-                    size="md"
-                    onClick={handleSendOtp}
-                    loading={sendingOtp}
-                    styles={{
-                      root: {
-                        background:
-                          "linear-gradient(135deg, #96BD75 0%, #659D50 100%)",
-                        color: "white",
-                        fontWeight: 600,
-                      },
-                    }}
-                  >
-                    Send OTP
-                  </Button>
-                </Stack>
-              ) : (
-                <Stack align="center">
-                  <Text ta="center">Enter the 6-digit OTP sent to {mobile}</Text>
-                  <PinInput
-                    length={6}
-                    value={otp}
-                    onChange={(val) => {
-                      // ensure numeric only and max length 6
-                      setOtp(onlyDigits(val, 6));
-                    }}
-                    radius="xl"
-                    size="lg"
-                    // hint mobile browsers to show numeric keyboard
-                    inputMode="numeric"
-                  />
-                  <Button
-                    radius="xl"
-                    size="md"
-                    onClick={handleVerifyOtp}
-                    loading={verifyingOtp}
-                    styles={{
-                      root: {
-                        background:
-                          "linear-gradient(135deg, #96BD75 0%, #659D50 100%)",
-                        color: "white",
-                        fontWeight: 600,
-                      },
-                    }}
-                  >
-                    Verify OTP
-                  </Button>
-                </Stack>
-              )}
+              {!otpSent ? renderSendOtpBlock() : renderOtpEntryBlock()}
+
               {error && (
                 <Text c="red" size="sm" ta="center" mt="sm">
                   {error}
@@ -363,63 +422,9 @@ const AuthModal = () => {
             {/* SIGN UP TAB */}
             <Tabs.Panel value="signup" pt="md">
               {!otpSent ? (
-                <Stack>
-                  <TextInput
-                    placeholder="Enter Mobile Number"
-                    value={mobile}
-                    onChange={(e) =>
-                      setMobile(onlyDigits(e.currentTarget.value, 10))
-                    }
-                    radius="xl"
-                    size="md"
-                    inputMode="numeric"
-                    maxLength={10}
-                  />
-                  <Button
-                    radius="xl"
-                    size="md"
-                    onClick={handleSendOtp}
-                    loading={sendingOtp}
-                    styles={{
-                      root: {
-                        background:
-                          "linear-gradient(135deg, #96BD75 0%, #659D50 100%)",
-                        color: "white",
-                        fontWeight: 600,
-                      },
-                    }}
-                  >
-                    Send OTP
-                  </Button>
-                </Stack>
+                renderSendOtpBlock()
               ) : !profileStep ? (
-                <Stack align="center">
-                  <Text ta="center">Enter the 6-digit OTP sent to {mobile}</Text>
-                  <PinInput
-                    length={6}
-                    value={otp}
-                    onChange={(val) => setOtp(onlyDigits(val, 6))}
-                    radius="xl"
-                    size="lg"
-                    inputMode="numeric"
-                  />
-                  <Button
-                    radius="xl"
-                    size="md"
-                    onClick={handleVerifyOtp}
-                    loading={verifyingOtp}
-                    styles={{
-                      root: {
-                        background:
-                          "linear-gradient(135deg, #96BD75 0%, #659D50 100%)",
-                        color: "white",
-                        fontWeight: 600,
-                      },
-                    }}
-                  >
-                    Verify OTP
-                  </Button>
-                </Stack>
+                renderOtpEntryBlock()
               ) : (
                 <Stack>
                   <TextInput

@@ -4,11 +4,8 @@ import { useMediaQuery } from "@mantine/hooks";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { MobileMenuDrawer, UseMobileMenuDrawer } from "./MobileMenuDrawer";
-import { MobileCartDrawer } from "./MobileCartDrawer";
 import { useAuth } from "../assets/hooks/useAuth";
-import { IconCheck, IconUserFilled, IconX } from "@tabler/icons-react";
-import { useDispatch } from "react-redux";
-import { openCart } from "../redux/features/cartSlice";
+import { IconUserFilled, IconX } from "@tabler/icons-react";
 import axiosInstance from "../api/axiosInstance"; // adjust path if needed
 import { API_GET_CATEGORIES, API_GET_UPDATE } from "../api/api";
 import { showNotification } from "@mantine/notifications";
@@ -21,7 +18,6 @@ export default function Header() {
   const isMobile = useMediaQuery("(max-width: 640px)");
   const menu = UseMobileMenuDrawer();
 
-  const dispatch = useDispatch();
   const [cartCount, setCartCount] = useState<number>(0);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -30,7 +26,7 @@ export default function Header() {
     Array<{ _id: string; categoryTitle: string; imageUrl?: string; active?: boolean }>
   >([]);
 
-  console.log(categories, "categories")
+  console.log(categories, "categories");
 
   // isSelected now works with category _id strings
   const isSelected = (id: string | null) =>
@@ -138,9 +134,9 @@ export default function Header() {
             <div
               className="relative mr-4 cursor-pointer"
               onClick={() => {
-                // Optionally refresh before opening
+                // refresh before navigating and then go to checkout
                 fetchCartCount();
-                dispatch(openCart());
+                navigate("/checkout");
               }}
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -162,7 +158,6 @@ export default function Header() {
         )}
 
         <MobileMenuDrawer opened={menu.opened} onClose={menu.close} />
-        <MobileCartDrawer />
 
         <div className="hidden lg:flex ml-5 flex-col gap-5 w-full md:flex md:flex-col md:gap-5 md:w-full">
           <div className="hidden lg:w-full lg:flex md:flex md:w-full ">
@@ -194,7 +189,13 @@ export default function Header() {
                 <div className="flex cursor-pointer" onClick={() => handleNavigation("category?name=Brassiere")}>
                   <span className="ml-2 text-[#252C32] "> Favorites </span>
                 </div>
-                <div className="relative flex cursor-pointer" onClick={() => { fetchCartCount(); dispatch(openCart()); }}>
+                <div
+                  className="relative flex cursor-pointer"
+                  onClick={() => {
+                    fetchCartCount();
+                    navigate("/checkout");
+                  }}
+                >
                   {cartCount > 0 && (
                     <span className="absolute -top-1 -right-1 bg-[#8BB06E] text-white text-[10px] px-1.5 py-[2px] rounded-full">
                       {cartCount}
@@ -234,9 +235,7 @@ export default function Header() {
                 ))
               ) : (
                 // fallback while loading or if no categories
-                <>
-                  loading
-                </>
+                <>loading</>
               )}
             </ul>
           </div>

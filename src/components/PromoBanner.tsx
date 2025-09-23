@@ -14,10 +14,10 @@ const DARK = "#133215";
 const LIGHT = "#92B775";
 
 const cards: Banner[] = [
-  { headline: "FLAT", percent: "50%", tail: "OFF", label: "BRAS" },
-  { headline: "FLAT", percent: "30%", tail: "OFF", label: "MODAL PANTY" },
-  { headline: "FLAT", percent: "20%", tail: "OFF", label: "NIGHTWEAR" },
-  { headline: "FLAT", percent: "20%", tail: "OFF", label: "ACTIVEWEAR" },
+  { headline: "FLAT", percent: "50%", tail: "OFF", label: "Brassiere" },
+  { headline: "FLAT", percent: "30%", tail: "OFF", label: "Panties" },
+  { headline: "FLAT", percent: "20%", tail: "OFF", label: "Combo" },
+  { headline: "FLAT", percent: "20%", tail: "OFF", label: "Offer Zone" },
 ];
 
 function BannerCard({ headline, percent, tail, label }: Banner) {
@@ -25,7 +25,7 @@ function BannerCard({ headline, percent, tail, label }: Banner) {
 
   return (
     <Box
-      onClick={() => navigate("/category?name=Brassiere")} // 👈 navigate on click
+      onClick={() => navigate(`/category?name=${label}`)} // 👈 navigate on click
       style={{
         background: DARK,
         borderRadius: 16,

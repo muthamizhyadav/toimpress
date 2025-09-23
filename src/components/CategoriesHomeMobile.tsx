@@ -1,27 +1,128 @@
+// CategoriesHomeMobile.tsx
 import { Grid, Card, Text, rem, Image, Box } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import axiosInstance from "../api/axiosInstance";
+import { API_GET_CATEGORIES } from "../api/api";
+import { showNotification } from "@mantine/notifications";
+import { IconX } from "@tabler/icons-react";
 
+// local icons
 import Bra_Logo from "../assets/images/Bra_Logo.jpg";
 import Elite_Logo from "../assets/images/Elite_Logo.jpg";
 import Lingerie_Logo from "../assets/images/Lingerie_Logo.jpg";
 import New_Arrivals_Logo from "../assets/images/New_Arrivals.jpg";
 import Panties_Logo from "../assets/images/Panties_Logo.jpg";
 
-type Category = { label: string; icon: string; id: string };
+// default/fallback icon
+const Default_Logo = Lingerie_Logo;
 
-const categories: Category[] = [
-  { id: "1", label: "BRA",          icon: Bra_Logo },
-  { id: "2", label: "PANTIES",      icon: Panties_Logo },
-  { id: "5", label: "COMBO",        icon: Lingerie_Logo },
-  { id: "3", label: "ELITE",        icon: Elite_Logo },
-  { id: "4", label: "NEW ARRIVALS", icon: New_Arrivals_Logo },
+type CategoryFromApi = {
+  id?: string | number;
+  _id?: string;
+  name?: string;
+  title?: string;
+  label?: string;
+  categoryTitle?: string;
+  [k: string]: any;
+};
+
+type Category = { id: string; label: string; icon: string; name: string };
+
+// keep a local mapping for icons — keys are normalized to lowercase
+const ICON_MAP: Record<string, string> = {
+  brassiere: Bra_Logo,
+  panties: Panties_Logo,
+  combo: Lingerie_Logo,
+  elite: Elite_Logo,
+  "new arrivals": New_Arrivals_Logo,
+  "offers zone": New_Arrivals_Logo,
+};
+
+const hardcodedCategories: Category[] = [
+  { id: "1", label: "bra", icon: Bra_Logo, name: "Bra" },
+  { id: "2", label: "panties", icon: Panties_Logo, name: "Panties" },
+  { id: "5", label: "combo", icon: Lingerie_Logo, name: "Combo" },
+  { id: "3", label: "elite", icon: Elite_Logo, name: "Elite" },
+  { id: "4", label: "new arrivals", icon: New_Arrivals_Logo, name: "New Arrivals" },
 ];
+
+function normalizeLabel(raw?: string) {
+  if (!raw) return "";
+  return String(raw).trim().toLowerCase();
+}
+
+function pickIconForLabel(label?: string) {
+  console.log(label, "pickIconForLabel")
+  const key = normalizeLabel(label);
+  return ICON_MAP[key] ?? Default_Logo;
+}
 
 export default function CategoriesHomeMobile() {
   const navigate = useNavigate();
+  const [loadedCategories, setLoadedCategories] =
+    useState<Category[]>(hardcodedCategories);
+  const [loading, setLoading] = useState(false);
 
-  const handleNavigation = (path: string) => {
-    navigate(path);
+  useEffect(() => {
+    let mounted = true;
+    const fetchCategories = async () => {
+      setLoading(true);
+      try {
+        const resp = await axiosInstance.get(API_GET_CATEGORIES);
+        const payload = (resp as any)?.data ?? resp;
+
+        let found: any[] = [];
+
+        if (Array.isArray(payload)) {
+          found = payload;
+        } else if (payload && Array.isArray((payload as any).data)) {
+          found = payload.data;
+        } else {
+          const arr = Object.values(payload).find((v) => Array.isArray(v)) as any;
+          if (arr) found = arr;
+        }
+
+        if (!found || found.length === 0) {
+          setLoading(false);
+          return;
+        }
+
+        const mapped: Category[] = found.map((c: CategoryFromApi) => {
+          const rawLabel =
+            c.name ?? c.title ?? c.label ?? (c._id ? String(c._id) : "");
+          const label = normalizeLabel(rawLabel) || "unknown";
+          const id = String(c.id ?? c._id ?? c.categoryId ?? label);
+          const icon = pickIconForLabel(c.categoryTitle);
+          const name = c.categoryTitle ?? rawLabel ?? "Unknown";
+          return { id, label, icon, name };
+        });
+
+        if (mounted && mapped.length > 0) {
+          setLoadedCategories(mapped);
+        }
+      } catch (error: any) {
+        console.error("Failed to fetch categories", error);
+        showNotification({
+          title: "Error",
+          message: error?.response?.data?.message || "Failed to fetch categories.",
+          color: "red",
+          icon: <IconX size={16} />,
+        });
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    fetchCategories();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleNavigation = (category: Category) => {
+    navigate(`/category?name=${encodeURIComponent(category.name)}`);
   };
 
   return (
@@ -31,13 +132,13 @@ export default function CategoriesHomeMobile() {
       className="px-4 py-2 my-3"
       style={{ backgroundColor: "#F3E8D3" }}
     >
-      {categories.map((item) => (
-        <Grid.Col span={4} key={item.label}>
+      {loadedCategories.map((item) => (
+        <Grid.Col span={4} key={item.id}>
           <Card
             shadow="sm"
             radius="md"
             withBorder
-            onClick={() => handleNavigation(`/category?id=${item.label}`)} // 👈 Navigate on card click
+            onClick={() => handleNavigation(item)}
             style={{
               cursor: "pointer",
               textAlign: "center",
@@ -64,7 +165,7 @@ export default function CategoriesHomeMobile() {
             >
               <Image
                 src={item.icon}
-                alt={item.label}
+                alt={item.name}
                 width={48}
                 height={48}
                 fit="contain"
@@ -74,7 +175,7 @@ export default function CategoriesHomeMobile() {
               />
             </Box>
             <Text size="xs" mt="xs" fw={600}>
-              {item.label}
+              {item.name}
             </Text>
           </Card>
         </Grid.Col>

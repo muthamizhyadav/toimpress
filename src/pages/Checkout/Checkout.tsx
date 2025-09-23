@@ -30,7 +30,8 @@ import { showNotification } from "@mantine/notifications";
 import { IconCheck, IconX } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import { API_GET_UPDATE, API_CART } from "../../api/api";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { removeFromCart, clearCart } from "../..//redux/features/cartSlice"; // adjust path if needed
 
 // Razorpay config
 const RAZORPAY_KEY_ID = import.meta.env.VITE_RZP_KEY_ID as string;
@@ -213,6 +214,7 @@ export default function Checkout() {
   const [payLoading, setPayLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"RAZORPAY" | "COD">("RAZORPAY");
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   // Redux selectors (adapt to your store shape if needed)
   const reduxUser = useSelector((state: any) => state.auth?.user ?? state.user?.user ?? null);
@@ -290,6 +292,23 @@ export default function Checkout() {
           color: "green",
           icon: <IconCheck size={16} />,
         });
+
+        // If server removed item (newQuantity === 0), remove it from Redux as well (exact variant)
+        if (newQuantity === 0) {
+          try {
+            dispatch(removeFromCart({
+              id: line.id,
+              size: line.size,
+              color: line.color,
+              silent: true,
+            }));
+          } catch (e) {
+            // don't let Redux errors break UX
+            console.warn("Redux removeFromCart failed:", e);
+          }
+        }
+
+        // refresh UI list from server (keeps authoritative state)
         await fetchCart();
       } else {
         showNotification({
@@ -339,6 +358,14 @@ export default function Checkout() {
         color: "green",
         icon: <IconCheck size={16} />,
       });
+
+      // remove everything from Redux cart as well
+      try {
+        dispatch(clearCart());
+      } catch (e) {
+        console.warn("Redux clearCart failed:", e);
+      }
+
       await fetchCart();
     } catch (err: any) {
       console.error("Clear cart failed", err);
@@ -979,7 +1006,7 @@ export default function Checkout() {
           <Card p="lg" withBorder>
             <Text fw={600} size="lg">Your cart is empty</Text>
             <Text c="dimmed" size="sm" mt="xs">Add some products to proceed to checkout.</Text>
-            <Button mt="md" onClick={() => navigate("/")}>Continue shopping</Button>
+            <Button mt="md" onClick={async() => {await handleClearCart(); navigate("/")}}>Continue shopping</Button>
           </Card>
         </Container>
       ) : (

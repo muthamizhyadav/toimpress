@@ -12,6 +12,8 @@ type CartItem = {
   qty: number;
   size?: string;
   color?: string;
+  // allow arbitrary extras (rating, originalPrice, etc.)
+  [k: string]: any;
 };
 
 type AdjustPayload = {
@@ -25,6 +27,9 @@ type AddPayload = CartItem & { silent?: boolean };
 type CartState = { items: CartItem[]; isOpen: boolean };
 const initialState: CartState = { items: [], isOpen: false };
 
+/**
+ * Exact variant match: same product id + same size + same color.
+ */
 const sameVariant = (
   a: CartItem,
   b: { id: CartItem["id"]; size?: string; color?: string }
@@ -32,6 +37,13 @@ const sameVariant = (
   a.id === b.id &&
   (a.size ?? "") === (b.size ?? "") &&
   (a.color ?? "") === (b.color ?? "");
+
+/**
+ * Behavior:
+ * - addToCart: only matches exact variant (id+size+color). If exact exists -> increment qty.
+ *             Otherwise push a new item (do NOT fallback/merge by id).
+ * - increaseQty/decreaseQty/removeFromCart: operate on exact variant.
+ */
 
 const cartSlice = createSlice({
   name: "cart",
@@ -46,20 +58,22 @@ const cartSlice = createSlice({
 
     addToCart(state, action: PayloadAction<AddPayload>) {
       const { silent, ...p } = action.payload;
-      const existing = state.items.find((it) => sameVariant(it, p));
-      if (existing) {
-        existing.qty += p.qty ?? 1;
+      // Find exact variant first (id + size + color)
+      const exact = state.items.find((it) => sameVariant(it, p));
+      if (exact) {
+        exact.qty += p.qty ?? 1;
       } else {
+        // No fallback merging by id anymore — push a new variant object
         state.items.push({
           ...p,
           title: p.title ?? p.productName ?? "Product",
           qty: p.qty ?? 1,
         });
       }
+
       if (!silent) state.isOpen = true;
     },
 
-    // ✅ increaseQty restored
     increaseQty(state, action: PayloadAction<AdjustPayload>) {
       const { silent, ...p } = action.payload;
       const it = state.items.find((x) => sameVariant(x, p));
@@ -95,7 +109,7 @@ export const {
   openCart,
   closeCart,
   addToCart,
-  increaseQty,   // ✅ re-exported
+  increaseQty,
   decreaseQty,
   removeFromCart,
   clearCart,

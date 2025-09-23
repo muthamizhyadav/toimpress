@@ -10,11 +10,20 @@ import { GET_PRODUCTS, API_GET_CATEGORIES, API_GET_CATEGORIES_PRODUCTS } from ".
 import { IconX } from "@tabler/icons-react";
 import { showNotification } from "@mantine/notifications";
 
+/**
+ * TopCategories:
+ * - Fetches categories and products (by category name)
+ * - Converts product.selectedSizes (["30B","32C",...]) into SizeOption[]:
+ *   [{ band: 30, cups: ["B","C"] }, { band: 32, cups: ["B","C"] }, ...]
+ *
+ * This allows SizeSelectorDrawer to show proper sizes per product.
+ */
+
 type Category = {
   id?: number | string;
   _id?: string;
-  name?: string; // the human readable name used for UI
-  slug?: string; // optional slug if your API uses this
+  name?: string;
+  slug?: string;
   [k: string]: any;
 };
 
@@ -79,8 +88,37 @@ export default function TopCategories() {
     }
   };
 
+  // Helper: convert selectedSizes (string[]) -> SizeOption[]
+  // Example input: ["30B","30C","32B","34D"]
+  // Output: [{ band: 30, cups: ["B","C"] }, { band: 32, cups: ["B"] }, { band: 34, cups: ["D"] }]
+  const buildSizeOptionsFromSelectedSizes = (sizesInput: any): any[] | undefined => {
+    if (!Array.isArray(sizesInput) || sizesInput.length === 0) return undefined;
+
+    const map = new Map<number, Set<string>>();
+    for (const s of sizesInput) {
+      if (!s) continue;
+      const str = String(s).toUpperCase().trim();
+      // match e.g. 30B, 32C, 34DD, 36A etc.
+      const m = /^(\d{2})([A-Z]+)$/.exec(str);
+      if (!m) continue;
+      const band = Number(m[1]);
+      const cup = m[2];
+      if (!map.has(band)) map.set(band, new Set());
+      map.get(band)!.add(cup);
+    }
+
+    const arr = Array.from(map.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([band, cupsSet]) => ({
+        band,
+        cups: Array.from(cupsSet.values()).sort(),
+      }));
+
+    return arr.length ? arr : undefined;
+  };
+
  // fetch products for a category name
-const getAllProducts = async (categoryName: string | null) => {
+ const getAllProducts = async (categoryName: string | null) => {
   if (!categoryName) {
     setProducts([]);
     return;
@@ -89,9 +127,10 @@ const getAllProducts = async (categoryName: string | null) => {
   setLoadingProducts(true);
 
   try {
-    // directly use categoryName (categoryTitle) instead of categoryId
+    // encode categoryName for safe URL usage
+    const encoded = encodeURIComponent(String(categoryName));
     const response = await axiosInstance.get(
-      `${API_GET_CATEGORIES_PRODUCTS}${categoryName}?page=1&limit=10`
+      `${API_GET_CATEGORIES_PRODUCTS}${encoded}?page=1&limit=10`
     );
     const payload = (response as any)?.data ?? response;
 
@@ -106,10 +145,6 @@ const getAllProducts = async (categoryName: string | null) => {
     setLoadingProducts(false);
   }
 };
-
-https://api.toimpress.innovaturetech.co.in/v1/products/products/category/Combo?page=1&limit=16
-
-
 
   // initial load
   useEffect(() => {
@@ -256,23 +291,30 @@ https://api.toimpress.innovaturetech.co.in/v1/products/products/category/Combo?p
                         </div>
                       </Carousel.Slide>
                     ) : (
-                      products.map((product: any, i: number) => (
-                        <Carousel.Slide key={product._id || product.id || i}>
-                          <ProductCard
-                            id={product._id ?? product.id}
-                            imageUrl={product.images?.[0] || BraModel}
-                            productName={product.productTitle ?? product.name}
-                            price={product.salePrice ?? product.price}
-                            originalPrice={product.price}
-                            rating={4.5}
-                            isNew={false}
-                            isOnSale={
-                              (product.salePrice ?? product.price) < (product.price ?? 0)
-                            }
-                            category={product.category}
-                          />
-                        </Carousel.Slide>
-                      ))
+                      products.map((product: any, i: number) => {
+                        // compute sizeOptions from product.selectedSizes if present
+                        const sizeOptions = buildSizeOptionsFromSelectedSizes(product.selectedSizes);
+
+                        return (
+                          <Carousel.Slide key={product._id || product.id || i}>
+                            <ProductCard
+                              id={product._id ?? product.id}
+                              imageUrl={product.images?.[0] || BraModel}
+                              productName={product.productTitle ?? product.name}
+                              price={product.salePrice ?? product.price}
+                              originalPrice={product.price}
+                              rating={4.5}
+                              isNew={false}
+                              isOnSale={
+                                (product.salePrice ?? product.price) < (product.price ?? 0)
+                              }
+                              category={product.category}
+                              // pass dynamic sizeOptions (undefined falls back to default)
+                              sizeOptions={sizeOptions}
+                            />
+                          </Carousel.Slide>
+                        );
+                      })
                     )
                   ) : null}
                 </Carousel>
