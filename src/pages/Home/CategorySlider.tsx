@@ -51,22 +51,22 @@ const CategorySlider: React.FC = () => {
         slideGap="md"
         align="start"
         height="auto"
-        withIndicators
-        withControls
+        withIndicators={false}
+        withControls={false}
         loop
-        styles={{
-          control: {
-            backgroundColor: "#133215",
-            color: "white",
-            "&:hover": { backgroundColor: "#1a4d1a" },
-          },
-          indicator: {
-            backgroundColor: "#ccc",
-            "&[data-active]": {
-              backgroundColor: "#133215",
-            },
-          },
-        }}
+        // styles={{
+        //   control: {
+        //     backgroundColor: "#133215",
+        //     color: "white",
+        //     "&:hover": { backgroundColor: "#1a4d1a" },
+        //   },
+        //   indicator: {
+        //     backgroundColor: "#ccc",
+        //     "&[data-active]": {
+        //       backgroundColor: "#133215",
+        //     },
+        //   },
+        // }}
       >
         {bannerData.map((banner, index) => (
           <Carousel.Slide key={index}>

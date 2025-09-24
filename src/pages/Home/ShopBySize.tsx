@@ -1,29 +1,27 @@
 import { Box, Button, Text, Title, rem } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
-import type { RootState } from "../redux/store";
 
 export default function ShopBySize() {
   const navigate = useNavigate();
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
 
-  // Get sizes from Fit Calculator slice (adjust selector if your path is different)
-  const calculatorSizes = useSelector(
-    (s: RootState) => (s as any)?.fit?.availableSizes as string[] | undefined
-  );
-
-  // Optional fallback sizes if calculator is empty
-  const fallbackSizes = ["30A","32A","34A","36A","38A","30B","32B","34B","36B","38B","30C","32C","34C","36C","38C"];
-  const sizes = useMemo(
-    () => (calculatorSizes && calculatorSizes.length ? calculatorSizes : fallbackSizes),
-    [calculatorSizes]
-  );
+  // Full static list of sizes
+  const allSizes: string[] = [
+    "30B","30C","30D",
+    "32A","32B","32C","32D",
+    "34A","34B","34C","34D",
+    "36A","36B","36C","36D",
+    "38A","38B","38C","38D",
+    "40A","40B","40C","40D",
+    "42A","42B","42C","42D",
+    "44A","44B","44C","44D",
+    "S","M","L","XL","XXL",
+  ];
 
   const handleNavigation = (size: string) => {
-    // pass the size along so listing can pre-filter
     navigate(`/category?name=Brassiere&size=${encodeURIComponent(size)}`);
   };
 
@@ -87,7 +85,7 @@ export default function ShopBySize() {
             margin: "0 auto",
           }}
         >
-          {sizes.map((size) => {
+          {allSizes.map((size) => {
             const isSelected = selectedSize === size;
             return (
               <Button
@@ -118,13 +116,6 @@ export default function ShopBySize() {
             );
           })}
         </Box>
-
-        {/* Hint when calculator is empty */}
-        {(!calculatorSizes || calculatorSizes.length === 0) && (
-          <Text ta="center" c="dimmed" size="sm" mt="md">
-            Tip: Use the Fit Calculator to get personalized sizes.
-          </Text>
-        )}
       </Box>
     </Box>
   );

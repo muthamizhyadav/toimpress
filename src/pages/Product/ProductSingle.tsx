@@ -80,6 +80,7 @@ export default function ProductPage() {
 
   // UI state for main product
   const [mainImage, setMainImage] = useState<string>("");
+  const [galleryImages, setGalleryImages] = useState<string[]>([]); // thumbnails controlled by color/size
   const [selectedColor, setSelectedColor] = useState<string>("");
   const [selectedSize, setSelectedSize] = useState<string>(""); // e.g. "32B"
   const [productDetails, setProductDetails] = useState<any | null>(null);
@@ -102,11 +103,61 @@ export default function ProductPage() {
         const resp = await axiosInstance.get(`${GET_PRODUCTS_DETAILS}${productId}`);
         const detail = resp?.data?.product;
         const sims = resp?.data?.similerProducts || resp?.data?.similarProducts;
+
         setProductDetails(detail);
         setSimilarProducts(sims || []);
-        setMainImage(detail?.images?.[0] || "");
-        setSelectedColor(detail?.selectedColors?.[0] || "");
-        setSelectedSize(detail?.selectedSizes?.[0] || "");
+
+        // initial color/size
+        const initialColor = detail?.selectedColors?.[0] ?? "";
+        const initialSize = detail?.selectedSizes?.[0] ?? "";
+
+        // fallback images array
+        const fallbackImages: string[] = Array.isArray(detail?.images) ? detail.images : [];
+
+        // helper to try multiple shapes for color->images
+        const tryGetImagesForColor = (color?: string) => {
+          if (!color) return undefined;
+          const key = String(color).toLowerCase();
+
+          const tryMap = (map: any) => {
+            if (!map) return undefined;
+            if (typeof map === "object" && !Array.isArray(map)) {
+              const v = map[color] ?? map[key] ?? map[color?.toUpperCase?.()];
+              if (v) return Array.isArray(v) ? v : [v];
+            }
+            return undefined;
+          };
+
+          let imgs = tryMap(detail?.imagesByColor) ?? tryMap(detail?.colorImageMap) ?? tryMap(detail?.colorImages);
+          if (imgs && imgs.length) return imgs;
+
+          if (Array.isArray(detail?.imagesByColor)) {
+            const entry = detail.imagesByColor.find((e: any) => String(e.color).toLowerCase() === key);
+            if (entry) return entry.images ?? (entry.image ? [entry.image] : undefined);
+          }
+          if (Array.isArray(detail?.colorImages)) {
+            const entry = detail.colorImages.find((e: any) => String(e.color).toLowerCase() === key);
+            if (entry) return entry.images ?? (entry.image ? [entry.image] : undefined);
+          }
+          if (Array.isArray(detail?.colors)) {
+            const entry = detail.colors.find((c: any) => String(c.name).toLowerCase() === key);
+            if (entry) return entry.images ?? (entry.image ? [entry.image] : undefined);
+          }
+          if (Array.isArray(detail?.variants)) {
+            const v = detail.variants.find((vv: any) => String(vv.color).toLowerCase() === key);
+            if (v) return v.images ?? (v.image ? [v.image] : undefined);
+          }
+
+          return undefined;
+        };
+
+        // try populate gallery from color first (if exists), otherwise fallback to product images
+        const initialImgs = tryGetImagesForColor(initialColor) ?? fallbackImages;
+        const imgsArr = Array.isArray(initialImgs) ? initialImgs : (initialImgs ? [String(initialImgs)] : []);
+        setGalleryImages(imgsArr.length ? imgsArr : fallbackImages);
+        setMainImage((imgsArr.length ? imgsArr[0] : fallbackImages[0]) || "");
+        setSelectedColor(initialColor);
+        setSelectedSize(initialSize);
       } catch (err) {
         console.error("Error fetching product:", err);
       }
@@ -242,7 +293,7 @@ export default function ProductPage() {
         const reduxItem = reduxPayload ?? {
           id: payload.productId,
           productId: payload.productId,
-          imageUrl: mainImage || imagesInput?.[0] || "",
+          imageUrl: mainImage || galleryImages?.[0] || imagesInput?.[0] || "",
           title: titleInput,
           productName: titleInput,
           price: salePriceInput ?? priceInput,
@@ -306,15 +357,127 @@ export default function ProductPage() {
     navigate("/checkout");
   };
 
+  // When color clicked: select color, update sizes, and sync thumbnails + main image.
   const onColorSelect = (c: string) => {
     setSelectedColor(c);
+
+    // size adjustment (existing logic)
     const sizesForC = getSizesForColor(c, productDetails);
     if (!sizesForC || sizesForC.length === 0) {
       setSelectedSize("");
+    } else {
+      if (!selectedSize || !new Set(sizesForC.map(s => String(s).toUpperCase())).has(String(selectedSize).toUpperCase())) {
+        setSelectedSize(sizesForC[0]);
+      }
+    }
+
+    // Try 1: if colorsInput and galleryImages are same length, pick galleryImages at same index
+    const colorIndex = colorsInput.findIndex((col) => String(col).toLowerCase() === String(c).toLowerCase());
+    if (colorIndex >= 0 && galleryImages && galleryImages[colorIndex]) {
+      const newGallery = [...galleryImages];
+      if (colorIndex !== 0) {
+        const [selImg] = newGallery.splice(colorIndex, 1);
+        newGallery.unshift(selImg);
+      }
+      setGalleryImages(newGallery);
+      setMainImage(newGallery[0] || "");
       return;
     }
-    if (!selectedSize || !new Set(sizesForC.map(s => String(s).toUpperCase())).has(String(selectedSize).toUpperCase())) {
-      setSelectedSize(sizesForC[0]);
+
+    // Try 2: robust lookup across common shapes (object maps, arrays, variants, colors array)
+    const colorKey = String(c).toLowerCase();
+    let foundImgs: string[] | undefined = undefined;
+
+    const tryMapLookup = (map: any) => {
+      if (!map) return undefined;
+      if (typeof map === "object" && !Array.isArray(map)) {
+        const v = map[c] ?? map[colorKey] ?? map[c?.toUpperCase?.()];
+        if (v) return Array.isArray(v) ? v : [v];
+      }
+      return undefined;
+    };
+
+    foundImgs = tryMapLookup(productDetails?.imagesByColor)
+      || tryMapLookup(productDetails?.colorImageMap)
+      || tryMapLookup(productDetails?.colorImages);
+
+    if (!foundImgs && Array.isArray(productDetails?.imagesByColor)) {
+      const entry = productDetails.imagesByColor.find((e: any) => String(e.color).toLowerCase() === colorKey);
+      if (entry) foundImgs = entry.images ?? (entry.image ? [entry.image] : undefined);
+    }
+    if (!foundImgs && Array.isArray(productDetails?.colorImages)) {
+      const entry = productDetails.colorImages.find((e: any) => String(e.color).toLowerCase() === colorKey);
+      if (entry) foundImgs = entry.images ?? (entry.image ? [entry.image] : undefined);
+    }
+    if (!foundImgs && Array.isArray(productDetails?.colors)) {
+      const entry = productDetails.colors.find((col: any) => String(col.name).toLowerCase() === colorKey);
+      if (entry) foundImgs = entry.images ?? (entry.image ? [entry.image] : undefined);
+    }
+    if (!foundImgs && Array.isArray(productDetails?.variants)) {
+      const entry = productDetails.variants.find((vv: any) => String(vv.color).toLowerCase() === colorKey);
+      if (entry) foundImgs = entry.images ?? (entry.image ? [entry.image] : undefined);
+    }
+
+    if (!foundImgs) foundImgs = productDetails?.images ?? [];
+    const imgsArr = Array.isArray(foundImgs) ? foundImgs : (foundImgs ? [String(foundImgs)] : []);
+    setGalleryImages(imgsArr);
+    setMainImage(imgsArr[0] || productDetails?.images?.[0] || "");
+  };
+
+  // When size clicked: select size, update gallery/main image similarly to colors
+  const onSizeSelect = (sizeLabel: string) => {
+    setSelectedSize(sizeLabel);
+
+    // If sizesInput and galleryImages are 1:1 aligned (same length), use the same index
+    const sizeIndex = sizesInput.findIndex((s) => String(s).toUpperCase() === String(sizeLabel).toUpperCase());
+    if (sizeIndex >= 0 && galleryImages && galleryImages[sizeIndex]) {
+      const newGallery = [...galleryImages];
+      if (sizeIndex !== 0) {
+        const [selImg] = newGallery.splice(sizeIndex, 1);
+        newGallery.unshift(selImg);
+      }
+      setGalleryImages(newGallery);
+      setMainImage(newGallery[0] || "");
+      return;
+    }
+
+    // Try to lookup size-specific images in common shapes: imagesBySize, sizeImages, variants with size
+    const key = String(sizeLabel).toLowerCase();
+    let foundImgs: string[] | undefined = undefined;
+
+    const tryMap = (map: any) => {
+      if (!map) return undefined;
+      if (typeof map === "object" && !Array.isArray(map)) {
+        const v = map[sizeLabel] ?? map[key] ?? map[sizeLabel?.toUpperCase?.()];
+        if (v) return Array.isArray(v) ? v : [v];
+      }
+      return undefined;
+    };
+
+    foundImgs = tryMap(productDetails?.imagesBySize) ?? tryMap(productDetails?.sizeImages) ?? tryMap(productDetails?.imageBySize);
+
+    if (!foundImgs && Array.isArray(productDetails?.variants)) {
+      const entry = productDetails.variants.find((vv: any) => {
+        // consider variant.size or variant.selectedSize
+        return String(vv.size ?? vv.selectedSize ?? "").toLowerCase() === key;
+      });
+      if (entry) foundImgs = entry.images ?? (entry.image ? [entry.image] : undefined);
+    }
+
+    if (!foundImgs && Array.isArray(productDetails?.colors)) {
+      // sometimes colors array contains sizes mapping with images
+      const entry = productDetails.colors.find((c: any) => Array.isArray(c.sizes) && c.sizes.includes(sizeLabel));
+      if (entry) foundImgs = entry.images ?? (entry.image ? [entry.image] : undefined);
+    }
+
+    if (!foundImgs) foundImgs = productDetails?.images ?? [];
+
+    const imgsArr = Array.isArray(foundImgs) ? foundImgs : (foundImgs ? [String(foundImgs)] : []);
+    if (imgsArr.length) {
+      setGalleryImages(imgsArr);
+      setMainImage(imgsArr[0] || "");
+    } else {
+      setMainImage(galleryImages[0] || imagesInput[0] || "");
     }
   };
 
@@ -444,7 +607,7 @@ export default function ProductPage() {
   };
 
   // -------------------
-  // JSX (unchanged from your version)
+  // JSX (thumbnails now use galleryImages fallback to imagesInput)
   // -------------------
   return (
     <Container size="xl" py="md">
@@ -460,7 +623,7 @@ export default function ProductPage() {
             fit="contain"
           />
           <Group mt="sm" wrap="wrap">
-            {imagesInput.map((img: string, idx: number) => (
+            {(galleryImages && galleryImages.length ? galleryImages : imagesInput).map((img: string, idx: number) => (
               <Box
                 key={idx}
                 onClick={() => setMainImage(img)}
@@ -527,46 +690,45 @@ export default function ProductPage() {
               {sizeOptions.length === 0 ? (
                 <Text size="sm" c="dimmed">Single size — no selection required</Text>
               ) : (
-                <Stack spacing="xs">
-                  {sizeOptions.map((opt) => {
-                    const availableCups = opt.cups.filter((cup) => {
-                      const label = `${String(opt.band)}${cup}`.toUpperCase();
-                      return availableSizesSet.size ? availableSizesSet.has(label) : true;
-                    });
-                    if (!availableCups.length) return null;
+                <Group spacing="xs" wrap="wrap">
+                  {sizeOptions.flatMap((opt) =>
+                    opt.cups
+                      .map((cup) => `${opt.band}${cup}`)
+                      .filter((label) =>
+                        availableSizesSet.size ? availableSizesSet.has(label.toUpperCase()) : true
+                      )
+                  ).map((label) => {
+                    const active = (selectedSize || "").toUpperCase() === label.toUpperCase();
                     return (
-                      <Box key={opt.band}>
-                        <Text size="xs" c="dimmed" mb={6}>Band {opt.band}</Text>
-                        <Group spacing="xs" wrap="wrap">
-                          {availableCups.map((cup) => {
-                            const label = `${opt.band}${cup}`;
-                            const active = (selectedSize || "").toUpperCase() === label.toUpperCase();
-                            return (
-                              <Button
-                                key={label}
-                                size="xs"
-                                variant={active ? "filled" : "outline"}
-                                onClick={() => setSelectedSize(label)}
-                                sx={{
-                                  backgroundColor: active ? DARK_GREEN : undefined,
-                                  color: active ? "#fff" : DARK_GREEN,
-                                  borderColor: DARK_GREEN,
-                                  "&:hover": active ? { backgroundColor: "#0f2a12" } : { backgroundColor: "#f2fbf2" },
-                                }}
-                              >
-                                {label}
-                              </Button>
-                            );
-                          })}
-                        </Group>
-                      </Box>
+                      <Button
+                        key={label}
+                        size="xs"
+                        variant={active ? "filled" : "outline"}
+                        onClick={() => onSizeSelect(label)}
+                        sx={{
+                          backgroundColor: active ? DARK_GREEN : undefined,
+                          color: active ? "#fff" : DARK_GREEN,
+                          borderColor: DARK_GREEN,
+                          "&:hover": active
+                            ? { backgroundColor: "#0f2a12" }
+                            : { backgroundColor: "#f2fbf2" },
+                        }}
+                      >
+                        {label}
+                      </Button>
                     );
                   })}
-                </Stack>
+                </Group>
               )}
             </Box>
-            {selectedSize ? <Text size="sm" mt="8px">Selected: <b>{selectedSize}</b></Text> : null}
+
+            {selectedSize ? (
+              <Text size="sm" mt="8px">
+                Selected: <b>{selectedSize}</b>
+              </Text>
+            ) : null}
           </Box>
+
 
           {/* Actions */}
           <Group mt="lg" gap="sm" align="center">
@@ -783,20 +945,20 @@ export default function ProductPage() {
         </SimpleGrid>
       </Box>
 
-      {/* SizeSelectorDrawer: used for main product (drawerProduct === null) or similar product (drawerProduct set) */}
+      {/* SizeSelectorDrawer */}
       <SizeSelectorDrawer
         opened={openSizeDrawer}
         onClose={onDrawerClose}
         onConfirm={onDrawerConfirm}
         productTitle={drawerProduct ? (drawerProduct.productTitle ?? drawerProduct.title ?? "Product") : titleInput}
         price={drawerProduct ? (drawerProduct.salePrice ?? drawerProduct.price) : (salePriceInput ?? priceInput)}
-        imageUrl={drawerProduct ? ((drawerProduct.images && drawerProduct.images[0]) || drawerProduct.image || "") : (mainImage || imagesInput?.[0] || "")}
+        imageUrl={drawerProduct ? ((drawerProduct.images && drawerProduct.images[0]) || drawerProduct.image || "") : (mainImage || galleryImages?.[0] || imagesInput?.[0] || "")}
         options={drawerProduct ? buildSizeOptionsForProduct(drawerProduct) : (sizeOptions.length ? sizeOptions : undefined)}
         productId={drawerProduct ? (drawerProduct._id ?? drawerProduct.id) : productId}
         selectedColor={drawerProduct ? ((drawerProduct.selectedColors && drawerProduct.selectedColors[0]) || undefined) : selectedColor}
       />
 
-      {/* Return / Exchange Policy Drawer (bottom on mobile, right on desktop) */}
+      {/* Return / Exchange Policy Drawer */}
       <Drawer
         opened={openReturnPolicy}
         onClose={() => setOpenReturnPolicy(false)}
@@ -842,7 +1004,6 @@ export default function ProductPage() {
 
             </Stack>
 
-            {/* small footer badges similar to product page */}
             <Group mt="md" spacing="lg">
               <Group>
                 <ThemeIcon variant="light" color="green"><IconTruck /></ThemeIcon>

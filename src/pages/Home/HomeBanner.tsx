@@ -19,7 +19,7 @@ const HomeBanner: React.FC = () => {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);
   const emblaRef = useRef<any>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<number | null>(null);
   const navigate = useNavigate();
 
   const getAllBanners = async () => {
@@ -57,13 +57,13 @@ const HomeBanner: React.FC = () => {
       return;
     }
 
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    intervalRef.current = setInterval(() => {
+    if (intervalRef.current) window.clearInterval(intervalRef.current);
+    intervalRef.current = window.setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % visibleBanners.length);
     }, 3000);
 
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (intervalRef.current) window.clearInterval(intervalRef.current);
       intervalRef.current = null;
     };
   }, [visibleBanners]);
@@ -73,7 +73,7 @@ const HomeBanner: React.FC = () => {
       try {
         emblaRef.current.scrollTo(currentSlide);
       } catch {
-        /* ignore scroll errors */
+        /* ignore */
       }
     }
   }, [currentSlide]);
@@ -89,17 +89,21 @@ const HomeBanner: React.FC = () => {
     overflow: "hidden",
   };
 
-  // Inner container: desktop uses aspect ratio, mobile uses your exact dimensions
+  // Inner container:
   const innerStyle: React.CSSProperties = isMobile
     ? {
-        width: "100%", // always full width on small screen
-        height: "620px", // your given mobile height
-        minWidth: "479px", // min mobile width
+        width: "100%",
+        /* use clamp to scale between a small and large mobile height */
+        height: "clamp(320px, 60vh, 620px)",
         maxWidth: "100vw",
         marginLeft: "auto",
         marginRight: "auto",
         borderRadius: 0,
         overflow: "hidden",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "#fff",
       }
     : {
         width: "clamp(479px, 100vw, 1920px)",
@@ -108,6 +112,9 @@ const HomeBanner: React.FC = () => {
         marginRight: "auto",
         borderRadius: 16,
         overflow: "hidden",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
       };
 
   return (
@@ -126,15 +133,25 @@ const HomeBanner: React.FC = () => {
             <Carousel.Slide
               key={banner._id}
               onClick={() => handleNavigation("category?name=Brassiere")}
-              style={{ width: "100%", height: "100%", cursor: "pointer" }}
+              style={{
+                width: "100%",
+                height: "100%",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
             >
               <img
                 src={banner.url}
                 alt={banner.title}
                 style={{
-                  width: "100%",
+                  /* On mobile allow the image to scale down while preserving center */
+                  width: isMobile ? "100%" : "100%",
+                  maxWidth: "100%",
                   height: "100%",
                   objectFit: isMobile ? "contain" : "cover",
+                  objectPosition: "center",
                   display: "block",
                 }}
               />

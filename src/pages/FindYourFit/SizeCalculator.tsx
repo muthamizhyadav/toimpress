@@ -34,9 +34,38 @@ const BAND_TABLE: BandCol[] = [
   { band: 42, underBust: [93, 97], overBustByCup: { A: [107, 109], B: [109, 111], C: [111, 113], D: [113, 115] } },
 ];
 
-const inRange = (v: number, [lo, hi]: [number, number]) => v >= lo && v <= hi;
-const cmToIn = (cm: number) => +(cm / 2.54).toFixed(1);
-const inToCm = (inch: number) => inch * 2.54;
+// small epsilon tolerance to avoid edge mismatches (in cm)
+const EPS_CM = 0.05;
+
+// helpers
+const inRangeCm = (vCm: number, [lo, hi]: [number, number]) => vCm + EPS_CM >= lo && vCm - EPS_CM <= hi;
+const inchToCm = (inch: number) => +(inch * 2.54).toFixed(1); // single multiplication, keep 1 decimal for clarity
+const cmToIn = (cm: number) => +((cm / 2.54)).toFixed(1);
+
+// ---------------- BRA SIZE TABLE (INCH) - from image reference ----------------
+// underBust and over-bust ranges in inches (matching the screenshot table)
+type BandColInch = {
+  band: 28 | 30 | 32 | 34 | 36 | 38 | 40 | 42 | 44;
+  underBustIn: [number, number]; // inches
+  overBustByCupIn: Record<CupLetter, [number, number]>; // inches
+};
+
+const BAND_TABLE_INCH: BandColInch[] = [
+  { band: 28, underBustIn: [23, 24], overBustByCupIn: { A: [28, 29], B: [29, 30], C: [30, 31], D: [31, 32] } },
+  { band: 30, underBustIn: [25, 26], overBustByCupIn: { A: [30, 31], B: [31, 32], C: [32, 33], D: [33, 34] } },
+  { band: 32, underBustIn: [27, 28], overBustByCupIn: { A: [32, 33], B: [33, 34], C: [34, 35], D: [35, 36] } },
+  { band: 34, underBustIn: [29, 30], overBustByCupIn: { A: [34, 35], B: [35, 36], C: [36, 37], D: [37, 38] } },
+  { band: 36, underBustIn: [31, 32], overBustByCupIn: { A: [36, 37], B: [37, 38], C: [38, 39], D: [39, 40] } },
+  { band: 38, underBustIn: [33, 34], overBustByCupIn: { A: [38, 39], B: [39, 40], C: [40, 41], D: [41, 42] } },
+  { band: 40, underBustIn: [35, 36], overBustByCupIn: { A: [40, 41], B: [41, 42], C: [42, 43], D: [43, 44] } },
+  { band: 42, underBustIn: [37, 38], overBustByCupIn: { A: [42, 43], B: [43, 44], C: [44, 45], D: [45, 46] } },
+  // <-- ADDED band 44 so 39-40" under-bust maps to band 44
+  { band: 44, underBustIn: [39, 40], overBustByCupIn: { A: [44, 45], B: [45, 46], C: [46, 47], D: [47, 48] } },
+];
+
+// small epsilon tolerance for inches
+const EPS_IN = 0.02;
+const inRangeIn = (vIn: number, [lo, hi]: [number, number]) => vIn + EPS_IN >= lo && vIn - EPS_IN <= hi;
 
 // ---------------- PANTY SIZE LOGIC ----------------
 const PANTY_SIZES = [
@@ -54,75 +83,112 @@ const PANTY_SIZES = [
 
 export default function SizeCalculator() {
   const [tab, setTab] = useState<"bra" | "panties">("bra");
-  const [unit, setUnit] = useState<"cm" | "inch">("cm");
-  const [underBust, setUnderBust] = useState<string>("");
+  // default can be "inch" or "cm" — set "inch" if you prefer the UI to start in inches
+  const [unit, setUnit] = useState<"cm" | "inch">("inch");
+  const [underBust, setUnderBust] = useState<string>(""); // stores selected string (like "32" if inch mode)
   const [overBust, setOverBust] = useState<string>("");
   const [hip, setHip] = useState<string>("");
 
   const isMobile = useMediaQuery("(max-width: 640px)");
 
-  // Dropdown values for bra calc
-  const { underOptions, overOptions } = useMemo(() => {
-    const underMin = 58,
-      underMax = 97;
-    const overMin = 72,
-      overMax = 115;
-    const toLabel = (n: number) => (unit === "cm" ? `${n}` : cmToIn(n).toString());
+  // build selects depending on unit
+  const { underOptions, overOptions, hipOptions } = useMemo(() => {
+    if (unit === "inch") {
+      // integer inch ranges (no decimals)
+      const under = Array.from({ length: 40 - 25 + 1 }, (_, i) => {
+        const v = 25 + i;
+        return { value: `${v}`, label: `${v}` };
+      });
+      const over = Array.from({ length: 49 - 30 + 1 }, (_, i) => {
+        const v = 30 + i;
+        return { value: `${v}`, label: `${v}` };
+      });
+      // hip: convert 75..149 cm to inches, but present integer inches for selection (approx)
+      const hipInMin = Math.floor(cmToIn(75));
+      const hipInMax = Math.ceil(cmToIn(149));
+      const hipArr = Array.from({ length: hipInMax - hipInMin + 1 }, (_, i) => {
+        const v = hipInMin + i;
+        return { value: `${v}`, label: `${v}` };
+      });
+      return { underOptions: under, overOptions: over, hipOptions: hipArr };
+    }
 
-    const under = Array.from({ length: underMax - underMin + 1 }, (_, i) => {
-      const cm = underMin + i;
-      return { value: toLabel(cm), label: toLabel(cm) };
+    // cm mode (integer cm values as before)
+    const underCmMin = 58, underCmMax = 97;
+    const overCmMin = 72, overCmMax = 115;
+    const under = Array.from({ length: underCmMax - underCmMin + 1 }, (_, i) => {
+      const v = underCmMin + i;
+      return { value: `${v}`, label: `${v}` };
     });
-
-    const over = Array.from({ length: overMax - overMin + 1 }, (_, i) => {
-      const cm = overMin + i;
-      return { value: toLabel(cm), label: toLabel(cm) };
+    const over = Array.from({ length: overCmMax - overCmMin + 1 }, (_, i) => {
+      const v = overCmMin + i;
+      return { value: `${v}`, label: `${v}` };
     });
-
-    return { underOptions: under, overOptions: over };
+    const hipArr = Array.from({ length: 149 - 75 + 1 }, (_, i) => {
+      const v = 75 + i;
+      return { value: `${v}`, label: `${v}` };
+    });
+    return { underOptions: under, overOptions: over, hipOptions: hipArr };
   }, [unit]);
 
-  // convert input back to cm
-  const underBustCm = useMemo(() => {
-    if (!underBust) return null;
-    const num = parseFloat(underBust);
-    return unit === "cm" ? num : Math.round(inToCm(num));
-  }, [underBust, unit]);
-
-  const overBustCm = useMemo(() => {
-    if (!overBust) return null;
-    const num = parseFloat(overBust);
-    return unit === "cm" ? num : Math.round(inToCm(num));
-  }, [overBust, unit]);
-
-  const hipCm = useMemo(() => {
-    if (!hip) return null;
-    const num = parseFloat(hip);
-    return unit === "cm" ? num : Math.round(inToCm(num));
-  }, [hip, unit]);
-
-  // calculate bra result
+  // compute bra result:
+  // When unit === "inch": match directly to BAND_TABLE_INCH (inches)
+  // When unit === "cm": original behavior (match BAND_TABLE in cm)
   const braResult = useMemo(() => {
-    if (underBustCm == null || overBustCm == null) return null;
-    const col = BAND_TABLE.find((b) => inRange(underBustCm, b.underBust));
-    if (!col) return { label: "—", note: "Under-bust out of chart range" };
+    if (!underBust || !overBust) return null;
 
-    const cup =
-      (Object.keys(col.overBustByCup) as CupLetter[]).find((c) =>
-        inRange(overBustCm, col.overBustByCup[c])
-      ) || null;
+    if (unit === "inch") {
+      const underIn = parseFloat(underBust); // integer inches
+      const overIn = parseFloat(overBust);
 
-    if (!cup) return { label: `${col.band}`, note: "Over-bust out of chart range" };
+      const bandCol = BAND_TABLE_INCH.find((b) => inRangeIn(underIn, b.underBustIn));
+      if (!bandCol) return { label: "—", note: "Under-bust out of chart range" };
 
-    return { label: `${col.band}${cup}`, note: null as string | null };
-  }, [underBustCm, overBustCm]);
+      const cup = (Object.keys(bandCol.overBustByCupIn) as CupLetter[]).find((c) =>
+        inRangeIn(overIn, bandCol.overBustByCupIn[c])
+      ) ?? null;
 
-  // calculate panty result
+      if (!cup) return { label: `${bandCol.band}`, note: "Over-bust out of chart range" };
+      return { label: `${bandCol.band}${cup}`, note: null as string | null };
+    }
+
+    // CM mode: keep existing behavior (match BAND_TABLE which is in cm)
+    let underCm: number;
+    let overCm: number;
+
+    if (unit === "inch") {
+      // unreachable because handled above, but keep pattern
+      underCm = inchToCm(parseFloat(underBust));
+      overCm = inchToCm(parseFloat(overBust));
+    } else {
+      underCm = parseFloat(underBust);
+      overCm = parseFloat(overBust);
+    }
+
+    const bandCol = BAND_TABLE.find((b) => inRangeCm(underCm, b.underBust));
+    if (!bandCol) return { label: "—", note: "Under-bust out of chart range" };
+
+    const cup = (Object.keys(bandCol.overBustByCup) as CupLetter[]).find((c) =>
+      inRangeCm(overCm, bandCol.overBustByCup[c])
+    ) ?? null;
+
+    if (!cup) return { label: `${bandCol.band}`, note: "Over-bust out of chart range" };
+    return { label: `${bandCol.band}${cup}`, note: null as string | null };
+  }, [underBust, overBust, unit]);
+
+  // panty result: if inch mode we convert simple multiplication or compare approximate integer inch against converted ranges
   const pantyResult = useMemo(() => {
-    if (hipCm == null) return null;
-    const size = PANTY_SIZES.find((s) => inRange(hipCm, s.hip));
-    return size ? size.label : "—";
-  }, [hipCm]);
+    if (!hip) return null;
+    if (unit === "inch") {
+      const hipIn = parseFloat(hip);
+      const hipCm = inchToCm(hipIn);
+      const found = PANTY_SIZES.find((s) => inRangeCm(hipCm, s.hip));
+      return found ? found.label : "—";
+    }
+    const hipCm = parseFloat(hip);
+    const found = PANTY_SIZES.find((s) => inRangeCm(hipCm, s.hip));
+    return found ? found.label : "—";
+  }, [hip, unit]);
 
   return (
     <Box w={isMobile ? "100%" : "70vw"} mx="auto" p="md">
@@ -174,10 +240,11 @@ export default function SizeCalculator() {
                 setUnit(v as "cm" | "inch");
                 setUnderBust("");
                 setOverBust("");
+                setHip("");
               }}
               data={[
-                { label: "CM", value: "cm" },
                 { label: "INCH", value: "inch" },
+                { label: "CM", value: "cm" },
               ]}
             />
           </Group>
@@ -193,9 +260,7 @@ export default function SizeCalculator() {
             <Box w={isMobile ? "100%" : "50%"} style={{ display: "flex", flexDirection: "column" }}>
               <Stack gap="md">
                 <Stack gap={6}>
-                  <Text fw={600} size="sm">
-                    Under-Bust ({unit})
-                  </Text>
+                  <Text fw={600} size="sm">Under-Bust ({unit})</Text>
                   <Select
                     key={`under-${unit}`}
                     placeholder={`Select (${unit})`}
@@ -207,9 +272,7 @@ export default function SizeCalculator() {
                 </Stack>
 
                 <Stack gap={6}>
-                  <Text fw={600} size="sm">
-                    Over-Bust ({unit})
-                  </Text>
+                  <Text fw={600} size="sm">Over-Bust ({unit})</Text>
                   <Select
                     key={`over-${unit}`}
                     placeholder={`Select (${unit})`}
@@ -224,18 +287,17 @@ export default function SizeCalculator() {
               <Box mt="sm" ta="center">
                 {underBust && overBust ? (
                   <>
-                    <Text fw={700} size="sm">
-                      YOUR BRA SIZE IS
-                    </Text>
-                    <Text fz={36} fw={900} c="red">
-                      {braResult?.label ?? "—"}
-                    </Text>
+                    <Text fw={700} size="sm">YOUR BRA SIZE IS</Text>
+                    <Text fz={36} fw={900} c="red">{braResult?.label ?? "—"}</Text>
                     {braResult?.note && <Text size="xs" c="dimmed">{braResult.note}</Text>}
+                    <Text size="xs" c="dimmed" mt="6px">
+                      {unit === "inch"
+                        ? `Selected: ${underBust} in under — ${overBust} in over`
+                        : `Selected: ${underBust} cm under — ${overBust} cm over`}
+                    </Text>
                   </>
                 ) : (
-                  <Text size="sm" c="dimmed">
-                    Select both values to see your size
-                  </Text>
+                  <Text size="sm" c="dimmed">Select both values to see your size</Text>
                 )}
               </Box>
             </Box>
@@ -243,49 +305,29 @@ export default function SizeCalculator() {
 
           {/* Size Chart */}
           <Card withBorder radius="lg" mt="xl" p="lg">
-            <Text fw={700} ta="center" mb="md" size="xl">
-              Bra Size Chart ({unit.toUpperCase()})
-            </Text>
+            <Text fw={700} ta="center" mb="md" size="xl">Bra Size Chart ({unit.toUpperCase()})</Text>
 
             {isMobile ? (
               <Stack gap="md">
                 {BAND_TABLE.map((b) => (
                   <Card key={b.band} withBorder radius="md" p="md">
-                    <Text fw={700} size="md" mb="xs">
-                      Bra Size {b.band}
-                    </Text>
+                    <Text fw={700} size="md" mb="xs">Bra Size {b.band}</Text>
                     <Text size="sm" c="dimmed">
-                      Under-bust:{" "}
-                      {unit === "cm"
-                        ? `${b.underBust[0]}–${b.underBust[1]} cm`
-                        : `${cmToIn(b.underBust[0])}–${cmToIn(b.underBust[1])} in`}
+                      Under-bust: {unit === "cm" ? `${b.underBust[0]}–${b.underBust[1]} cm` : `${cmToIn(b.underBust[0])}–${cmToIn(b.underBust[1])} in`}
                     </Text>
                     <Divider my="xs" />
                     <Stack gap={4}>
                       {(["A", "B", "C", "D"] as CupLetter[]).map((cup) => {
                         const [lo, hi] = b.overBustByCup[cup];
-
-                        const isSelected =
-                          braResult &&
-                          braResult.label.includes(String(b.band)) &&
-                          braResult.label.endsWith(cup);
-
+                        const isSelected = braResult && braResult.label.includes(String(b.band)) && braResult.label.endsWith(cup);
                         return (
-                          <Group
-                            key={`${b.band}-${cup}`}
-                            justify="space-between"
-                            style={{
-                              border: `2px solid ${isSelected ? "var(--mantine-color-red-6)" : "#ddd"}`,
-                              borderRadius: 6,
-                              padding: "4px 8px",
-                            }}
-                          >
-                            <Text size="sm" fw={500}>
-                              Cup {cup}
-                            </Text>
-                            <Text size="sm">
-                              {unit === "cm" ? `${lo}–${hi} cm` : `${cmToIn(lo)}–${cmToIn(hi)} in`}
-                            </Text>
+                          <Group key={`${b.band}-${cup}`} justify="space-between" style={{
+                            border: `2px solid ${isSelected ? "var(--mantine-color-red-6)" : "#ddd"}`,
+                            borderRadius: 6,
+                            padding: "4px 8px",
+                          }}>
+                            <Text size="sm" fw={500}>Cup {cup}</Text>
+                            <Text size="sm">{unit === "cm" ? `${lo}–${hi} cm` : `${cmToIn(lo)}–${cmToIn(hi)} in`}</Text>
                           </Group>
                         );
                       })}
@@ -296,50 +338,11 @@ export default function SizeCalculator() {
             ) : (
               <>
                 <Group gap="xs" wrap="nowrap" mb="xs" align="center">
-                  <Box w={140}>
-                    <Badge variant="light">Bra Size</Badge>
-                  </Box>
+                  <Box w={140}><Badge variant="light">Bra Size</Badge></Box>
                   <Group gap="xs" wrap="wrap">
                     {BAND_TABLE.map((b) => (
-                      <Card
-                        key={b.band}
-                        p="xs"
-                        radius="sm"
-                        withBorder
-                        style={{
-                          borderColor: braResult?.label.includes(String(b.band)) ? "var(--mantine-color-red-6)" : undefined,
-                        }}
-                      >
-                        <Text fw={700} size="sm">
-                          {b.band}
-                        </Text>
-                      </Card>
-                    ))}
-                  </Group>
-                </Group>
-
-                <Group gap="xs" wrap="nowrap" mb="xs" align="center">
-                  <Box w={140}>
-                    <Text size="sm" c="dimmed">
-                      Under-bust ({unit})
-                    </Text>
-                  </Box>
-                  <Group gap="xs" wrap="wrap">
-                    {BAND_TABLE.map((b) => (
-                      <Card
-                        key={b.band}
-                        p="xs"
-                        radius="sm"
-                        withBorder
-                        style={{
-                          borderColor: braResult?.label.includes(String(b.band)) ? "var(--mantine-color-red-6)" : undefined,
-                        }}
-                      >
-                        <Text size="sm">
-                          {unit === "cm"
-                            ? `${b.underBust[0]}–${b.underBust[1]}`
-                            : `${cmToIn(b.underBust[0])}–${cmToIn(b.underBust[1])}`}
-                        </Text>
+                      <Card key={b.band} p="xs" radius="sm" withBorder style={{ borderColor: braResult?.label.includes(String(b.band)) ? "var(--mantine-color-red-6)" : undefined }}>
+                        <Text fw={700} size="sm">{b.band}</Text>
                       </Card>
                     ))}
                   </Group>
@@ -351,11 +354,7 @@ export default function SizeCalculator() {
                   <Box w={140}>
                     <Stack gap={8}>
                       {(["A", "B", "C", "D"] as CupLetter[]).map((cup) => (
-                        <Card key={cup} p="xs" radius="sm" withBorder>
-                          <Text fw={700} size="sm">
-                            {cup}
-                          </Text>
-                        </Card>
+                        <Card key={cup} p="xs" radius="sm" withBorder><Text fw={700} size="sm">{cup}</Text></Card>
                       ))}
                     </Stack>
                   </Box>
@@ -365,22 +364,9 @@ export default function SizeCalculator() {
                       <Stack key={b.band} gap={8}>
                         {(["A", "B", "C", "D"] as CupLetter[]).map((cup) => {
                           const [lo, hi] = b.overBustByCup[cup];
-
-                          const isSelected =
-                            braResult &&
-                            braResult.label.includes(String(b.band)) &&
-                            braResult.label.endsWith(cup);
-
+                          const isSelected = braResult && braResult.label.includes(String(b.band)) && braResult.label.endsWith(cup);
                           return (
-                            <Card
-                              key={`${b.band}-${cup}`}
-                              p="xs"
-                              radius="sm"
-                              withBorder
-                              style={{
-                                border: `2px solid ${isSelected ? "var(--mantine-color-red-6)" : "#ddd"}`,
-                              }}
-                            >
+                            <Card key={`${b.band}-${cup}`} p="xs" radius="sm" withBorder style={{ border: `2px solid ${isSelected ? "var(--mantine-color-red-6)" : "#ddd"}` }}>
                               <Text size="sm">{unit === "cm" ? `${lo}–${hi}` : `${cmToIn(lo)}–${cmToIn(hi)}`}</Text>
                             </Card>
                           );
@@ -405,24 +391,18 @@ export default function SizeCalculator() {
                 setHip("");
               }}
               data={[
-                { label: "CM", value: "cm" },
                 { label: "INCH", value: "inch" },
+                { label: "CM", value: "cm" },
               ]}
             />
           </Group>
 
           <Stack gap="md" align="center">
-            <Text fw={600} size="sm">
-              Hip Measurement ({unit})
-            </Text>
+            <Text fw={600} size="sm">Hip Measurement ({unit})</Text>
             <Select
               key={`hip-${unit}`}
               placeholder={`Select hip size (${unit})`}
-              data={Array.from({ length: 149 - 75 + 1 }, (_, i) => {
-                const cm = 75 + i;
-                const val = unit === "cm" ? cm.toString() : cmToIn(cm).toString();
-                return { value: val, label: val };
-              })}
+              data={hipOptions}
               value={hip}
               onChange={(v) => setHip(v || "")}
               searchable
@@ -430,42 +410,28 @@ export default function SizeCalculator() {
 
             {hip && (
               <>
-                <Text fw={700} size="sm">
-                  YOUR PANTY SIZE IS
-                </Text>
-                <Text fz={36} fw={900} c="red">
-                  {pantyResult}
-                </Text>
+                <Text fw={700} size="sm">YOUR PANTY SIZE IS</Text>
+                <Text fz={36} fw={900} c="red">{pantyResult}</Text>
               </>
             )}
           </Stack>
 
           <Card withBorder radius="lg" mt="xl" p="lg">
-            <Text fw={700} ta="center" mb="md" size="xl">
-              Panty Size Chart ({unit.toUpperCase()})
-            </Text>
+            <Text fw={700} ta="center" mb="md" size="xl">Panty Size Chart ({unit.toUpperCase()})</Text>
             <Stack gap="sm">
               {PANTY_SIZES.map((s) => (
-                <Group
-                  key={s.label}
-                  justify="space-between"
-                  style={{
-                    border: `2px solid ${pantyResult === s.label ? "var(--mantine-color-red-6)" : "#ddd"}`,
-                    borderRadius: 6,
-                    padding: "6px 12px",
-                  }}
-                >
+                <Group key={s.label} justify="space-between" style={{
+                  border: `2px solid ${pantyResult === s.label ? "var(--mantine-color-red-6)" : "#ddd"}`,
+                  borderRadius: 6,
+                  padding: "6px 12px",
+                }}>
                   <Text fw={600}>{s.label}</Text>
-                  <Text>
-                    {unit === "cm" ? `${s.hip[0]}–${s.hip[1]} cm` : `${cmToIn(s.hip[0])}–${cmToIn(s.hip[1])} in`}
-                  </Text>
+                  <Text>{unit === "cm" ? `${s.hip[0]}–${s.hip[1]} cm` : `${cmToIn(s.hip[0])}–${cmToIn(s.hip[1])} in`}</Text>
                 </Group>
               ))}
             </Stack>
           </Card>
         </Tabs.Panel>
-
-
       </Tabs>
     </Box>
   );
