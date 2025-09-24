@@ -28,8 +28,8 @@ export default function ShopBySize() {
   return (
     <Box
       bg="#f3e7cf"
-      h={isMobile ? "auto" : "55vh"}
-      style={{ paddingBottom: isMobile ? "20px" : "70px" }}
+      h={isMobile ? "auto" : "60vh"}
+      style={{ paddingBottom: isMobile ? "20px" : "90px" }}
     >
       <Text
         size="lg"
