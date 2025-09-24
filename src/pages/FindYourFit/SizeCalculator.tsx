@@ -2,7 +2,6 @@ import {
   Box,
   Text,
   Image,
-  Select,
   Card,
   Divider,
   Badge,
@@ -10,6 +9,8 @@ import {
   Stack,
   SegmentedControl,
   Tabs,
+  NumberInput,
+  Button,
 } from "@mantine/core";
 import { useMemo, useState } from "react";
 import { useMediaQuery } from "@mantine/hooks";
@@ -81,89 +82,98 @@ const PANTY_SIZES = [
   { label: "6XL", hip: [143, 149] },
 ];
 
-export default function SizeCalculator() {
+type SendPayload =
+  | {
+      type: "bra";
+      unit: "inch" | "cm";
+      underBust: number;
+      overBust: number;
+      result: { label: string; note?: string | null } | null;
+    }
+  | {
+      type: "panties";
+      unit: "inch" | "cm";
+      hip: number;
+      result: string | null;
+    };
+
+export default function SizeCalculator({ onSend }: { onSend?: (payload: SendPayload) => void }) {
   const [tab, setTab] = useState<"bra" | "panties">("bra");
   // default can be "inch" or "cm" — set "inch" if you prefer the UI to start in inches
   const [unit, setUnit] = useState<"cm" | "inch">("inch");
-  const [underBust, setUnderBust] = useState<string>(""); // stores selected string (like "32" if inch mode)
-  const [overBust, setOverBust] = useState<string>("");
-  const [hip, setHip] = useState<string>("");
+  const [underBust, setUnderBust] = useState<number | undefined>(undefined); // numeric input now
+  const [overBust, setOverBust] = useState<number | undefined>(undefined);
+  const [hip, setHip] = useState<number | undefined>(undefined);
 
   const isMobile = useMediaQuery("(max-width: 640px)");
 
-  // build selects depending on unit
-  const { underOptions, overOptions, hipOptions } = useMemo(() => {
+  // build ranges for display only (not used as selects anymore)
+  const underOptionsDisplay = useMemo(() => {
     if (unit === "inch") {
-      // integer inch ranges (no decimals)
-      const under = Array.from({ length: 40 - 25 + 1 }, (_, i) => {
-        const v = 25 + i;
-        return { value: `${v}`, label: `${v}` };
-      });
-      const over = Array.from({ length: 49 - 30 + 1 }, (_, i) => {
-        const v = 30 + i;
-        return { value: `${v}`, label: `${v}` };
-      });
-      // hip: convert 75..149 cm to inches, but present integer inches for selection (approx)
-      const hipInMin = Math.floor(cmToIn(75));
-      const hipInMax = Math.ceil(cmToIn(149));
-      const hipArr = Array.from({ length: hipInMax - hipInMin + 1 }, (_, i) => {
-        const v = hipInMin + i;
-        return { value: `${v}`, label: `${v}` };
-      });
-      return { underOptions: under, overOptions: over, hipOptions: hipArr };
+      return `${25}–${40} in`;
     }
+    return `${58}–${97} cm`;
+  }, [unit]);
 
-    // cm mode (integer cm values as before)
-    const underCmMin = 58, underCmMax = 97;
-    const overCmMin = 72, overCmMax = 115;
-    const under = Array.from({ length: underCmMax - underCmMin + 1 }, (_, i) => {
-      const v = underCmMin + i;
-      return { value: `${v}`, label: `${v}` };
-    });
-    const over = Array.from({ length: overCmMax - overCmMin + 1 }, (_, i) => {
-      const v = overCmMin + i;
-      return { value: `${v}`, label: `${v}` };
-    });
-    const hipArr = Array.from({ length: 149 - 75 + 1 }, (_, i) => {
-      const v = 75 + i;
-      return { value: `${v}`, label: `${v}` };
-    });
-    return { underOptions: under, overOptions: over, hipOptions: hipArr };
+  const overOptionsDisplay = useMemo(() => {
+    if (unit === "inch") {
+      return `${30}–${49} in`;
+    }
+    return `${72}–${115} cm`;
+  }, [unit]);
+
+  const hipOptionsDisplay = useMemo(() => {
+    if (unit === "inch") {
+      return `${cmToIn(75)}–${cmToIn(149)} in (approx)`;
+    }
+    return `75–149 cm`;
   }, [unit]);
 
   // compute bra result:
-  // When unit === "inch": match directly to BAND_TABLE_INCH (inches)
-  // When unit === "cm": original behavior (match BAND_TABLE in cm)
   const braResult = useMemo(() => {
-    if (!underBust || !overBust) return null;
+    if (underBust == null || overBust == null) return null;
 
     if (unit === "inch") {
-      const underIn = parseFloat(underBust); // integer inches
-      const overIn = parseFloat(overBust);
+      const underIn = underBust;
+      const overIn = overBust;
 
-      const bandCol = BAND_TABLE_INCH.find((b) => inRangeIn(underIn, b.underBustIn));
+      // find band matching under-bust
+      let bandCol = BAND_TABLE_INCH.find((b) => inRangeIn(underIn, b.underBustIn));
+
+      // NEW: if under-bust is BELOW smallest band's under range -> default to 28A
+      const smallestBand = BAND_TABLE_INCH[0]; // band 28
+      const largestBand = BAND_TABLE_INCH[BAND_TABLE_INCH.length - 1]; // band 44
+      if (!bandCol) {
+        const minUnder = smallestBand.underBustIn[0];
+        const maxUnder = largestBand.underBustIn[1];
+
+        if (underIn < minUnder) {
+          // default to 28A
+          return { label: `28A`, note: "Under-bust below chart — defaulted to 28A" };
+        }
+
+        // if above the chart, set bandCol to the last band so we show last band's size
+        if (underIn > maxUnder) {
+          bandCol = largestBand;
+        }
+      }
+
+      // now bandCol exists (either found or set to last band)
       if (!bandCol) return { label: "—", note: "Under-bust out of chart range" };
 
       const cup = (Object.keys(bandCol.overBustByCupIn) as CupLetter[]).find((c) =>
-        inRangeIn(overIn, bandCol.overBustByCupIn[c])
+        inRangeIn(overIn, bandCol!.overBustByCupIn[c])
       ) ?? null;
 
-      if (!cup) return { label: `${bandCol.band}`, note: "Over-bust out of chart range" };
+      if (!cup) {
+        return { label: `${bandCol.band}`, note: "Over-bust out of chart range for selected band" };
+      }
       return { label: `${bandCol.band}${cup}`, note: null as string | null };
     }
 
-    // CM mode: keep existing behavior (match BAND_TABLE which is in cm)
-    let underCm: number;
-    let overCm: number;
-
-    if (unit === "inch") {
-      // unreachable because handled above, but keep pattern
-      underCm = inchToCm(parseFloat(underBust));
-      overCm = inchToCm(parseFloat(overBust));
-    } else {
-      underCm = parseFloat(underBust);
-      overCm = parseFloat(overBust);
-    }
+    // CM mode
+    const underCm = underBust;
+    const overCm = overBust;
 
     const bandCol = BAND_TABLE.find((b) => inRangeCm(underCm, b.underBust));
     if (!bandCol) return { label: "—", note: "Under-bust out of chart range" };
@@ -176,19 +186,66 @@ export default function SizeCalculator() {
     return { label: `${bandCol.band}${cup}`, note: null as string | null };
   }, [underBust, overBust, unit]);
 
-  // panty result: if inch mode we convert simple multiplication or compare approximate integer inch against converted ranges
+  // panty result:
   const pantyResult = useMemo(() => {
-    if (!hip) return null;
+    if (hip == null) return null;
     if (unit === "inch") {
-      const hipIn = parseFloat(hip);
+      const hipIn = hip;
       const hipCm = inchToCm(hipIn);
       const found = PANTY_SIZES.find((s) => inRangeCm(hipCm, s.hip));
       return found ? found.label : "—";
     }
-    const hipCm = parseFloat(hip);
+    const hipCm = hip;
     const found = PANTY_SIZES.find((s) => inRangeCm(hipCm, s.hip));
     return found ? found.label : "—";
   }, [hip, unit]);
+
+  const handleSend = async () => {
+    if (tab === "bra") {
+      if (underBust == null || overBust == null) {
+        alert("Please enter both under-bust and over-bust to send.");
+        return;
+      }
+      const payload: SendPayload = {
+        type: "bra",
+        unit,
+        underBust,
+        overBust,
+        result: braResult,
+      };
+      if (typeof onSend === "function") {
+        try { onSend(payload); } catch (e) { console.warn("onSend handler failed", e); }
+      }
+      const json = JSON.stringify(payload, null, 2);
+      try {
+        await navigator.clipboard.writeText(json);
+        alert("Size payload copied to clipboard — you can paste it in chat/email.");
+      } catch {
+        alert("Could not copy to clipboard — payload logged to console.");
+      }
+    } else {
+      if (hip == null) {
+        alert("Please enter hip measurement to send.");
+        return;
+      }
+      const payload: SendPayload = {
+        type: "panties",
+        unit,
+        hip,
+        result: pantyResult,
+      };
+      if (typeof onSend === "function") {
+        try { onSend(payload); } catch (e) { console.warn("onSend handler failed", e); }
+      }
+      const json = JSON.stringify(payload, null, 2);
+      try {
+        await navigator.clipboard.writeText(json);
+        alert("Size payload copied to clipboard — you can paste it in chat/email.");
+      } catch {
+        alert("Could not copy to clipboard — payload logged to console.");
+      }
+    }
+  };
 
   return (
     <Box w={isMobile ? "100%" : "70vw"} mx="auto" p="md">
@@ -200,9 +257,9 @@ export default function SizeCalculator() {
         value={tab}
         onChange={(v) => {
           setTab(v as "bra" | "panties");
-          setUnderBust("");
-          setOverBust("");
-          setHip("");
+          setUnderBust(undefined);
+          setOverBust(undefined);
+          setHip(undefined);
         }}
       >
         <Tabs.List grow mb="md">
@@ -238,9 +295,9 @@ export default function SizeCalculator() {
               value={unit}
               onChange={(v) => {
                 setUnit(v as "cm" | "inch");
-                setUnderBust("");
-                setOverBust("");
-                setHip("");
+                setUnderBust(undefined);
+                setOverBust(undefined);
+                setHip(undefined);
               }}
               data={[
                 { label: "INCH", value: "inch" },
@@ -261,49 +318,57 @@ export default function SizeCalculator() {
               <Stack gap="md">
                 <Stack gap={6}>
                   <Text fw={600} size="sm">Under-Bust ({unit})</Text>
-                  <Select
-                    key={`under-${unit}`}
-                    placeholder={`Select (${unit})`}
-                    data={underOptions}
+                  {/* NumberInput allows decimal and direct typing */}
+                  <NumberInput
+                    placeholder={underOptionsDisplay}
                     value={underBust}
-                    onChange={(v) => setUnderBust(v || "")}
-                    searchable
+                    onChange={(v) => setUnderBust(v ?? undefined)}
+                    min={0}
+                    step={0.1}
+                    precision={1}
+                    parser={(value) => value?.replace(/[^\d.]/g, "") ?? ""}
                   />
                 </Stack>
 
                 <Stack gap={6}>
                   <Text fw={600} size="sm">Over-Bust ({unit})</Text>
-                  <Select
-                    key={`over-${unit}`}
-                    placeholder={`Select (${unit})`}
-                    data={overOptions}
+                  <NumberInput
+                    placeholder={overOptionsDisplay}
                     value={overBust}
-                    onChange={(v) => setOverBust(v || "")}
-                    searchable
+                    onChange={(v) => setOverBust(v ?? undefined)}
+                    min={0}
+                    step={0.1}
+                    precision={1}
+                    parser={(value) => value?.replace(/[^\d.]/g, "") ?? ""}
                   />
                 </Stack>
               </Stack>
 
               <Box mt="sm" ta="center">
-                {underBust && overBust ? (
+                {underBust != null && overBust != null ? (
                   <>
                     <Text fw={700} size="sm">YOUR BRA SIZE IS</Text>
                     <Text fz={36} fw={900} c="red">{braResult?.label ?? "—"}</Text>
                     {braResult?.note && <Text size="xs" c="dimmed">{braResult.note}</Text>}
                     <Text size="xs" c="dimmed" mt="6px">
                       {unit === "inch"
-                        ? `Selected: ${underBust} in under — ${overBust} in over`
-                        : `Selected: ${underBust} cm under — ${overBust} cm over`}
+                        ? `Entered: ${underBust} in under — ${overBust} in over`
+                        : `Entered: ${underBust} cm under — ${overBust} cm over`}
                     </Text>
+
+                    <Button mt="md" fullWidth onClick={handleSend}>Send Size</Button>
                   </>
                 ) : (
-                  <Text size="sm" c="dimmed">Select both values to see your size</Text>
+                  <>
+                    <Text size="sm" c="dimmed">Enter both values to see your size</Text>
+                    <Button mt="md" fullWidth disabled onClick={handleSend}>Send Size</Button>
+                  </>
                 )}
               </Box>
             </Box>
           </Group>
 
-          {/* Size Chart */}
+          {/* Size Chart (unchanged) */}
           <Card withBorder radius="lg" mt="xl" p="lg">
             <Text fw={700} ta="center" mb="md" size="xl">Bra Size Chart ({unit.toUpperCase()})</Text>
 
@@ -388,7 +453,7 @@ export default function SizeCalculator() {
               value={unit}
               onChange={(v) => {
                 setUnit(v as "cm" | "inch");
-                setHip("");
+                setHip(undefined);
               }}
               data={[
                 { label: "INCH", value: "inch" },
@@ -399,19 +464,27 @@ export default function SizeCalculator() {
 
           <Stack gap="md" align="center">
             <Text fw={600} size="sm">Hip Measurement ({unit})</Text>
-            <Select
-              key={`hip-${unit}`}
-              placeholder={`Select hip size (${unit})`}
-              data={hipOptions}
+
+            {/* Number input for hip */}
+            <NumberInput
+              placeholder={hipOptionsDisplay}
               value={hip}
-              onChange={(v) => setHip(v || "")}
-              searchable
+              onChange={(v) => setHip(v ?? undefined)}
+              min={0}
+              step={0.1}
+              precision={1}
+              style={{ width: isMobile ? "100%" : 200 }}
             />
 
-            {hip && (
+            {hip != null ? (
               <>
                 <Text fw={700} size="sm">YOUR PANTY SIZE IS</Text>
                 <Text fz={36} fw={900} c="red">{pantyResult}</Text>
+                <Button mt="md" fullWidth onClick={handleSend}>Send Size</Button>
+              </>
+            ) : (
+              <>
+                <Button mt="md" fullWidth disabled onClick={handleSend}>Send Size</Button>
               </>
             )}
           </Stack>

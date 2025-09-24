@@ -55,7 +55,6 @@ export function useRazorpayCheckout() {
           // You can route to success page or show toast based on verify.valid
           if (verify.valid) {
             // TODO: navigate('/order/success?order_id='+order.id)
-            console.log('Payment verified ✔');
           } else {
             console.error('Signature mismatch ✖');
           }

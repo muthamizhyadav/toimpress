@@ -98,6 +98,7 @@ export default function SizeSelectorDrawer({
   selectedColor: initialSelectedColor,
   colors = [],
 }: Props) {
+
   type Mode = "Brassiere" | "Panties" | "Both";
   const [mode, setMode] = useState<"Brassiere" | "Panties">("Brassiere");
   const [availableMode, setAvailableMode] = useState<Mode>("Both");
@@ -131,7 +132,8 @@ export default function SizeSelectorDrawer({
   useEffect(() => {
     const cat = typeof category === "string" ? category.toLowerCase() : "";
     const isBra = cat.includes("bra") || cat.includes("brassiere");
-    const isPant = cat.includes("pant") || cat.includes("panties") || cat.includes("panty");
+    const isPant = cat.includes("pant") || cat.includes("Pant") || cat.includes("panties") || cat.includes("panty");
+
 
     if (isBra && !isPant) {
       setAvailableMode("Brassiere");
@@ -192,7 +194,6 @@ export default function SizeSelectorDrawer({
     (async () => {
       try {
         const resp = await axiosInstance.get(API_GET_CART_DATA + productId);
-        console.log("API_GET_CART_DATA response:", resp?.data ?? resp);
       } catch (err) {
         console.error("Failed to fetch API_GET_CART_DATA:", err);
       }

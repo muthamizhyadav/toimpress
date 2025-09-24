@@ -79,7 +79,6 @@ const ProductGrid: React.FC<ProductGridProps> = ({ fetchProducts, categoryName, 
     (async () => {
       try {
         const newItems = await fetchProducts(0, limit, categoryName || "");
-        console.log(newItems, "newItems")
         if (currentRequestId !== requestIdRef.current) return; // stale
         setItems(newItems);
         setOffset(newItems.length);
@@ -142,6 +141,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({ fetchProducts, categoryName, 
                   id={item.id}
                   imageUrl={item.imageUrl}
                   productName={item.title}
+                  category={categoryName}
                   price={item.price}
                   originalPrice={item.originalPrice}
                   isNew={item.isNew}

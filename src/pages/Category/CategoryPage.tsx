@@ -22,7 +22,6 @@ const fetchProducts = async (
     const url = `${API_GET_CATEGORIES_PRODUCTS}${encodedName}?page=${page}&limit=${limit}`;
 
     const response = await axiosInstance.get(url);
-    console.log(response, "responseresponseresponse")
     const fetchedProducts = response?.data?.data ?? [];
 
     return fetchedProducts.map((product: any, index: number) => ({
@@ -30,6 +29,7 @@ const fetchProducts = async (
       title: product.productTitle,
       price: product.salePrice,
       originalPrice: product.price,
+      category: product.category,
       imageUrl: product.images?.[0] || BraModel,
       isNew: product.isNew || false,
       discount:

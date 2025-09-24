@@ -127,7 +127,6 @@ export function MobileCartDrawer() {
       const resp = await axiosInstance.get(API_GET_UPDATE);
       // set raw response data so mapper can handle multiple shapes
       if (resp?.status === 200 && resp?.data) {
-        console.log(resp.data, "resp.data")
         setCartData(resp.data);
       } else {
         setCartData(null);
@@ -235,7 +234,6 @@ export function MobileCartDrawer() {
 
   // remove item handler (calls cart update endpoint with quantity: 0)
   const handleRemove = async (item: DisplayItem) => {
-    console.log(item, "item")
     try {
       const body = {
         productId: String(item.id),

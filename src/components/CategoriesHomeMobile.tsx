@@ -53,7 +53,6 @@ function normalizeLabel(raw?: string) {
 }
 
 function pickIconForLabel(label?: string) {
-  console.log(label, "pickIconForLabel")
   const key = normalizeLabel(label);
   return ICON_MAP[key] ?? Default_Logo;
 }

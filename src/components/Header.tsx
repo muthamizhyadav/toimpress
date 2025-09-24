@@ -149,9 +149,6 @@ export default function Header() {
         const resp = await axiosInstance.get(url, { signal: controller.signal });
         const data = resp?.data ?? resp;
 
-        // console.log raw response (user requested)
-        console.log("Search results (raw):", data);
-
         // normalize results
         let results: any[] = [];
         if (Array.isArray(data)) results = data;

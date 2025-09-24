@@ -64,6 +64,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const isMobile = useMediaQuery("(max-width: 600px)");
   const navigate = useNavigate();
 
+  
   // aggregated product-level quantity (local best-effort)
   const [qty, setQty] = useState<number>(0);
   const [openSizeDrawer, setOpenSizeDrawer] = useState(false);

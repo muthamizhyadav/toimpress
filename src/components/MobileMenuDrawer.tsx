@@ -132,9 +132,6 @@ export function MobileMenuDrawer({
         const resp = await axiosInstance.get(url, { signal: controller.signal });
         const data = resp?.data ?? resp;
 
-        // console.log raw response as requested
-        console.log("Mobile search response:", data);
-
         // Normalise results array
         const results = Array.isArray(data)
           ? data

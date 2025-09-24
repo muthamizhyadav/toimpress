@@ -104,7 +104,7 @@ function CheckoutItemBox({
             <Text fw={600} size="sm" lineClamp={2}>
               {item.title}
             </Text>
-            {(promo && promo.applied) || item.raw?.isOfferAvailable ? (
+            {item.raw?.isOfferAvailable ? (
               <Badge style={{ backgroundColor: LIGHT_GREEN, color: DARK_GREEN }}>OFFER APPLIED</Badge>
             ) : null}
           </Group>
@@ -227,7 +227,6 @@ export default function Checkout() {
   const reduxUser = useSelector((state: any) => state.auth?.user ?? state.user?.user ?? null);
   const reduxAddress = useSelector((state: any) => state.auth?.user?.address ?? state.user?.user?.address ?? state.address ?? null);
 
-  console.log(reduxUser, "reduxUser")
 
   const [user, setUser] = useState<any>(null);
   const [storedUserAddress, setStoredUserAddress] = useState<any>(null);
@@ -251,13 +250,36 @@ export default function Checkout() {
       // If server returned scheme fields at top level (example you provided),
       // use that as savedScheme. Tolerant checks.
       const root = resp?.data ?? resp;
-      if (root && typeof root.isDiscountApplicable !== "undefined") {
-        setSavedScheme(root);
-      } else if (root && root.scheme && typeof root.scheme.isDiscountApplicable !== "undefined") {
-        setSavedScheme(root.scheme);
-      } else {
-        setSavedScheme(null);
-      }
+if (root && typeof root.isDiscountApplicable !== "undefined") {
+  // Normalize server scheme fields into numbers (tolerant)
+  const parsed = {
+    ...root,
+    totalSalesPrice: Number(root.totalSalesPrice ?? root.total_sales_price ?? 0),
+    minusValue: Number(root.minusValue ?? root.minus_value ?? root.discountAmount ?? 0),
+    finalAmount: Number(root.finalAmount ?? root.final_amount ?? 0),
+    gst: Math.round(Number(root.gst ?? 0)),
+    couponAmount: Number(root.couponAmount ?? root.coupon_amount ?? 0),
+    discountvalue: root.discountvalue ?? root.discount_value ?? root.couponOfferDiscount ?? root.discountvalue ?? 0,
+    isDiscountApplicable: Boolean(root.isDiscountApplicable),
+  };
+  setSavedScheme(parsed);
+} else if (root && root.scheme && typeof root.scheme.isDiscountApplicable !== "undefined") {
+  // same normalization for nested shape
+  const s = root.scheme;
+  const parsed = {
+    ...s,
+    totalSalesPrice: Number(s.totalSalesPrice ?? s.total_sales_price ?? 0),
+    minusValue: Number(s.minusValue ?? s.minus_value ?? s.discountAmount ?? 0),
+    finalAmount: Number(s.finalAmount ?? s.final_amount ?? 0),
+    gst: Math.round(Number(s.gst ?? 0)),
+    couponAmount: Number(s.couponAmount ?? s.coupon_amount ?? 0),
+    discountvalue: s.discountvalue ?? s.discount_value ?? s.couponOfferDiscount ?? s.discountvalue ?? 0,
+    isDiscountApplicable: Boolean(s.isDiscountApplicable),
+  };
+  setSavedScheme(parsed);
+} else {
+  setSavedScheme(null);
+}
     } catch (err: any) {
       console.error("Fetch cart failed", err);
       showNotification({
@@ -509,65 +531,70 @@ const handleClearCart = async () => {
    *   we use the savedScheme values as source of truth for subtotal, discounts and finalAmount.
    */
   const totals = useMemo(() => {
-    const subtotal = (items || []).reduce((sum, i) => {
-      const p = i.salePrice ?? i.price ?? 0;
-      return sum + p * (i.qty ?? 1);
-    }, 0);
+  // local computed fallback subtotal & qty
+  const localSubtotal = (items || []).reduce((sum, i) => {
+    const p = i.salePrice ?? i.price ?? 0;
+    return sum + p * (i.qty ?? 1);
+  }, 0);
 
-    const totalQty = (items || []).reduce((q, i) => q + (i.qty ?? 0), 0);
+  const totalQty = (items || []).reduce((q, i) => q + (i.qty ?? 0), 0);
 
-    // coupon handling
-    let couponDiscount = 0;
-    if (appliedCoupon?.code === "SAVE10") {
-      couponDiscount = Math.round(Math.min(100, subtotal * 0.1));
-    } else if (appliedCoupon) {
-      couponDiscount = appliedCoupon.discount ?? 0;
-    }
+  // coupon handling (local-only fallback)
+  let couponDiscount = 0;
+  if (appliedCoupon?.code === "SAVE10") {
+    couponDiscount = Math.round(Math.min(100, localSubtotal * 0.1));
+  } else if (appliedCoupon) {
+    couponDiscount = appliedCoupon.discount ?? 0;
+  }
 
-    // total discounts are only from coupon (buy3 logic removed)
-    const totalDiscounts = Math.min(subtotal, couponDiscount);
+  const totalDiscounts = Math.min(localSubtotal, couponDiscount);
+  const discountedBase = localSubtotal - totalDiscounts;
+  const gstRaw = discountedBase * GST_PERCENT;
+  const gstComputed = Math.round(gstRaw);
+  const shipping = paymentMethod === "COD" && items?.length ? COD_SHIPPING : 0;
+  let grandTotalComputed = Math.round(discountedBase + gstComputed + shipping);
+  let savingsPercentComputed = localSubtotal > 0 ? Math.round((totalDiscounts / localSubtotal) * 100) : 0;
 
-    const discountedBase = subtotal - totalDiscounts;
-    const gstRaw = discountedBase * GST_PERCENT;
-    const gst = Math.round(gstRaw);
-    const shipping = paymentMethod === "COD" && items?.length ? COD_SHIPPING : 0;
-    let grandTotal = Math.round(discountedBase + gst + shipping);
+  // If server provided a saved scheme and it's applicable, override using savedScheme fields.
+  // Use fields exactly as requested:
+  // - Total MRP : totalSalesPrice
+  // - Scheme dis : minusValue
+  // - Cart subtotal : finalAmount
+  // - GST 5% : gst
+  if (savedScheme && savedScheme.isDiscountApplicable) {
+    const sTotalSales = Number(savedScheme.totalSalesPrice ?? 0);
+    const sMinus = Number(savedScheme.minusValue ?? 0);
+    const sFinal = Number(savedScheme.finalAmount ?? 0);
+    const sGst = Math.round(Number(savedScheme.gst ?? 0));
 
-    // default savings percent (from computed totals)
-    let savingsPercent = subtotal > 0 ? Math.round((totalDiscounts / subtotal) * 100) : 0;
-
-    // If server provided a saved scheme and it's applicable, override using savedScheme
-    if (savedScheme && savedScheme.isDiscountApplicable) {
-      const sTotalSales = Number(savedScheme.totalSalesPrice ?? 0);
-      const sMinus = Number(savedScheme.minusValue ?? 0);
-      const sFinal = Number(savedScheme.finalAmount ?? 0);
-
-      // treat sFinal as final amount BEFORE COD shipping; add COD shipping if COD selected.
-      const effectiveFinal = Math.round(sFinal + (paymentMethod === "COD" ? COD_SHIPPING : 0));
-
-      return {
-        subtotal: Math.round(sTotalSales),
-        totalQty,
-        couponDiscount: Number(savedScheme.couponAmount ?? couponDiscount),
-        totalDiscounts: Math.round(sMinus),
-        gst: Math.round(gst),
-        shipping: paymentMethod === "COD" ? COD_SHIPPING : 0,
-        grandTotal: effectiveFinal,
-        savingsPercent: sTotalSales > 0 ? Math.round((sMinus / sTotalSales) * 100) : 0,
-      };
-    }
+    // server's finalAmount is treated as cart subtotal (already discounted).
+    // If paymentMethod is COD, ensure we add COD shipping (your UI expects that).
+    const effectiveFinal = Math.round(sFinal + (paymentMethod === "COD" ? COD_SHIPPING : 0));
 
     return {
-      subtotal: Math.round(subtotal),
+      subtotal: Math.round(sTotalSales),
       totalQty,
-      couponDiscount,
-      totalDiscounts,
-      gst,
-      shipping,
-      grandTotal,
-      savingsPercent,
+      couponDiscount: Number(savedScheme.couponAmount ?? couponDiscount),
+      totalDiscounts: Math.round(sMinus),
+      gst: Math.round(sGst),
+      shipping: paymentMethod === "COD" ? COD_SHIPPING : 0,
+      grandTotal: effectiveFinal,
+      savingsPercent: sTotalSales > 0 ? Math.round((sMinus / sTotalSales) * 100) : 0,
     };
-  }, [items, paymentMethod, appliedCoupon, savedScheme]);
+  }
+
+  return {
+    subtotal: Math.round(localSubtotal),
+    totalQty,
+    couponDiscount,
+    totalDiscounts,
+    gst: gstComputed,
+    shipping,
+    grandTotal: grandTotalComputed,
+    savingsPercent: savingsPercentComputed,
+  };
+}, [items, paymentMethod, appliedCoupon, savedScheme]);
+
 
   // Build a promo object to pass into product cards.
   // Priority:
