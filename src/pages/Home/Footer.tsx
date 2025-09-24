@@ -20,7 +20,7 @@ export default function Footer() {
   const endYear = currentYear > 2025 ? currentYear : 2026;
 
   return (
-    <Box bg="#FBFBF9" pt="48px" pb="48px" sx={{ borderTop: "1px solid #E9ECEF" }}>
+    <Box bg="#FBFBF9" pt="48px" pb="72px" sx={{ borderTop: "1px solid #E9ECEF" }}>
       <Container size="xl">
         {/* Top grid: logo / about / contact */}
         <Grid gutter="xl" align="start">
@@ -102,16 +102,10 @@ export default function Footer() {
         <Divider my="xl" />
 
         {/* Bottom row */}
-        <Group position="apart" align="center" spacing="xl" noWrap>
+        <Group position="apart" align="center" spacing="xl" noWrap mb={2} >
           <Text size="xs" color="dimmed">
             © {endYear} To Impress by Ponpreatha Textiles. All rights reserved.
           </Text>
-
-          <Group spacing="md" className="hidden sm:flex">
-            <Anchor component={Anchor} href="/terms" size="xs" color="dimmed">Terms</Anchor>
-            <Anchor component={Anchor} href="/privacy" size="xs" color="dimmed">Privacy</Anchor>
-            <Anchor component={Anchor} href="/contact" size="xs" color="dimmed">Contact</Anchor>
-          </Group>
         </Group>
       </Container>
     </Box>

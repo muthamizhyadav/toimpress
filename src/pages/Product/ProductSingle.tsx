@@ -107,16 +107,42 @@ export default function ProductPage() {
         setProductDetails(detail);
         setSimilarProducts(sims || []);
 
-        // initial color/size
-        const initialColor = detail?.selectedColors?.[0] ?? "";
+        // -----------------------
+        // initial color/size/images (colorData-aware)
+        // -----------------------
+
+        // pick initial color: prefer explicit selectedColors, otherwise pick first key in colorData
+        let initialColor = detail?.selectedColors?.[0] ?? "";
+        if (!initialColor && detail?.colorData && typeof detail.colorData === "object") {
+          const keys = Object.keys(detail.colorData);
+          if (keys.length) initialColor = keys[0];
+        }
+
         const initialSize = detail?.selectedSizes?.[0] ?? "";
 
-        // fallback images array
+        // fallback images array (product-level)
         const fallbackImages: string[] = Array.isArray(detail?.images) ? detail.images : [];
 
-        // helper to try multiple shapes for color->images
+        // Try to fetch images from colorData if we have an initialColor
+        let initialImgs: string[] | undefined = undefined;
+        if (initialColor && detail?.colorData && detail.colorData[initialColor]) {
+          const cd = detail.colorData[initialColor];
+          if (Array.isArray(cd.images) && cd.images.length) {
+            initialImgs = cd.images;
+          } else if (typeof cd.image === "string") {
+            initialImgs = [cd.image];
+          }
+        }
+
+        // helper to try multiple shapes for color->images (keeps previous robust logic)
         const tryGetImagesForColor = (color?: string) => {
           if (!color) return undefined;
+          // first check colorData explicitly
+          if (detail?.colorData && detail.colorData[color]) {
+            const cd = detail.colorData[color];
+            if (Array.isArray(cd.images) && cd.images.length) return cd.images;
+            if (cd.image) return [cd.image];
+          }
           const key = String(color).toLowerCase();
 
           const tryMap = (map: any) => {
@@ -151,9 +177,8 @@ export default function ProductPage() {
           return undefined;
         };
 
-        // try populate gallery from color first (if exists), otherwise fallback to product images
-        const initialImgs = tryGetImagesForColor(initialColor) ?? fallbackImages;
-        const imgsArr = Array.isArray(initialImgs) ? initialImgs : (initialImgs ? [String(initialImgs)] : []);
+        const imgsFromColor = tryGetImagesForColor(initialColor) ?? initialImgs;
+        const imgsArr = Array.isArray(imgsFromColor) ? imgsFromColor : (imgsFromColor ? [String(imgsFromColor)] : []);
         setGalleryImages(imgsArr.length ? imgsArr : fallbackImages);
         setMainImage((imgsArr.length ? imgsArr[0] : fallbackImages[0]) || "");
         setSelectedColor(initialColor);
@@ -166,8 +191,12 @@ export default function ProductPage() {
   }, [productId]);
 
   // safe inputs even before productDetails loads
+  // prefer colorData when present (keys are color tokens like "#ff4a62")
+  const colorDataMap: Record<string, any> | undefined = productDetails?.colorData;
+  const colorsInput: string[] = colorDataMap
+    ? Object.keys(colorDataMap)
+    : (productDetails?.selectedColors ?? []);
   const sizesInput: string[] = productDetails?.selectedSizes ?? [];
-  const colorsInput: string[] = productDetails?.selectedColors ?? [];
   const imagesInput: string[] = productDetails?.images ?? [];
   const priceInput: number | undefined = productDetails?.price;
   const salePriceInput: number | undefined = productDetails?.salePrice;
@@ -175,29 +204,73 @@ export default function ProductPage() {
   const descInput: string = productDetails?.productDescription ?? "";
 
   // grouped sizeOptions (band -> cups) for main product
-  const sizeOptions: SizeOption[] = useMemo(() => {
-    const map = new Map<number, Set<string>>();
-    for (const s of sizesInput) {
-      const m = /^(\d{2})([A-Z]+)$/.exec(String(s).toUpperCase().trim());
-      if (!m) continue;
+  // grouped sizeOptions (band -> cups) for main product
+const sizeOptions: SizeOption[] = useMemo(() => {
+  // Map band -> Set of cups OR for band 0 -> Set of single-label sizes
+  const map = new Map<number, Set<string>>();
+
+  for (const s of sizesInput) {
+    if (!s && s !== 0) continue;
+    const raw = String(s).toUpperCase().trim();
+
+    // Try band+cup like 34B or 36AA
+    const m = /^(\d{2})([A-Z]+)$/.exec(raw);
+    if (m) {
       const band = Number(m[1]);
       const cup = m[2];
       if (!map.has(band)) map.set(band, new Set());
       map.get(band)!.add(cup);
+      continue;
     }
-    return Array.from(map.entries())
-      .sort((a, b) => a[0] - b[0])
-      .map(([band, cupsSet]) => ({
-        band,
-        cups: Array.from(cupsSet.values()).sort(),
-      }));
-  }, [sizesInput]);
 
-  // ---- size-by-color detection logic (not a hook)
+    // Try numeric only (e.g. "28", "30"), treat as single-label
+    const numericOnly = /^(\d{2,3})$/.exec(raw);
+    if (numericOnly) {
+      if (!map.has(0)) map.set(0, new Set());
+      map.get(0)!.add(numericOnly[1]);
+      continue;
+    }
+
+    // Otherwise treat as single-label (S, M, L, XL, XXL, etc.)
+    if (/^[A-Z]{1,3}$/.test(raw)) {
+      if (!map.has(0)) map.set(0, new Set());
+      map.get(0)!.add(raw);
+      continue;
+    }
+
+    // fallback: put anything else into band 0 as-is
+    if (!map.has(0)) map.set(0, new Set());
+    map.get(0)!.add(raw);
+  }
+
+  // Convert to SizeOption[] similar to existing shape.
+  return Array.from(map.entries())
+    .sort((a, b) => a[0] - b[0]) // band 0 will come first
+    .map(([band, cupsSet]) => ({
+      band,
+      cups: Array.from(cupsSet.values()).sort((a, b) => {
+        // sort numbers before letters (e.g., 28,30 then L,M etc.)
+        const na = /^\d+$/.test(a) ? Number(a) : Number.MAX_SAFE_INTEGER;
+        const nb = /^\d+$/.test(b) ? Number(b) : Number.MAX_SAFE_INTEGER;
+        if (na !== nb) return na - nb;
+        return a.localeCompare(b);
+      }),
+    }));
+}, [sizesInput]);
+
+
+  // ---- size-by-color detection logic (colorData-aware)
   const getSizesForColor = (color: string, prod: any = productDetails): string[] => {
     const sizesFlat: string[] = prod?.selectedSizes ?? [];
     if (!color) return sizesFlat;
 
+    // 1) colorData shape: { "#ff4a62": { sizes: [...], images: [...] }, ... }
+    if (prod?.colorData && typeof prod.colorData === "object") {
+      const entry = prod.colorData[color] ?? prod.colorData[color?.toLowerCase?.()] ?? prod.colorData[color?.toUpperCase?.()];
+      if (entry && Array.isArray(entry.sizes) && entry.sizes.length) return entry.sizes;
+    }
+
+    // 2) existing candidate maps you already had
     const mapCandidate =
       prod?.sizeByColor ??
       prod?.sizesByColor ??
@@ -253,7 +326,7 @@ export default function ProductPage() {
   const currentQty: number = currentCartItem?.qty ?? 0;
 
   const requiresSize = sizeOptions.length > 0;
-  const requiresColor = colorsInput.length > 0;
+  const requiresColor = (colorDataMap ? Object.keys(colorDataMap).length > 0 : (productDetails?.selectedColors ?? []).length > 0);
 
   // main product API payload maker
   const makeCartPayload = (sizeLabel?: string, qty = 1) => ({
@@ -269,6 +342,18 @@ export default function ProductPage() {
       if (prev[key] === v) return prev;
       return { ...prev, [key]: v };
     });
+  };
+
+  // helper: get existing qty for a given pid/size/color from redux (authoritative)
+  const getExistingQtyForVariant = (pid: string | number, size?: string | undefined, color?: string | undefined) => {
+    if (!pid) return 0;
+    const found = cartItems.find((it: any) => {
+      const sameId = String(it.id) === String(pid) || String(it.productId ?? "") === String(pid);
+      const sameSize = (it.size ?? "") === (size ?? "");
+      const sameColor = (it.color ?? "") === (color ?? "");
+      return sameId && sameSize && sameColor;
+    });
+    return Number(found?.qty ?? 0);
   };
 
   // API integration for add-to-cart (shared)
@@ -290,6 +375,7 @@ export default function ProductPage() {
       const resp = await axiosInstance.post(API_CART, body, { headers: { "Content-Type": "application/json" } });
 
       if (resp?.status === 200 || resp?.status === 201) {
+        // If caller passed a reduxPayload, use it; otherwise build one
         const reduxItem = reduxPayload ?? {
           id: payload.productId,
           productId: payload.productId,
@@ -304,7 +390,10 @@ export default function ProductPage() {
           color: payload.selectedColor,
           silent: true,
         };
+
+        // Dispatch addToCart — your reducer is expected to merge/replace existing variant based on id+size+color.
         dispatch(addToCart(reduxItem));
+
         showNotification({ title: "Added to cart", message: "Item added to cart", color: "green", icon: <IconCheck size={16} /> });
       } else {
         showNotification({ title: "Unable to add", message: resp?.data?.message ?? "Try again", color: "red", icon: <IconX size={16} /> });
@@ -337,6 +426,86 @@ export default function ProductPage() {
     }
   };
 
+  // NEW: update quantity on server and sync redux precisely
+  const updateLineQuantity = async (
+    pid: string | number,
+    newQuantity: number,
+    size?: string | undefined,
+    color?: string | undefined,
+    mapKey = String(pid)
+  ) => {
+    try {
+      setAdding(mapKey, true);
+
+      const body = {
+        productId: String(pid),
+        quantity: newQuantity,
+        selectedSize: size,
+        selectedColor: color,
+      };
+
+      const resp = await axiosInstance.post(API_CART, body, { headers: { "Content-Type": "application/json" } });
+
+      if (resp?.status === 200 || resp?.status === 201) {
+        // success - update redux to match server: remove existing variant and re-add with exact qty (or remove)
+        try {
+          // remove existing variant if any
+          dispatch(removeFromCart({
+            id: String(pid),
+            size,
+            color,
+            silent: true,
+          }));
+        } catch (e) {
+          // ignore
+        }
+
+        if (newQuantity > 0) {
+          // Build redux item. For similar products we may not have mainImage - it's best-effort.
+          const reduxItem = {
+            id: String(pid),
+            productId: String(pid),
+            imageUrl: mainImage || galleryImages?.[0] || imagesInput?.[0] || "",
+            title: titleInput,
+            productName: titleInput,
+            price: salePriceInput ?? priceInput,
+            originalPrice: priceInput,
+            rating: 0,
+            qty: newQuantity,
+            size,
+            color,
+            silent: true,
+          };
+          dispatch(addToCart(reduxItem));
+        }
+
+        showNotification({
+          title: newQuantity === 0 ? "Removed" : "Quantity updated",
+          message: resp.data?.message ?? (newQuantity === 0 ? "Item removed" : `Quantity: ${newQuantity}`),
+          color: "green",
+          icon: <IconCheck size={16} />,
+        });
+      } else {
+        showNotification({
+          title: "Update failed",
+          message: resp?.data?.message ?? "Unable to update cart",
+          color: "red",
+          icon: <IconX size={16} />,
+        });
+      }
+    } catch (err: any) {
+      console.error("Update line failed", err);
+      showNotification({
+        title: "Update failed",
+        message: err?.response?.data?.message ?? err?.message ?? "Unable to update cart",
+        color: "red",
+        icon: <IconX size={16} />,
+      });
+    } finally {
+      setAdding(mapKey, false);
+    }
+  };
+
   // main product handlers
   const handleAddToCart = () => {
     if (requiresSize && !selectedSize) {
@@ -361,7 +530,7 @@ export default function ProductPage() {
   const onColorSelect = (c: string) => {
     setSelectedColor(c);
 
-    // size adjustment (existing logic)
+    // update sizes for this color (colorData-aware)
     const sizesForC = getSizesForColor(c, productDetails);
     if (!sizesForC || sizesForC.length === 0) {
       setSelectedSize("");
@@ -371,20 +540,18 @@ export default function ProductPage() {
       }
     }
 
-    // Try 1: if colorsInput and galleryImages are same length, pick galleryImages at same index
-    const colorIndex = colorsInput.findIndex((col) => String(col).toLowerCase() === String(c).toLowerCase());
-    if (colorIndex >= 0 && galleryImages && galleryImages[colorIndex]) {
-      const newGallery = [...galleryImages];
-      if (colorIndex !== 0) {
-        const [selImg] = newGallery.splice(colorIndex, 1);
-        newGallery.unshift(selImg);
+    // QUICK PATH: if productDetails.colorData has this color, use it (fast and deterministic)
+    if (productDetails?.colorData && productDetails.colorData[c]) {
+      const cd = productDetails.colorData[c];
+      const imgs = Array.isArray(cd.images) ? cd.images : (cd.image ? [cd.image] : []);
+      if (imgs && imgs.length) {
+        setGalleryImages(imgs);
+        setMainImage(imgs[0]);
+        return;
       }
-      setGalleryImages(newGallery);
-      setMainImage(newGallery[0] || "");
-      return;
     }
 
-    // Try 2: robust lookup across common shapes (object maps, arrays, variants, colors array)
+    // fallback to your robust lookup (keeps backwards compatibility)
     const colorKey = String(c).toLowerCase();
     let foundImgs: string[] | undefined = undefined;
 
@@ -482,36 +649,49 @@ export default function ProductPage() {
   };
 
   // helper: build grouped SizeOption[] from a product's selectedSizes array
-  const buildSizeOptionsForProduct = (prod: any): SizeOption[] => {
-    const sizesArr: string[] = prod?.selectedSizes ?? [];
-    const map = new Map<number, Set<string>>();
-    for (const s of sizesArr) {
-      const m = /^(\d{2})([A-Z]+)$/.exec(String(s).toUpperCase().trim());
-      if (!m) continue;
+  // helper: build grouped SizeOption[] from a product's selectedSizes array
+const buildSizeOptionsForProduct = (prod: any): SizeOption[] => {
+  const sizesArr: string[] = prod?.selectedSizes ?? prod?.sizes ?? [];
+  const map = new Map<number, Set<string>>();
+
+  for (const s of sizesArr) {
+    if (!s && s !== 0) continue;
+    const raw = String(s).toUpperCase().trim();
+
+    const m = /^(\d{2})([A-Z]+)$/.exec(raw);
+    if (m) {
       const band = Number(m[1]);
       const cup = m[2];
       if (!map.has(band)) map.set(band, new Set());
       map.get(band)!.add(cup);
+      continue;
     }
-    return Array.from(map.entries())
-      .sort((a, b) => a[0] - b[0])
-      .map(([band, cupsSet]) => ({
-        band,
-        cups: Array.from(cupsSet.values()).sort(),
-      }));
-  };
 
-  // helper: get existing qty for a given pid/size/color from redux (authoritative)
-  const getExistingQtyForVariant = (pid: string | number, size?: string | undefined, color?: string | undefined) => {
-    if (!pid) return 0;
-    const found = cartItems.find((it: any) => {
-      const sameId = String(it.id) === String(pid) || String(it.productId ?? "") === String(pid);
-      const sameSize = (it.size ?? "") === (size ?? "");
-      const sameColor = (it.color ?? "") === (color ?? "");
-      return sameId && sameSize && sameColor;
-    });
-    return Number(found?.qty ?? 0);
-  };
+    const numericOnly = /^(\d{2,3})$/.exec(raw);
+    if (numericOnly) {
+      if (!map.has(0)) map.set(0, new Set());
+      map.get(0)!.add(numericOnly[1]);
+      continue;
+    }
+
+    if (/^[A-Z]{1,3}$/.test(raw)) {
+      if (!map.has(0)) map.set(0, new Set());
+      map.get(0)!.add(raw);
+      continue;
+    }
+
+    if (!map.has(0)) map.set(0, new Set());
+    map.get(0)!.add(raw);
+  }
+
+  return Array.from(map.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([band, cupsSet]) => ({
+      band,
+      cups: Array.from(cupsSet.values()).sort(),
+    }));
+};
+
 
   // similar product add — if it needs size, open drawer; otherwise call API directly
   const handleAddSimilarClicked = (p: any) => {
@@ -519,14 +699,21 @@ export default function ProductPage() {
     const sizes = p?.selectedSizes ?? p?.sizes ?? [];
     const needsSize = Array.isArray(sizes) && sizes.length > 0;
 
+    // chosen color for similar if available
+    const thisColor = (p.selectedColors && p.selectedColors[0]) || (p.color ?? undefined);
+
     if (!needsSize) {
-      // direct add
+      // check existing qty in redux for this variant
+      const existing = getExistingQtyForVariant(pid, undefined, thisColor);
+      const qtyToSend = existing + 1;
+
       const payload = {
         productId: pid,
-        quantity: 1,
+        quantity: qtyToSend,
         selectedSize: undefined,
-        selectedColor: (p.selectedColors && p.selectedColors[0]) || undefined,
+        selectedColor: thisColor || undefined,
       };
+
       const reduxItem = {
         id: pid,
         productId: pid,
@@ -536,16 +723,18 @@ export default function ProductPage() {
         price: p.salePrice ?? p.price,
         originalPrice: p.price,
         rating: 0,
-        qty: 1,
+        qty: qtyToSend,
         size: undefined,
-        color: (p.selectedColors && p.selectedColors[0]) || undefined,
+        color: thisColor || undefined,
         silent: true,
       };
+
+      // call unified API helper which will dispatch addToCart(...) on success
       addToCartApi(payload, reduxItem, pid);
       return;
     }
 
-    // open drawer for this product
+    // open drawer for this product (size required)
     setDrawerProduct(p);
     setOpenSizeDrawer(true);
   };
@@ -691,33 +880,39 @@ export default function ProductPage() {
                 <Text size="sm" c="dimmed">Single size — no selection required</Text>
               ) : (
                 <Group spacing="xs" wrap="wrap">
-                  {sizeOptions.flatMap((opt) =>
-                    opt.cups
-                      .map((cup) => `${opt.band}${cup}`)
-                      .filter((label) =>
-                        availableSizesSet.size ? availableSizesSet.has(label.toUpperCase()) : true
-                      )
-                  ).map((label) => {
-                    const active = (selectedSize || "").toUpperCase() === label.toUpperCase();
-                    return (
-                      <Button
-                        key={label}
-                        size="xs"
-                        variant={active ? "filled" : "outline"}
-                        onClick={() => onSizeSelect(label)}
-                        sx={{
-                          backgroundColor: active ? DARK_GREEN : undefined,
-                          color: active ? "#fff" : DARK_GREEN,
-                          borderColor: DARK_GREEN,
-                          "&:hover": active
-                            ? { backgroundColor: "#0f2a12" }
-                            : { backgroundColor: "#f2fbf2" },
-                        }}
-                      >
-                        {label}
-                      </Button>
-                    );
-                  })}
+                 {sizeOptions
+  .flatMap((opt) =>
+    // if band === 0 we keep the cup label as-is (S, M, L, 28, 30)
+    opt.band === 0
+      ? opt.cups.map((cup) => cup)
+      : opt.cups.map((cup) => `${opt.band}${cup}`)
+  )
+  .filter((label) =>
+    // normalize check against availableSizesSet (availableSizesSet contains uppercase labels)
+    availableSizesSet.size ? availableSizesSet.has(String(label).toUpperCase()) : true
+  )
+  .map((label) => {
+    const active = (selectedSize || "").toUpperCase() === String(label).toUpperCase();
+    return (
+      <Button
+        key={label}
+        size="xs"
+        variant={active ? "filled" : "outline"}
+        onClick={() => onSizeSelect(label)}
+        sx={{
+          backgroundColor: active ? DARK_GREEN : undefined,
+          color: active ? "#fff" : DARK_GREEN,
+          borderColor: DARK_GREEN,
+          "&:hover": active
+            ? { backgroundColor: "#0f2a12" }
+            : { backgroundColor: "#f2fbf2" },
+        }}
+      >
+        {label}
+      </Button>
+    );
+  })}
+
                 </Group>
               )}
             </Box>
@@ -744,21 +939,9 @@ export default function ProductPage() {
                 <ActionIcon
                   variant="transparent"
                   onClick={() => {
-                    if (currentQty <= 1) {
-                      dispatch(removeFromCart({
-                        id: productId as string,
-                        size: requiresSize ? selectedSize : undefined,
-                        color: requiresColor ? selectedColor : undefined,
-                        silent: true,
-                      }));
-                    } else {
-                      dispatch(decreaseQty({
-                        id: productId as string,
-                        size: requiresSize ? selectedSize : undefined,
-                        color: requiresColor ? selectedColor : undefined,
-                        silent: true,
-                      }));
-                    }
+                    // compute new qty and call server
+                    const nextQty = Math.max(0, currentQty - 1);
+                    updateLineQuantity(productId as string, nextQty, requiresSize ? selectedSize : undefined, requiresColor ? selectedColor : undefined, "current");
                   }}
                   aria-label="Decrease quantity"
                 >
@@ -776,14 +959,10 @@ export default function ProductPage() {
 
                 <ActionIcon
                   variant="transparent"
-                  onClick={() =>
-                    dispatch(increaseQty({
-                      id: productId as string,
-                      size: requiresSize ? selectedSize : undefined,
-                      color: requiresColor ? selectedColor : undefined,
-                      silent: true,
-                    }))
-                  }
+                  onClick={() => {
+                    const nextQty = currentQty + 1;
+                    updateLineQuantity(productId as string, nextQty, requiresSize ? selectedSize : undefined, requiresColor ? selectedColor : undefined, "current");
+                  }}
                   aria-label="Increase quantity"
                 >
                   <IconPlus size={16} color="#fff" />
@@ -956,6 +1135,7 @@ export default function ProductPage() {
         options={drawerProduct ? buildSizeOptionsForProduct(drawerProduct) : (sizeOptions.length ? sizeOptions : undefined)}
         productId={drawerProduct ? (drawerProduct._id ?? drawerProduct.id) : productId}
         selectedColor={drawerProduct ? ((drawerProduct.selectedColors && drawerProduct.selectedColors[0]) || undefined) : selectedColor}
+        colors={drawerProduct ? (drawerProduct.selectedColors ?? drawerProduct.colors ?? []) : (productDetails?.selectedColors ?? productDetails?.colors ?? [])}
       />
 
       {/* Return / Exchange Policy Drawer */}

@@ -22,7 +22,8 @@ const fetchProducts = async (
     const url = `${API_GET_CATEGORIES_PRODUCTS}${encodedName}?page=${page}&limit=${limit}`;
 
     const response = await axiosInstance.get(url);
-    const fetchedProducts = response?.data ?? [];
+    console.log(response, "responseresponseresponse")
+    const fetchedProducts = response?.data?.data ?? [];
 
     return fetchedProducts.map((product: any, index: number) => ({
       id: product._id ?? index,
@@ -55,7 +56,6 @@ export default function CategoryPage() {
     <>
       <SmallHeader />
       <Header />
-      {/* pass categoryName so ProductGrid can react to changes */}
       <ProductGrid fetchProducts={fetchProducts} categoryName={categoryName} />
       <Footer />
       <MobileBottomNavbar />

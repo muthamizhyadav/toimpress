@@ -13,7 +13,7 @@ const Product = () => {
       <Header />
       <ProductPage />
       <FooterCourier />
-      <SubscriptionBanner />
+      {/* <SubscriptionBanner /> */}
       <Footer />
       <MobileBottomNavbar />
     </div>

@@ -31,7 +31,7 @@ import { IconCheck, IconX } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import { API_GET_UPDATE, API_CART } from "../../api/api";
 import { useSelector, useDispatch } from "react-redux";
-import { removeFromCart, clearCart } from "../..//redux/features/cartSlice"; // adjust path if needed
+import { removeFromCart, clearCart } from "../../redux/features/cartSlice"; // <- fixed import path
 
 // Razorpay config
 const RAZORPAY_KEY_ID = import.meta.env.VITE_RZP_KEY_ID as string;
@@ -68,6 +68,7 @@ function CheckoutItemBox({
   onPlus,
   onRemove,
   promo,
+  prodId,
   subtotal,
 }: {
   item: CartItem;
@@ -75,6 +76,7 @@ function CheckoutItemBox({
   onPlus: () => void;
   onRemove: () => void;
   promo?: { threshold: number; discountPercent: number; applied: boolean } | null;
+  prodId? :any;
   subtotal: number;
 }) {
   const unitPrice = item.salePrice ?? item.price ?? 0;
@@ -83,15 +85,20 @@ function CheckoutItemBox({
 
   const showPromoHint = promo && !promo.applied && subtotal < promo.threshold;
   const remaining = promo ? Math.max(0, promo.threshold - subtotal) : 0;
+  const navigate = useNavigate()
 
   return (
     <Card withBorder radius="md" p="sm">
       {/* Product row */}
       <Group align="flex-start" gap="sm" wrap="nowrap">
-        <Box w={100} h={100} style={{ borderRadius: 8, overflow: "hidden", flexShrink: 0 }}>
+       <Box
+          w={100}
+          h={100}
+          style={{ borderRadius: 8, overflow: "hidden", flexShrink: 0 }}
+          onClick={() => navigate(`/product?id=${prodId}`)} // 👈 add leading /
+        >
           <Image src={img} alt={item.title} width={100} height={100} fit="cover" withPlaceholder />
         </Box>
-
         <Stack gap={6} style={{ flex: 1, minWidth: 0 }}>
           <Group position="apart" align="flex-start">
             <Text fw={600} size="sm" lineClamp={2}>
@@ -296,8 +303,8 @@ export default function Checkout() {
         // If server removed item (newQuantity === 0), remove it from Redux as well (exact variant)
         if (newQuantity === 0) {
           try {
-            dispatch(removeFromCart({
-              id: line.id,
+            await dispatch(removeFromCart({
+              id: line.productId,
               size: line.size,
               color: line.color,
               silent: true,
@@ -305,6 +312,26 @@ export default function Checkout() {
           } catch (e) {
             // don't let Redux errors break UX
             console.warn("Redux removeFromCart failed:", e);
+          }
+        } else {
+          // For safety: if server changed qty, update Redux to match server (attempt remove & re-add or adjust)
+          try {
+            await dispatch(removeFromCart({
+              id: line.productId,
+              size: line.size,
+              color: line.color,
+              silent: true,
+            }));
+          } catch (e) {
+            // Non-fatal
+          }
+          try {
+            const serverQty = Number(resp.data?.qty ?? resp.data?.quantity ?? newQuantity);
+            if (serverQty > 0) {
+              // rely on fetchCart below to sync authoritative state
+            }
+          } catch (e) {
+            // ignore
           }
         }
 
@@ -341,48 +368,143 @@ export default function Checkout() {
     updateLineQuantity(item, 0);
   };
 
-  const handleClearCart = async () => {
-    if (!items.length) return;
-    try {
-      setLoading(true);
-      await Promise.all(items.map((it) =>
+ // optional: import your store if you export it somewhere to double-check state
+// import store from "../redux/store";
+
+const handleClearCart = async () => {
+  if (!items?.length) return;
+  const itemsToClear = [...items]; // snapshot
+
+  try {
+    setLoading(true);
+
+    // 1) Tell server to set qty = 0 for each item (best-effort)
+    const apiResults = await Promise.allSettled(
+      itemsToClear.map((it) =>
         axiosInstance.post(API_CART, {
           productId: String(it.productId ?? it.id),
           quantity: 0,
           selectedSize: it.size,
+          selectedColor: it.color,
         })
-      ));
+      )
+    );
+
+    const rejected = apiResults.filter((r) => r.status === "rejected");
+    const fulfilled = apiResults.filter((r) => r.status === "fulfilled");
+
+    if (rejected.length === 0) {
       showNotification({
         title: "Cart cleared",
-        message: "All items removed",
+        message: "All items removed from server",
         color: "green",
         icon: <IconCheck size={16} />,
       });
-
-      // remove everything from Redux cart as well
-      try {
-        dispatch(clearCart());
-      } catch (e) {
-        console.warn("Redux clearCart failed:", e);
-      }
-
-      await fetchCart();
-    } catch (err: any) {
-      console.error("Clear cart failed", err);
+    } else if (fulfilled.length > 0) {
+      showNotification({
+        title: "Partially cleared",
+        message: `${fulfilled.length} items removed, ${rejected.length} failed`,
+        color: "yellow",
+        icon: <IconCheck size={16} />,
+      });
+    } else {
       showNotification({
         title: "Clear failed",
-        message: err?.response?.data?.message ?? err?.message ?? "Unable to clear cart",
+        message: "Server clear failed for all items",
         color: "red",
         icon: <IconX size={16} />,
       });
-    } finally {
-      setLoading(false);
     }
-  };
+
+    // 2) Clear redux cart (primary)
+    try {
+      dispatch(clearCart());
+    } catch (e) {
+      console.warn("Redux clearCart dispatch failed:", e);
+    }
+
+    // 3) Extra safety: ensure no stale items remain by dispatching removeFromCart for each snapshot item.
+    // This helps if clearCart reducer didn't fully clear items for some reason.
+    try {
+      await Promise.allSettled(
+        itemsToClear.map((it) =>
+          Promise.resolve(
+            dispatch(
+              removeFromCart({
+                id: String(it.productId ?? it.id),
+                size: it.size,
+                color: it.color,
+                silent: true,
+              })
+            )
+          )
+        )
+      );
+    } catch (e) {
+      console.warn("Fallback removeFromCart calls failed:", e);
+    }
+
+    // 4) Optional: if you export your Redux store you can inspect it to confirm cart is empty.
+    // If you don't export store or prefer not to, comment out this block.
+    try {
+      // @ts-ignore
+      if (typeof store !== "undefined" && store?.getState) {
+        // adapt path if your cart slice is under a different key
+        const remaining = store.getState().cart?.items ?? [];
+        if (Array.isArray(remaining) && remaining.length > 0) {
+          console.warn("Cart still has items after clear:", remaining);
+          // final attempt: remove each remaining
+          remaining.forEach((it: any) => {
+            try {
+              dispatch(
+                removeFromCart({
+                  id: String(it.productId ?? it.id),
+                  size: it.size,
+                  color: it.color,
+                  silent: true,
+                })
+              );
+            } catch (e) {
+              // swallow
+            }
+          });
+        }
+      }
+    } catch (e) {
+      // ignore store-inspection failures
+    }
+
+    // 5) Refresh cart from server (best-effort)
+    try {
+      await fetchCart();
+    } catch (e) {
+      console.warn("fetchCart after clear failed:", e);
+    }
+  } catch (err: any) {
+    console.error("Clear cart failed", err);
+    showNotification({
+      title: "Clear failed",
+      message: err?.response?.data?.message ?? err?.message ?? "Unable to clear cart",
+      color: "red",
+      icon: <IconX size={16} />,
+    });
+
+    // still attempt to clear local redux state to keep UI consistent
+    try {
+      dispatch(clearCart());
+    } catch (e) {
+      console.warn("Redux clearCart failed in error handler:", e);
+    }
+  } finally {
+    setLoading(false);
+  }
+};
+
+
 
   /**
    * Totals calculation:
-   * - We compute subtotal from items and local discounts (buy3, SAVE10).
+   * - We compute subtotal from items and local discounts (coupons).
    * - If server returned a scheme (savedScheme) and savedScheme.isDiscountApplicable === true,
    *   we use the savedScheme values as source of truth for subtotal, discounts and finalAmount.
    */
@@ -394,16 +516,7 @@ export default function Checkout() {
 
     const totalQty = (items || []).reduce((q, i) => q + (i.qty ?? 0), 0);
 
-    const anyItemBuy3Flag = items.some((i) => i.raw && i.raw.buy3For999);
-    const buy3Eligible = totalQty >= 3 || anyItemBuy3Flag;
-
-    let buy3Discount = 0;
-    if (buy3Eligible && subtotal > 999) {
-      buy3Discount = Math.round(subtotal - 999);
-    } else if (buy3Eligible && subtotal <= 999) {
-      buy3Discount = 0;
-    }
-
+    // coupon handling
     let couponDiscount = 0;
     if (appliedCoupon?.code === "SAVE10") {
       couponDiscount = Math.round(Math.min(100, subtotal * 0.1));
@@ -411,7 +524,8 @@ export default function Checkout() {
       couponDiscount = appliedCoupon.discount ?? 0;
     }
 
-    const totalDiscounts = Math.min(subtotal, buy3Discount + couponDiscount);
+    // total discounts are only from coupon (buy3 logic removed)
+    const totalDiscounts = Math.min(subtotal, couponDiscount);
 
     const discountedBase = subtotal - totalDiscounts;
     const gstRaw = discountedBase * GST_PERCENT;
@@ -434,8 +548,6 @@ export default function Checkout() {
       return {
         subtotal: Math.round(sTotalSales),
         totalQty,
-        buy3Eligible,
-        buy3Discount,
         couponDiscount: Number(savedScheme.couponAmount ?? couponDiscount),
         totalDiscounts: Math.round(sMinus),
         gst: Math.round(gst),
@@ -448,8 +560,6 @@ export default function Checkout() {
     return {
       subtotal: Math.round(subtotal),
       totalQty,
-      buy3Eligible,
-      buy3Discount,
       couponDiscount,
       totalDiscounts,
       gst,
@@ -1022,6 +1132,7 @@ export default function Checkout() {
                         return (
                           <CheckoutItemBox
                             key={`${item.id}-${item.size ?? ""}-${item.color ?? ""}-${idx}`}
+                            prodId={ item.productId }
                             item={item}
                             onMinus={() => handleMinus(item)}
                             onPlus={() => handlePlus(item)}
@@ -1037,7 +1148,7 @@ export default function Checkout() {
                 </Box>
               </Grid.Col>
 
-              <Grid.Col span={{ base: 12, md: 5 }} mb={40}>
+              <Grid.Col span={{ base: 12, md: 5 }} mb={120}>
                 <Card
                   withBorder
                   p="lg"
@@ -1164,7 +1275,7 @@ export default function Checkout() {
               zIndex: 999,
               borderTop: "1px solid #eee",
               background: "#fff",
-              padding: "10px 16px",
+              padding: "10px 0px",
               boxShadow: "0 -2px 10px rgba(0,0,0,0.04)",
             }}
           >

@@ -1,7 +1,25 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Drawer, Button, Badge } from "@mantine/core";
+import {
+  Drawer,
+  Button,
+  Badge,
+  Group,
+  Text,
+  ActionIcon,
+  Tooltip,
+} from "@mantine/core";
 import { useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { IconPlus, IconMinus } from "@tabler/icons-react";
+import {
+  addToCart,
+  increaseQty,
+  decreaseQty,
+} from "../redux/features/cartSlice"; // adjust path if needed
+
+// axios + API constant
+import axiosInstance from "../api/axiosInstance";
+import { API_GET_CART_DATA } from "../api/api";
 
 export type SizeOption = {
   band: number;
@@ -13,18 +31,21 @@ export type SizeOption = {
 type Props = {
   opened: boolean;
   onClose: () => void;
-  /**
-   * onConfirm now receives quantity (optional) computed by drawer.
-   * Parent should use sel.quantity (if provided) as the desired quantity to send to API.
-   */
-  onConfirm: (payload: { band: number; cup: string; label: string; quantity?: number }) => void;
+  onConfirm: (payload: {
+    band: number;
+    cup: string;
+    label: string;
+    quantity?: number;
+    selectedColor?: string | undefined;
+  }) => void;
   productTitle: string;
   price: number;
   imageUrl: string;
   options?: SizeOption[];
   category?: string | any;
-  productId?: string | number; // NEW: used to lookup current variant qty in redux
-  selectedColor?: string | undefined; // NEW: used to lookup exact variant in redux
+  productId?: string | number;
+  selectedColor?: string | undefined;
+  colors?: string[];
 };
 
 const BAND_TABLE: any[] = [
@@ -74,9 +95,9 @@ export default function SizeSelectorDrawer({
   imageUrl,
   options = buildOptionsFromBandTable(),
   productId,
-  selectedColor,
+  selectedColor: initialSelectedColor,
+  colors = [],
 }: Props) {
-  // internal mode union
   type Mode = "Brassiere" | "Panties" | "Both";
   const [mode, setMode] = useState<"Brassiere" | "Panties">("Brassiere");
   const [availableMode, setAvailableMode] = useState<Mode>("Both");
@@ -84,13 +105,22 @@ export default function SizeSelectorDrawer({
   const [band, setBand] = useState<number | null>(null);
   const [cup, setCup] = useState<string | null>(null);
   const [pantySize, setPantySize] = useState<string | null>(null);
+  const [selectedColor, setSelectedColor] = useState<string | undefined>(initialSelectedColor);
 
+  const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  // get redux cart items to compute current qty per variant
-  const cartItems: any[] = useSelector((s: any) => (s?.cart?.items ?? []) as any[]);
+  // Combined size list: e.g. { value: '30A', band: 30, cup: 'A' }
+  const combinedSizes = useMemo(() => {
+    const arr: { value: string; band: number; cup: string }[] = [];
+    options.forEach((o) => {
+      o.cups.forEach((c) => {
+        arr.push({ value: `${o.band}${c}`, band: o.band, cup: c });
+      });
+    });
+    return arr;
+  }, [options]);
 
-  // compute cup list and band info
   const cupList = useMemo(() => {
     const found = options.find((o) => o.band === band);
     return found?.cups ?? [];
@@ -98,7 +128,6 @@ export default function SizeSelectorDrawer({
 
   const bandInfo = useMemo(() => options.find((o) => o.band === band), [band, options]);
 
-  // determine available mode from category prop
   useEffect(() => {
     const cat = typeof category === "string" ? category.toLowerCase() : "";
     const isBra = cat.includes("bra") || cat.includes("brassiere");
@@ -118,48 +147,32 @@ export default function SizeSelectorDrawer({
       return;
     }
 
-    // default: both modes available and keep current mode (or default to Brassiere)
     setAvailableMode("Both");
-    // don't forcibly change mode if parent didn't specify; keep current selection
   }, [category]);
 
-  // helper: compute existing qty for current variant from redux cart
-  const getExistingQtyForVariant = (variantLabel?: string) => {
-    if (!productId) return 0;
-    const label = variantLabel ?? "";
-    // find exact match: id equality + size + color
-    const found = cartItems.find((it) => {
-      // cart's `id` field may contain product id; tolerant matching
+  useEffect(() => {
+    setSelectedColor(initialSelectedColor);
+  }, [initialSelectedColor, colors]);
+
+  const currentLabel = useMemo(() => {
+    if (mode === "Brassiere" && band && cup) return `${band}${cup}`;
+    if (mode === "Panties" && pantySize) return pantySize;
+    return null;
+  }, [mode, band, cup, pantySize]);
+
+  // currentQty driven from Redux (exact variant match: id + size + color)
+  const currentQty: number = useSelector((state: any) => {
+    if (!productId || !currentLabel) return 0;
+    const items: any[] = state?.cart?.items ?? [];
+    const found = items.find((it) => {
       const sameId = String(it.id) === String(productId) || String(it.productId ?? "") === String(productId);
-      const sameSize = (it.size ?? "") === (label ?? "");
-      const sameColor = (it.color ?? "") === (selectedColor ?? "");
+      const sameSize = (it.size ?? "") === (currentLabel ?? "");
+      const colorToMatch = selectedColor ?? initialSelectedColor ?? undefined;
+      const sameColor = (it.color ?? "") === (colorToMatch ?? "");
       return sameId && sameSize && sameColor;
     });
     return Number(found?.qty ?? 0);
-  };
-
-  const confirmSize = () => {
-    if (mode === "Brassiere") {
-      if (!band || !cup) return;
-      const label = `${band}${cup}`;
-      // compute existing qty and return quantity = existing + 1
-      const existing = getExistingQtyForVariant(label);
-      const quantity = existing + 1;
-      onConfirm({ band, cup, label, quantity });
-      return;
-    }
-
-    if (mode === "Panties") {
-      if (!pantySize) return;
-      const sizeObj = PANTY_SIZES.find((s) => s.label === pantySize)!;
-      const label = `${sizeObj.label} (${sizeObj.hip})`;
-      const existing = getExistingQtyForVariant(sizeObj.label);
-      const quantity = existing + 1;
-      // keep payload shape: band=0 marks panty
-      onConfirm({ band: 0, cup: sizeObj.label, label, quantity });
-      return;
-    }
-  };
+  });
 
   const resetState = () => {
     setBand(null);
@@ -167,24 +180,99 @@ export default function SizeSelectorDrawer({
     setPantySize(null);
   };
 
-  // Close handler that resets state then calls parent onClose
   const handleClose = () => {
     resetState();
     onClose();
   };
 
-  // Checkout flow: confirm selection (if valid) then navigate to checkout and close drawer.
+  // -- API call: fetch cart data when drawer opens --
+  useEffect(() => {
+    if (!opened) return;
+    // make the API call and log response
+    (async () => {
+      try {
+        const resp = await axiosInstance.get(API_GET_CART_DATA + productId);
+        console.log("API_GET_CART_DATA response:", resp?.data ?? resp);
+      } catch (err) {
+        console.error("Failed to fetch API_GET_CART_DATA:", err);
+      }
+    })();
+  }, [opened]);
+
+  // Redux operations
+  const reduxAddOne = () => {
+    if (!productId || !currentLabel) return;
+    if (currentQty > 0) {
+      dispatch(increaseQty({ id: productId, size: currentLabel, color: selectedColor, silent: true }));
+    } else {
+      dispatch(
+        addToCart({
+          id: productId,
+          title: productTitle,
+          image: imageUrl,
+          price,
+          qty: 1,
+          size: currentLabel,
+          color: selectedColor,
+          silent: true,
+        } as any)
+      );
+    }
+
+    const [b, c] =
+      mode === "Brassiere" && band && cup
+        ? [band, cup]
+        : mode === "Panties"
+        ? [0, pantySize ?? ""]
+        : [0, ""];
+    onConfirm({ band: b as number, cup: String(c), label: String(currentLabel), quantity: currentQty + 1, selectedColor });
+  };
+
+  const reduxRemoveOne = () => {
+    if (!productId || !currentLabel) return;
+    dispatch(decreaseQty({ id: productId, size: currentLabel, color: selectedColor, silent: true }));
+    const [b, c] =
+      mode === "Brassiere" && band && cup
+        ? [band, cup]
+        : mode === "Panties"
+        ? [0, pantySize ?? ""]
+        : [0, ""];
+    onConfirm({ band: b as number, cup: String(c), label: String(currentLabel), quantity: Math.max(0, currentQty - 1), selectedColor });
+  };
+
+  const confirmSize = () => reduxAddOne();
+  const reduceSize = () => {
+    if (currentQty <= 0) return;
+    reduxRemoveOne();
+  };
+
   const handleCheckout = () => {
     if (mode === "Brassiere") {
       if (!band || !cup) return;
     } else {
       if (!pantySize) return;
     }
-
-    confirmSize();
-    // navigate to checkout
+    reduxAddOne();
     navigate("/checkout");
     handleClose();
+  };
+
+  const renderSwatch = (c: string, idx: number) => {
+    const isHex = /^#([0-9A-F]{3}){1,2}$/i.test(String(c));
+    const active = selectedColor === c;
+    return (
+      <Tooltip key={idx} label={c}>
+        <button
+          onClick={() => setSelectedColor(c)}
+          className={`w-10 h-10 rounded-full border flex items-center justify-center transition ${
+            active ? "ring-2 ring-[#96BD75]" : "border-gray-200"
+          }`}
+          style={{ background: isHex ? c : undefined }}
+        >
+          {!isHex && <span style={{ fontSize: 12 }}>{String(c).slice(0, 2).toUpperCase()}</span>}
+        </button>
+      </Tooltip>
+    );
   };
 
   return (
@@ -198,31 +286,17 @@ export default function SizeSelectorDrawer({
       padding="md"
       title="Choose size"
     >
-      {/* mode toggle (only when both available) */}
-      {availableMode === "Both" && (
-        <div className="flex gap-2 mb-4">
-          <button
-            onClick={() => {
-              setMode("Brassiere");
-              resetState();
-            }}
-            className={`px-4 py-2 rounded-full text-sm border ${mode === "Brassiere" ? "bg-[#96BD75] text-white" : "bg-white"}`}
-          >
-            Brassiere
-          </button>
-          <button
-            onClick={() => {
-              setMode("Panties");
-              resetState();
-            }}
-            className={`px-4 py-2 rounded-full text-sm border ${mode === "Panties" ? "bg-[#96BD75] text-white" : "bg-white"}`}
-          >
-            Panties
-          </button>
+      {/* colors */}
+      {Array.isArray(colors) && colors.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <Text size="sm" fw={600} mb={6}>Colors</Text>
+          <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 6 }}>
+            {colors.map((c, idx) => renderSwatch(c, idx))}
+          </div>
         </div>
       )}
 
-      {/* header product summary */}
+      {/* header */}
       <div className="flex gap-3 mb-3">
         <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 shrink-0">
           <img src={imageUrl} alt={productTitle} className="w-full h-full object-cover" />
@@ -230,30 +304,53 @@ export default function SizeSelectorDrawer({
         <div className="flex-1">
           <div className="text-sm font-medium line-clamp-2">{productTitle}</div>
           <div className="mt-1 text-lg font-semibold">₹{price}</div>
-          <div className="mt-1 text-xs text-gray-500">{mode === "Brassiere" ? "Select band & cup" : "Select panty size (hip measurement)"}</div>
+          <div className="mt-1 text-xs text-gray-500">
+            {mode === "Brassiere" ? "Select size (e.g. 30A)" : "Select panty size (hip measurement)"}
+          </div>
         </div>
       </div>
 
-      {/* Brassiere UI */}
+      {/* Brassiere sizes grid (scrollable) */}
       {mode === "Brassiere" && (
-        <>
-          <div className="mt-2">
-            <div className="text-sm font-semibold mb-2">BAND</div>
-            <div className="flex flex-wrap gap-2">
-              {options.map((o) => (
-                <button
-                  key={o.band}
+        <div className="mt-2">
+          <div className="text-sm font-semibold mb-2">SIZES</div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(68px, 1fr))",
+              gap: 8,
+              maxHeight: 260, // <-- scrollable area
+              overflowY: "auto",
+              paddingRight: 6,
+              paddingBottom: 6,
+            }}
+          >
+            {combinedSizes.map((s) => {
+              const active = band === s.band && cup === s.cup;
+              return (
+                <Button
+                  key={s.value}
+                  size="xs"
+                  variant={active ? "filled" : "outline"}
                   onClick={() => {
-                    setBand(o.band);
-                    setCup(null);
+                    setBand(s.band);
+                    setCup(s.cup);
                   }}
-                  className={`px-4 py-2 rounded-xl border text-sm transition
-                    ${band === o.band ? "bg-[#96BD75] text-white border-[#96BD75]" : "bg-white border-gray-300"}`}
+                  sx={{
+                    borderRadius: 8,
+                    padding: "6px 8px",
+                    minHeight: 36,
+                    backgroundColor: active ? "#96BD75" : undefined,
+                    color: active ? "#fff" : undefined,
+                    borderColor: active ? "#96BD75" : undefined,
+                    "&:hover": active ? { backgroundColor: "#86ad65" } : {},
+                  }}
                 >
-                  {o.band}
-                </button>
-              ))}
-            </div>
+                  {s.value}
+                </Button>
+              );
+            })}
           </div>
 
           {bandInfo?.underband && bandInfo?.overbust && (
@@ -262,80 +359,93 @@ export default function SizeSelectorDrawer({
               <span className="underline">{bandInfo.overbust}</span>
             </div>
           )}
-
-          <div className="mt-5">
-            <div className="text-sm font-semibold mb-2">SIZE</div>
-            <div className="flex flex-wrap gap-2">
-              {(band ? cupList : []).map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setCup(c)}
-                  disabled={!band}
-                  className={`px-4 py-2 rounded-xl border text-sm transition
-                    ${cup === c ? "bg-[#96BD75] text-white border-[#96BD75]" : "bg-white border-gray-300"}
-                    ${!band ? "opacity-50 cursor-not-allowed" : ""}`}
-                >
-                  {band}
-                  {c}
-                </button>
-              ))}
-              {!band && <Badge variant="light" size="lg">Select a band first</Badge>}
-            </div>
-          </div>
-        </>
+        </div>
       )}
 
-      {/* Panties UI */}
+      {/* Panties */}
       {mode === "Panties" && (
-        <>
-          <div className="mt-2">
-            <div className="text-sm font-semibold mb-2">PANTY SIZE (HIP)</div>
-            <div className="flex flex-wrap gap-2">
-              {PANTY_SIZES.map((s) => (
-                <button
-                  key={s.label}
-                  onClick={() => setPantySize(s.label)}
-                  className={`px-4 py-2 rounded-xl border text-sm transition
-                    ${pantySize === s.label ? "bg-[#96BD75] text-white border-[#96BD75]" : "bg-white border-gray-300"}`}
-                >
-                  <div className="text-sm font-medium">{s.label}</div>
-                  <div className="text-xs text-gray-600">{s.hip}</div>
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-3 text-xs text-gray-600">
-              Tip: Measure around the fullest part of your hips. The size shown is the recommended hip range.
-            </div>
+        <div className="mt-2">
+          <div className="text-sm font-semibold mb-2">PANTY SIZE (HIP)</div>
+          <div style={{ maxHeight: 220, overflowY: "auto", paddingRight: 6, display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {PANTY_SIZES.map((s) => (
+              <button
+                key={s.label}
+                onClick={() => setPantySize(s.label)}
+                className={`px-4 py-2 rounded-xl border text-sm transition
+                  ${pantySize === s.label ? "bg-[#96BD75] text-white border-[#96BD75]" : "bg-white border-gray-300"}`}
+              >
+                <div className="text-sm font-medium">{s.label}</div>
+                <div className="text-xs text-gray-600">{s.hip}</div>
+              </button>
+            ))}
           </div>
-        </>
+
+          <div className="mt-3 text-xs text-gray-600">
+            Tip: Measure around the fullest part of your hips. The size shown is the recommended hip range.
+          </div>
+        </div>
       )}
 
-      {/* actions - primary action row (Add to cart) */}
-      <div className="mt-6 flex gap-2">
-        <Button
-          variant="default"
-          onClick={() => {
-            resetState();
-            onClose();
-          }}
-          className="flex-1 rounded-full"
-        >
-          Cancel
-        </Button>
-        <Button
-          className="flex-1 bg-[#96BD75] hover:bg-[#86ad65] rounded-full"
-          onClick={() => {
-            confirmSize();
-            // keep drawer open — parent may close after processing
-          }}
-          disabled={mode === "Brassiere" ? !band || !cup : !pantySize}
-        >
-          Add to cart
-        </Button>
-      </div>
+      {/* Selected variant area */}
+      {currentLabel && (
+        <div>
+          <div>
+            <Text size="sm" fw={600}>Selected</Text>
+            <Text size="sm">{currentLabel}</Text>
+          </div>
 
-      {/* sticky footer with Go to checkout */}
+          <div className="mt-3 w-full">
+            {/* If qty is zero, show single Add to cart button (full width) */}
+            {currentQty <= 0 ? (
+              <div style={{ width: "100%" }}>
+                <Button
+                  fullWidth
+                  onClick={reduxAddOne}
+                  disabled={!currentLabel}
+                  style={{ background: "#96BD75", color: "#fff", borderRadius: 999 }}
+                >
+                  Add to cart
+                </Button>
+              </div>
+            ) : (
+              // If qty > 0, show - / qty / + controls (and they will disappear again when qty reaches 0)
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ActionIcon
+                    onClick={reduceSize}
+                    title="Decrease"
+                    variant="light"
+                    size="lg"
+                  >
+                    <IconMinus size={16} />
+                  </ActionIcon>
+
+                  <div style={{ minWidth: 52, textAlign: "center" }}>
+                    <Text size="sm" fw={700}>{currentQty}</Text>
+                    <Text size="xs" c="dimmed">in cart</Text>
+                  </div>
+
+                  <ActionIcon
+                    onClick={confirmSize}
+                    title="Add one more"
+                    variant="filled"
+                    size="lg"
+                    style={{ background: "#96BD75", color: "#fff" }}
+                  >
+                    <IconPlus size={16} />
+                  </ActionIcon>
+                </div>
+
+                <div>
+                  <Text size="xs" c="dimmed">Tap + to add one more of this variant</Text>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* sticky footer */}
       <div
         style={{
           position: "sticky",
@@ -348,8 +458,8 @@ export default function SizeSelectorDrawer({
           paddingBottom: 8,
           background: "transparent",
           borderTop: "1px solid rgba(0,0,0,0.06)",
-          marginTop: "150px"
-      }}
+          marginTop: "15px",
+        }}
       >
         <Button
           variant="outline"

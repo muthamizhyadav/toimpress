@@ -46,7 +46,7 @@ export default function FindYourFitt() {
           justifyContent: "center",
           height: "100%",
           textAlign: "center",
-          transform: "translateY(-20px)", // move up slightly
+          transform: "translateY(-100px)", // move up slightly
         }}
       >
         <Text

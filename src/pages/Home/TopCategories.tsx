@@ -134,6 +134,7 @@ export default function TopCategories() {
     );
     const payload = (response as any)?.data ?? response;
 
+
     // common shapes: payload.data.data, payload.data, or array
     const prods =
       payload?.data?.data ?? payload?.data ?? (Array.isArray(payload) ? payload : []);

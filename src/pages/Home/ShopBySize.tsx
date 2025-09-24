@@ -28,7 +28,7 @@ export default function ShopBySize() {
   return (
     <Box
       bg="#f3e7cf"
-      h={isMobile ? "auto" : "60vh"}
+      h={ "auto"}
       style={{ paddingBottom: isMobile ? "20px" : "90px" }}
     >
       <Text
@@ -43,6 +43,7 @@ export default function ShopBySize() {
           paddingTop: isMobile ? "20px" : "50px",
           marginBottom: isMobile ? "20px" : "50px",
           fontSize: isMobile ? "20px" : "40px",
+          marginTop: "-100px"
         }}
       >
         Find Your Perfect Fit

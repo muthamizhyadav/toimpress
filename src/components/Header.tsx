@@ -1,13 +1,25 @@
 // components/Header.tsx
-import { Burger } from "@mantine/core";
+import {
+  Burger,
+  ScrollArea,
+  Image,
+  Text,
+  Stack,
+  Group,
+  Divider,
+  ActionIcon,
+  TextInput,
+  Box,
+  Loader,
+} from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { MobileMenuDrawer, UseMobileMenuDrawer } from "./MobileMenuDrawer";
 import { useAuth } from "../assets/hooks/useAuth";
-import { IconUserFilled, IconX } from "@tabler/icons-react";
+import { IconUserFilled, IconX, IconSearch } from "@tabler/icons-react";
 import axiosInstance from "../api/axiosInstance"; // adjust path if needed
-import { API_GET_CATEGORIES, API_GET_UPDATE } from "../api/api";
+import { API_GET_CATEGORIES, API_GET_UPDATE, API_SEARCH_PRODUCTS } from "../api/api";
 import { showNotification } from "@mantine/notifications";
 
 export default function Header() {
@@ -21,40 +33,36 @@ export default function Header() {
   const [cartCount, setCartCount] = useState<number>(0);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // NEW: categories state
   const [categories, setCategories] = useState<
     Array<{ _id: string; categoryTitle: string; imageUrl?: string; active?: boolean }>
   >([]);
 
-  console.log(categories, "categories");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchPanelOpen, setSearchPanelOpen] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
 
-  // isSelected now works with category _id strings
+  const controllerRef = useRef<AbortController | null>(null);
+  const debounceRef = useRef<any>(null);
+
   const isSelected = (id: string | null) =>
     selectedId === id ? "font-bold underline text-[#122F15]" : "text-[#252C32]";
 
   const handleNavigation = (str?: string) => {
     navigate(`/${str ?? ""}`);
     menu.close();
+    setSearchPanelOpen(false);
   };
 
   const getCategories = async () => {
     try {
       const resp = await axiosInstance.get(API_GET_CATEGORIES);
-      // response shape might be resp.data or resp
       const payload = resp?.data ?? resp;
-
-      // if API returns an array directly:
-      if (Array.isArray(payload)) {
-        setCategories(payload);
-      } else if (payload && Array.isArray(payload.data)) {
-        setCategories(payload.data);
-      } else {
-        // fallback: try to find array inside response
+      if (Array.isArray(payload)) setCategories(payload);
+      else if (payload && Array.isArray(payload.data)) setCategories(payload.data);
+      else {
         const foundArray = Object.values(payload).find((v) => Array.isArray(v)) as any;
         if (foundArray) setCategories(foundArray);
       }
-
-      return payload;
     } catch (error: any) {
       showNotification({
         title: "Error",
@@ -78,17 +86,11 @@ export default function Header() {
       const payload = resp.data ?? resp;
       let items: any[] = [];
 
-      if (Array.isArray(payload)) {
-        items = payload;
-      } else if (payload && Array.isArray(payload.items)) {
-        items = payload.items;
-      } else if (payload && Array.isArray(payload.data)) {
-        items = payload.data;
-      } else if (payload && payload.data && Array.isArray(payload.data.items)) {
-        items = payload.data.items;
-      }
+      if (Array.isArray(payload)) items = payload;
+      else if (payload && Array.isArray(payload.items)) items = payload.items;
+      else if (payload && Array.isArray(payload.data)) items = payload.data;
+      else if (payload && payload.data && Array.isArray(payload.data.items)) items = payload.data.items;
 
-      // best-effort to compute count
       const count = computeCountFromItems(items) || (Array.isArray(payload?.data) ? payload.data.length : 0);
       setCartCount(count);
     } catch (err: any) {
@@ -101,11 +103,7 @@ export default function Header() {
   useEffect(() => {
     const controller = new AbortController();
     fetchCartCount(controller.signal);
-
-    // Re-fetch when window gains focus
     const onFocus = () => fetchCartCount();
-
-    // Listen for product-level cart updates (ProductCard dispatches this)
     const onCartUpdated = () => fetchCartCount();
 
     window.addEventListener("focus", onFocus);
@@ -118,6 +116,72 @@ export default function Header() {
     };
   }, [isAuthenticated, fetchCartCount]);
 
+  // Search: debounced + abort previous
+  useEffect(() => {
+    if (!searchPanelOpen || !searchTerm || String(searchTerm).trim().length < 2) {
+      setSearchResults([]);
+      setSearchLoading(false);
+      if (controllerRef.current) {
+        try {
+          controllerRef.current.abort();
+        } catch (e) {}
+        controllerRef.current = null;
+      }
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      return;
+    }
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      if (controllerRef.current) {
+        try {
+          controllerRef.current.abort();
+        } catch (e) {}
+        controllerRef.current = null;
+      }
+      const controller = new AbortController();
+      controllerRef.current = controller;
+
+      try {
+        setSearchLoading(true);
+        const q = encodeURIComponent(String(searchTerm).trim());
+        const url = `${API_SEARCH_PRODUCTS}${q}`;
+        const resp = await axiosInstance.get(url, { signal: controller.signal });
+        const data = resp?.data ?? resp;
+
+        // console.log raw response (user requested)
+        console.log("Search results (raw):", data);
+
+        // normalize results
+        let results: any[] = [];
+        if (Array.isArray(data)) results = data;
+        else if (Array.isArray(data.data)) results = data.data;
+        else if (Array.isArray(data.items)) results = data.items;
+        else results = [];
+
+        setSearchResults(results);
+      } catch (err: any) {
+        if (err?.name === "CanceledError" || err?.name === "AbortError") return;
+        console.error("Search failed:", err);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 400);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [searchTerm, searchPanelOpen]);
+
+  const handleProductClick = (p: any) => {
+    const pid = p._id ?? p.id ?? String(p.product ?? "");
+    setSearchPanelOpen(false);
+    setSearchTerm("");
+    setSearchResults([]);
+    navigate(`/product?id=${pid}`);
+  };
+
+  // header render
   return (
     <>
       <header className="bg-sandle w-full h-[80px] md:h-[112px] flex items-center px-10 sm:px-12 md:px-14 lg:px-14 relative z-50">
@@ -130,11 +194,31 @@ export default function Header() {
 
         {isMobile && (
           <div className="ml-auto flex items-center">
-            {/* Cart Icon with Badge */}
+            {/* Mobile only: search icon placed BEFORE cart icon */}
+            <div style={{ marginRight: 12 }}>
+              <ActionIcon
+                variant="transparent"   // removes background
+                size="lg"
+                color="black"           // makes icon black
+                onClick={() => {
+                  setSearchPanelOpen((s) => {
+                    const next = !s;
+                    if (!next) {
+                      setSearchTerm("");
+                      setSearchResults([]);
+                    }
+                    return next;
+                  });
+                }}
+              >
+                <IconSearch size={22} />
+              </ActionIcon>
+            </div>
+
+            {/* Cart Icon */}
             <div
               className="relative mr-4 cursor-pointer"
               onClick={() => {
-                // refresh before navigating and then go to checkout
                 fetchCartCount();
                 navigate("/checkout");
               }}
@@ -157,16 +241,19 @@ export default function Header() {
           </div>
         )}
 
-        <MobileMenuDrawer opened={menu.opened} onClose={menu.close} />
-
+        {/* Desktop header block (no mobile search icon here) */}
         <div className="hidden lg:flex ml-5 flex-col gap-5 w-full md:flex md:flex-col md:gap-5 md:w-full">
           <div className="hidden lg:w-full lg:flex md:flex md:w-full ">
             <div className="hidden md:flex md:w-full lg:w-full lg:flex">
+              {/* Keep desktop inline search input (no search icon) */}
               <input
                 type="search"
                 placeholder="Search products here "
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  if (!searchPanelOpen) setSearchPanelOpen(true);
+                }}
                 className="lg:w-[100%] h-[40px] rounded-full bg-white pl-3"
               />
               <button className="bg-lightgreen h-[40px] ml-[-30px] cursor-pointer rounded-3xl px-5 z-50">
@@ -181,14 +268,12 @@ export default function Header() {
               </button>
             </div>
 
-            <div className="hidden md:flex md:w-full lg:w-full lg:flex ">
-              <div className="hidden lg:w-[100%] lg:flex lg:justify-around lg:items-center ">
+            <div className="hidden md:flex md:w-full lg:w-full lg:flex justify-end ">
+              <div className="hidden lg:w-[75%] lg:flex lg:justify-around lg:items-center ">
                 <div className="flex cursor-pointer" onClick={() => handleNavigation("orders")}>
                   <span className="ml-2 text-[#252C32]"> Orders </span>
                 </div>
-                <div className="flex cursor-pointer" onClick={() => handleNavigation("category?name=Brassiere")}>
-                  <span className="ml-2 text-[#252C32] "> Favorites </span>
-                </div>
+
                 <div
                   className="relative flex cursor-pointer"
                   onClick={() => {
@@ -222,7 +307,6 @@ export default function Header() {
 
           <div className="hidden md:flex gap-5 w-full">
             <ul className="flex justify-center gap-10">
-              {/* Render dynamic categories here */}
               {categories.length > 0 ? (
                 categories.map((cat) => (
                   <li
@@ -234,7 +318,6 @@ export default function Header() {
                   </li>
                 ))
               ) : (
-                // fallback while loading or if no categories
                 <>loading</>
               )}
             </ul>
@@ -242,16 +325,161 @@ export default function Header() {
         </div>
       </header>
 
-      {/* {searchTerm && (
-        <div className="absolute top-[80px] md:top-[112px] left-0 w-screen h-[200px] bg-white shadow-lg z-40 p-4 overflow-y-auto">
-          <p className="font-semibold mb-2">Search results for "{searchTerm}"</p>
-          <ul className="space-y-2">
-            <li className="cursor-pointer hover:text-green-600">Result 1</li>
-            <li className="cursor-pointer hover:text-green-600">Result 2</li>
-            <li className="cursor-pointer hover:text-green-600">Result 3</li>
-          </ul>
-        </div>
-      )} */}
+      {/* SEARCH PANEL - absolute positioned below header (compact for mobile) */}
+      {searchPanelOpen && (
+        <Box
+          sx={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            top: isMobile ? "80px" : "100px", // adjust to feel right for header height
+            zIndex: 100,
+            display: "flex",
+            justifyContent: "center",
+            pointerEvents: "auto",
+          }}
+        >
+          <Box
+            sx={() => ({
+              width: isMobile ? "min(640px, calc(100% - 32px))" : "min(900px, calc(100% - 32px))",
+              background: "#fff",
+              borderRadius: 8,
+              boxShadow: "0 8px 30px rgba(0,0,0,0.08)",
+              padding: 12,
+            })}
+          >
+            <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+              <TextInput
+                placeholder="Search products..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                radius="md"
+                style={{ flex: 1 }}
+                rightSection={searchLoading ? <Loader size="xs" /> : null}
+                autoFocus={isMobile} // autofocus on mobile when panel opens
+              />
+              <ActionIcon
+                onClick={() => {
+                  setSearchPanelOpen(false);
+                  setSearchTerm("");
+                  setSearchResults([]);
+                }}
+              >
+                <IconX />
+              </ActionIcon>
+            </div>
+
+            <Divider />
+
+            <div
+  style={{
+    position: "absolute",
+    zIndex: 100,
+    left: 0,
+    right: 0,
+    top: "160px", // adjust to sit below header
+    display: "flex",
+    justifyContent: "center",
+    pointerEvents: "auto",
+    width: "100vw"
+  }}
+>
+  <div
+    style={{
+      width: "100vw",
+      background: "#fff",
+      borderRadius: 10,
+      boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+      overflow: "hidden",
+    }}
+  >
+    {/* optional header inside panel */}
+    <div style={{ padding: "10px 12px", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
+      <Text fw={700}>Search results</Text>
+    </div>
+
+    {/* Fixed height ScrollArea so it becomes scrollable */}
+    <ScrollArea style={{ height: 400 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: 8 }}>
+        {searchLoading ? (
+          <Group style={{ padding: 12 }}>
+            <Loader size="sm" />
+            <Text>Searching...</Text>
+          </Group>
+        ) : searchResults.length === 0 ? (
+          <Text c="dimmed" style={{ padding: 12 }}>
+            No results
+          </Text>
+        ) : (
+          searchResults.map((p: any) => {
+            const pid = p._id ?? p.id ?? String(p.product ?? "");
+            const title = p.productTitle ?? p.title ?? p.productName ?? "Product";
+            const img = (p.images && p.images[0]) || p.image || undefined;
+
+            return (
+              <div
+                key={pid}
+                role="button"
+                tabIndex={0}
+                onClick={() => handleProductClick(p)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") handleProductClick(p);
+                }}
+                style={{
+                  display: "flex",
+                  gap: 12,
+                  alignItems: "center",
+                  padding: 10,
+                  borderRadius: 8,
+                  background: "#fff",
+                  cursor: "pointer",
+                  transition: "background .15s, transform .08s",
+                }}
+                className="hover:bg-gray-50"
+              >
+                <div style={{ width: 96, height: 96, flexShrink: 0, borderRadius: 8, overflow: "hidden", background: "#f6f6f6" }}>
+                  {img ? (
+                    // prefer img tag to Mantine Image if you want simpler control
+                    <img src={img} alt={title} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                  ) : (
+                    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 12 }}>
+                      No image
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ minWidth: 0 }}>
+                  <Text fw={700} lineClamp={2} style={{ marginBottom: 6 }}>
+                    {title}
+                  </Text>
+
+                  {p.salePrice ?? p.price ? (
+                    <Text size="sm" c="dimmed">
+                      ₹{p.salePrice ?? p.price}
+                    </Text>
+                  ) : null}
+
+                  {/* optionally show category or excerpt */}
+                  {p.category && (
+                    <Text size="xs" c="dimmed" style={{ marginTop: 6 }}>
+                      {p.category}
+                    </Text>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </ScrollArea>
+  </div>
+</div>
+
+          </Box>
+        </Box>
+      )}
+
+      <MobileMenuDrawer opened={menu.opened} onClose={menu.close} />
     </>
   );
 }

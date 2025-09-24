@@ -37,7 +37,7 @@ export default function NotFoundPage() {
         </Stack>
       </Container>
       <FooterCourier />
-      <SubscriptionBanner />
+      {/* <SubscriptionBanner /> */}
       <Footer />
       <MobileBottomNavbar />
     </div>
