@@ -29,7 +29,7 @@ export default function ShopBySize() {
     <Box
       bg="#f3e7cf"
       h={isMobile ? "auto" : "55vh"}
-      style={{ paddingBottom: isMobile ? "20px" : "50px" }}
+      style={{ paddingBottom: isMobile ? "20px" : "70px" }}
     >
       <Text
         size="lg"

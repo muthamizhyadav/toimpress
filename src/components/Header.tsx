@@ -242,7 +242,7 @@ export default function Header() {
         </div>
       </header>
 
-      {searchTerm && (
+      {/* {searchTerm && (
         <div className="absolute top-[80px] md:top-[112px] left-0 w-screen h-[200px] bg-white shadow-lg z-40 p-4 overflow-y-auto">
           <p className="font-semibold mb-2">Search results for "{searchTerm}"</p>
           <ul className="space-y-2">
@@ -251,7 +251,7 @@ export default function Header() {
             <li className="cursor-pointer hover:text-green-600">Result 3</li>
           </ul>
         </div>
-      )}
+      )} */}
     </>
   );
 }
