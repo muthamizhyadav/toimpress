@@ -1400,7 +1400,6 @@ export default function Checkout() {
           </Box>
         </>
       )}
-      <Footer />
     </div>
   );
 }

@@ -14,10 +14,10 @@ const DARK = "#133215";
 const LIGHT = "#92B775";
 
 const cards: Banner[] = [
-  { headline: "FLAT @", percent: "399", tail: "OFF", label: "Combo" },
-  { headline: "FLAT @", percent: "699", tail: "OFF", label: "Combo" },
-  { headline: "FLAT @", percent: "799", tail: "OFF", label: "Combo" },
-  { headline: "FLAT @", percent: "999", tail: "OFF", label: "Combo" },
+  { headline: "FLAT @", percent: "₹ 399", tail: "", label: "Combo" },
+  { headline: "FLAT @", percent: "₹ 699", tail: "", label: "Combo" },
+  { headline: "FLAT @", percent: "₹ 799", tail: "", label: "Combo" },
+  { headline: "FLAT @", percent: "₹ 999", tail: "", label: "Combo" },
 ];
 
 function BannerCard({ headline, percent, tail, label }: Banner) {

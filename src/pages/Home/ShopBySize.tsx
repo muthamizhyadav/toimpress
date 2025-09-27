@@ -37,7 +37,7 @@ export default function ShopBySize() {
       }}
     >
       <Text
-        ta="center"
+        ta="left"
         fw={600}
         // friendly script-like heading without negative margins
         style={{
@@ -45,7 +45,6 @@ export default function ShopBySize() {
           color: "#1b3611",
           fontSize: "clamp(18px, 4.5vw, 40px)",
           margin: "0 auto clamp(12px, 3vw, 24px)",
-          maxWidth: "min(90vw, 900px)",
         }}
       >
         Find Your Perfect Fit

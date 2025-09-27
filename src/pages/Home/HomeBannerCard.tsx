@@ -23,7 +23,7 @@ const HomeBannerCard: React.FC<HomeBannerCardProps> = ({
 
   
   return (
-    <div className="relative rounded-md overflow-hidden"  onClick={() => handleNavigation("category?name=Brassiere")}>
+    <div className="relative rounded-md overflow-hidden"  onClick={() => handleNavigation("category?name=Combo")}>
       <img
         src={imageUrl}
         alt={title}

@@ -23,10 +23,17 @@ const MobileBottomNavbar: React.FC = () => {
 
   const handleNavigation = (path: string) => navigate(path);
 
-  const isActive = (path: string) => {
-    if (path === "/") return location.pathname === "/";
-    return location.pathname.startsWith(path);
-  };
+ const isActive = (path: string) => {
+  if (path === "/") {
+    return (
+      location.pathname === "/" ||
+      location.pathname.startsWith("/product") ||
+      location.pathname.startsWith("/category")
+    );
+  }
+  return location.pathname.startsWith(path);
+};
+
 
   return (
     <Box

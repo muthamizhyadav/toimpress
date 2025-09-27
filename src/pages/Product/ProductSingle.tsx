@@ -1049,7 +1049,7 @@ const buildSizeOptionsForProduct = (prod: any): SizeOption[] => {
       <Tabs defaultValue="description" mt="xl">
         {((productDetails?.Descriptionimages ?? []).length > 0) && ( 
         <Tabs.List>
-          <Tabs.Tab value="description">Description</Tabs.Tab>
+          <Tabs.Tab value="description" p={0} style={{ fontSize: "20px", fontWeight: "bold"  }} >Description</Tabs.Tab>
         </Tabs.List>
         )}
 
@@ -1062,6 +1062,7 @@ const buildSizeOptionsForProduct = (prod: any): SizeOption[] => {
          {((productDetails?.Descriptionimages ?? []).length > 0) && (
             <>
               {(productDetails?.Descriptionimages ?? []).map((img, idx) => (
+                <>
                 <Stack key={idx} align="center" style={{ flexShrink: 0 }}>
                   <Image
                     src={img}
@@ -1070,7 +1071,12 @@ const buildSizeOptionsForProduct = (prod: any): SizeOption[] => {
                     w={ "100%" }
                     h={isMobile ? 120 : 150}
                   />
+                   <div>
+                    <Text size="sm">{productDetails?.braAttributes[idx]}</Text>
+                  </div>
                 </Stack>
+               
+                </>
               ))}
             </>
           )}            
@@ -1123,18 +1129,23 @@ const buildSizeOptionsForProduct = (prod: any): SizeOption[] => {
                       <Text fw={700}>₹{pPrice}</Text>
                       {pOrig && <Text size="xs" c="dimmed" td="line-through">₹{pOrig}</Text>}
                     </div>
-                    {savePct ? <Badge color="green">Save {savePct}%</Badge> : null}
+                    {savePct ? <Badge color="#92b775">Save {savePct}%</Badge> : null}
                   </Group>
                   <Group position="apart" mt="xs">
                     <Button
                       size="xs"
+                      variant="filled"
                       loading={!!addingMap[pid]}
                       onClick={() => handleAddSimilarClicked(p)}
-                      sx={{
-                        backgroundColor: DARK_GREEN,
-                        color: "#fff",
-                        "&:hover": { backgroundColor: "#0f2a12" },
-                      }}
+                     styles={(theme) => ({
+                      root: {
+                        backgroundColor: '#92b775',   // main green from root palette
+                        color: theme.white,
+                        "&:hover": {
+                          backgroundColor: theme.colors.green[9], // darker shade on hover
+                        },
+                      },
+                    })}
                     >
                       Add
                     </Button>
@@ -1142,10 +1153,11 @@ const buildSizeOptionsForProduct = (prod: any): SizeOption[] => {
                       variant="outline"
                       size="xs"
                       onClick={() => navigate(`/product?id=${pid}`)}
-                      sx={{
-                        borderColor: DARK_GREEN,
-                        color: DARK_GREEN,
-                        "&:hover": { backgroundColor: "#f2fbf2" },
+                      styles={{
+                        root:{
+                          color: "#111",
+                          border: "1px solid green"
+                        }
                       }}
                     >
                       View
