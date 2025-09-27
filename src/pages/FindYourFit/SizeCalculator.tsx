@@ -141,56 +141,72 @@ export default function SizeCalculator({ onSend }: { onSend?: (payload: SendPayl
   }, [unit]);
 
   // compute bra result:
-  const braResult = useMemo(() => {
-    if (underBust == null || overBust == null) return null;
+ // compute bra result:
+const braResult = useMemo(() => {
+  if (underBust == null || overBust == null) return null;
 
-    if (unit === "inch") {
-      const underIn = underBust;
-      const overIn = overBust;
+  if (unit === "inch") {
+    const underIn = underBust;
+    const overIn = overBust;
 
-      // find band matching under-bust
-      let bandCol = BAND_TABLE_INCH.find((b) => inRangeIn(underIn, b.underBustIn));
+    // find band matching under-bust
+    let bandCol = BAND_TABLE_INCH.find((b) => inRangeIn(underIn, b.underBustIn));
 
-      // fallback handling: if below smallest, default to 28A; if above largest, use last band
-      const smallestBand = BAND_TABLE_INCH[0];
-      const largestBand = BAND_TABLE_INCH[BAND_TABLE_INCH.length - 1];
-      if (!bandCol) {
-        const minUnder = smallestBand.underBustIn[0];
-        const maxUnder = largestBand.underBustIn[1];
-        if (underIn < minUnder) {
-          return { label: `28A`, note: "Under-bust below chart — defaulted to 28A" };
-        }
-        if (underIn > maxUnder) {
-          bandCol = largestBand;
-        }
+    // fallback handling: if below smallest, default to 28A; if above largest, use last band
+    const smallestBand = BAND_TABLE_INCH[0];
+    const largestBand = BAND_TABLE_INCH[BAND_TABLE_INCH.length - 1];
+    if (!bandCol) {
+      const minUnder = smallestBand.underBustIn[0];
+      const maxUnder = largestBand.underBustIn[1];
+      if (underIn < minUnder) {
+        return { label: `28A`, note: "Under-bust below chart — defaulted to 28A" };
       }
+      if (underIn > maxUnder) {
+        bandCol = largestBand;
+      }
+    }
 
-      if (!bandCol) return { label: "—", note: "Under-bust out of chart range" };
+    if (!bandCol) return { label: "—", note: "Under-bust out of chart range" };
 
-      const cup = (["A","B","C","D","E","F"] as CupLetter[]).find((c) =>
+    const cup =
+      (["A", "B", "C", "D", "E", "F"] as CupLetter[]).find((c) =>
         inRangeIn(overIn, bandCol!.overBustByCupIn[c])
       ) ?? null;
 
-      if (!cup) {
-        return { label: `${bandCol.band}`, note: "Over-bust out of chart range for selected band" };
-      }
-      return { label: `${bandCol.band}${cup}`, note: null as string | null };
+    // ✅ if cup can't be determined, default to A (never return bare band)
+    if (!cup) {
+      return {
+        label: `${bandCol.band}A`,
+        note: "Over-bust out of chart range for band — defaulted to A cup",
+      };
     }
 
-    // CM mode
-    const underCm = underBust;
-    const overCm = overBust;
+    return { label: `${bandCol.band}${cup}`, note: null as string | null };
+  }
 
-    const bandCol = BAND_TABLE.find((b) => inRangeCm(underCm, b.underBust));
-    if (!bandCol) return { label: "—", note: "Under-bust out of chart range" };
+  // CM mode
+  const underCm = underBust;
+  const overCm = overBust;
 
-    const cup = (["A","B","C","D","E","F"] as CupLetter[]).find((c) =>
+  const bandCol = BAND_TABLE.find((b) => inRangeCm(underCm, b.underBust));
+  if (!bandCol) return { label: "—", note: "Under-bust out of chart range" };
+
+  const cup =
+    (["A", "B", "C", "D", "E", "F"] as CupLetter[]).find((c) =>
       inRangeCm(overCm, bandCol.overBustByCup[c])
     ) ?? null;
 
-    if (!cup) return { label: `${bandCol.band}`, note: "Over-bust out of chart range" };
-    return { label: `${bandCol.band}${cup}`, note: null as string | null };
-  }, [underBust, overBust, unit]);
+  // ✅ default to A cup when cup not found (never return bare band)
+  if (!cup) {
+    return {
+      label: `${bandCol.band}A`,
+      note: "Over-bust out of chart range for band — defaulted to A cup",
+    };
+  }
+
+  return { label: `${bandCol.band}${cup}`, note: null as string | null };
+}, [underBust, overBust, unit]);
+
 
   // panty result:
   const pantyResult = useMemo(() => {

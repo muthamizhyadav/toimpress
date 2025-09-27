@@ -1,6 +1,6 @@
 import { Box, Button, Text, Title, rem } from "@mantine/core";
-import { useMediaQuery } from "@mantine/hooks";
 import { useState } from "react";
+import { useMediaQuery } from "@mantine/hooks";
 import { useNavigate } from "react-router-dom";
 
 export default function ShopBySize() {
@@ -8,7 +8,6 @@ export default function ShopBySize() {
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
 
-  // Full static list of sizes
   const allSizes: string[] = [
     "30B","30C","30D",
     "32A","32B","32C","32D",
@@ -22,28 +21,31 @@ export default function ShopBySize() {
   ];
 
   const handleNavigation = (size: string) => {
-    navigate(`/category?name=Brassiere&size=${encodeURIComponent(size)}`);
+    navigate(`/category?size=${encodeURIComponent(size)}`);
   };
 
   return (
     <Box
+      component="section"
       bg="#f3e7cf"
-      h={ "auto"}
-      style={{ paddingBottom: isMobile ? "20px" : "90px" }}
+      // spacing fixed with padding-block, no negative margins
+      style={{
+        position: "relative",
+        padding: "clamp(24px, 4vw, 60px) 16px clamp(28px, 6vw, 90px)",
+        // in case previous/next sections use odd floats, prevent overlap:
+        clear: "both",
+      }}
     >
       <Text
-        size="lg"
+        ta="center"
         fw={600}
+        // friendly script-like heading without negative margins
         style={{
           fontFamily: "cursive",
-          display: "flex",
           color: "#1b3611",
-          width: "70%",
-          margin: isMobile ? "20px 0 0 10px" : "0 auto",
-          paddingTop: isMobile ? "20px" : "50px",
-          marginBottom: isMobile ? "20px" : "50px",
-          fontSize: isMobile ? "20px" : "40px",
-          marginTop: "-100px"
+          fontSize: "clamp(18px, 4.5vw, 40px)",
+          margin: "0 auto clamp(12px, 3vw, 24px)",
+          maxWidth: "min(90vw, 900px)",
         }}
       >
         Find Your Perfect Fit
@@ -51,14 +53,12 @@ export default function ShopBySize() {
 
       <Title
         order={2}
+        ta="center"
         c="dark"
-        fw={500}
+        fw={600}
         style={{
-          display: "flex",
-          paddingTop: "5px",
-          justifyContent: "center",
-          fontSize: isMobile ? "20px" : "40px",
-          marginBottom: "5px",
+          fontSize: "clamp(18px, 4.5vw, 40px)",
+          margin: "0 0 clamp(8px, 2vw, 12px)",
         }}
       >
         SHOP BY BRA SIZE
@@ -71,18 +71,18 @@ export default function ShopBySize() {
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
-          marginTop: "20px",
+          marginTop: "clamp(10px, 2vw, 20px)",
         }}
       >
         <Box
           style={{
             display: "grid",
             gridTemplateColumns: isMobile
-              ? "repeat(auto-fit, minmax(60px, 1fr))"
+              ? "repeat(auto-fit, minmax(56px, 1fr))"
               : "repeat(10, 1fr)",
             gap: rem(isMobile ? 12 : 20),
             width: isMobile ? "100%" : "70%",
-            maxWidth: isMobile ? "500px" : undefined,
+            maxWidth: isMobile ? "560px" : "1000px",
             margin: "0 auto",
           }}
         >
@@ -109,7 +109,7 @@ export default function ShopBySize() {
                     backgroundColor: isSelected ? "#133215" : "transparent",
                     color: isSelected ? "#ffffff" : "#000000",
                   },
-                  label: { fontWeight: 500 },
+                  label: { fontWeight: 600 },
                 }}
               >
                 {size}

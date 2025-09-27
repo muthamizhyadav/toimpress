@@ -8,21 +8,41 @@ import Footer from "../Home/Footer";
 import MobileBottomNavbar from "../MobileBottomBar";
 import BraModel from "../../../src/assets/svg/braModel.svg";
 import axiosInstance from "../../api/axiosInstance";
-import { API_GET_CATEGORIES_PRODUCTS } from "../../api/api";
+import {
+  API_GET_CATEGORIES_PRODUCTS,
+  API_GET_CATEGORIES_PRODUCTS_BYSIZE,
+} from "../../api/api";
 
-// Real API fetch function — expects categoryName as third argument
+// Real API fetch function
 const fetchProducts = async (
   offset: number,
   limit: number,
-  categoryName: string
+  categoryName: string,
+  size?: string
 ): Promise<Product[]> => {
   try {
     const page = Math.max(1, Math.floor(offset / limit) + 1);
-    const encodedName = encodeURIComponent(categoryName || "");
-    const url = `${API_GET_CATEGORIES_PRODUCTS}${encodedName}?page=${page}&limit=${limit}`;
+
+    let url = "";
+    if (size) {
+      // ✅ size filter endpoint
+      const encodedSize = encodeURIComponent(size);
+      url = `${API_GET_CATEGORIES_PRODUCTS_BYSIZE}?size=${encodedSize}&page=${page}&limit=${limit}`;
+    } else {
+      // ✅ normal category endpoint
+      const encodedName = encodeURIComponent(categoryName || "");
+      url = `${API_GET_CATEGORIES_PRODUCTS}${encodedName}?page=${page}&limit=${limit}`;
+    }
 
     const response = await axiosInstance.get(url);
     const fetchedProducts = response?.data?.data ?? [];
+    const pagination = response?.data?.pagination ?? null; // ✅ read pagination
+
+    // If API indicates no further pages and we somehow got called beyond,
+    // just return empty (lets the grid stop requesting more).
+    if (pagination && page > (pagination?.totalPages ?? page) && !pagination?.hasNextPage) {
+      return [];
+    }
 
     return fetchedProducts.map((product: any, index: number) => ({
       id: product._id ?? index,
@@ -34,7 +54,9 @@ const fetchProducts = async (
       isNew: product.isNew || false,
       discount:
         product.price && product.salePrice
-          ? Math.round(((product.price - product.salePrice) / product.price) * 100)
+          ? Math.round(
+              ((product.price - product.salePrice) / product.price) * 100
+            )
           : 0,
     }));
   } catch (error) {
@@ -46,17 +68,29 @@ const fetchProducts = async (
 export default function CategoryPage() {
   const [searchParams] = useSearchParams();
 
-  // Prefer ?name= ; if not present, fall back to ?id=
+  // Read params
   const rawName = searchParams.get("name");
   const rawId = searchParams.get("id");
-  // decode name if present (handles encoded spaces)
-  const categoryName = rawName ? decodeURIComponent(rawName) : rawId ? rawId : "";
+  const rawSize = searchParams.get("size");
+
+  // decode category name
+  const categoryName = rawName
+    ? decodeURIComponent(rawName)
+    : rawId
+    ? rawId
+    : "";
 
   return (
     <>
       <SmallHeader />
       <Header />
-      <ProductGrid fetchProducts={fetchProducts} categoryName={categoryName} />
+      {/* ✅ pass size to ProductGrid */}
+      <ProductGrid
+        fetchProducts={(offset, limit) =>
+          fetchProducts(offset, limit, categoryName, rawSize || undefined)
+        }
+        categoryName={categoryName}
+      />
       <Footer />
       <MobileBottomNavbar />
     </>

@@ -18,7 +18,7 @@ import {
   Badge,
   Paper,
 } from "@mantine/core";
-import { IconMinus, IconPlus, IconTrash, IconInfoCircle, IconRefresh } from "@tabler/icons-react";
+import { IconMinus, IconPlus, IconTrash, IconInfoCircle } from "@tabler/icons-react";
 import { useMemo, useState, useEffect, useCallback } from "react";
 import axiosInstance from "../../api/axiosInstance";
 import SmallHeader from "../../components/SmallHeader";
@@ -31,7 +31,16 @@ import { IconCheck, IconX } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import { API_GET_UPDATE, API_CART } from "../../api/api";
 import { useSelector, useDispatch } from "react-redux";
-import { removeFromCart, clearCart } from "../../redux/features/cartSlice"; // <- fixed import path
+import { removeFromCart, clearCart } from "../../redux/features/cartSlice";
+
+// ✅ If you use redux-persist, import the persistor (adjust path if different)
+let persistor: any = null;
+try {
+  // Make this import resilient even if persistor isn't exported in some envs
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const storeModule = require("../../redux/store");
+  persistor = storeModule?.persistor ?? null;
+} catch { /* ignore if not available */ }
 
 // Razorpay config
 const RAZORPAY_KEY_ID = import.meta.env.VITE_RZP_KEY_ID as string;
@@ -76,29 +85,29 @@ function CheckoutItemBox({
   onPlus: () => void;
   onRemove: () => void;
   promo?: { threshold: number; discountPercent: number; applied: boolean } | null;
-  prodId? :any;
+  prodId?: any;
   subtotal: number;
 }) {
   const unitPrice = item.salePrice ?? item.price ?? 0;
   const lineTotal = unitPrice * (item.qty ?? 1);
   const img = item.image ?? "";
-
   const showPromoHint = promo && !promo.applied && subtotal < promo.threshold;
   const remaining = promo ? Math.max(0, promo.threshold - subtotal) : 0;
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   return (
     <Card withBorder radius="md" p="sm">
       {/* Product row */}
       <Group align="flex-start" gap="sm" wrap="nowrap">
-       <Box
+        <Box
           w={100}
           h={100}
-          style={{ borderRadius: 8, overflow: "hidden", flexShrink: 0 }}
-          onClick={() => navigate(`/product?id=${prodId}`)} // 👈 add leading /
+          style={{ borderRadius: 8, overflow: "hidden", flexShrink: 0, cursor: "pointer" }}
+          onClick={() => navigate(`/product?id=${prodId}`)}
         >
           <Image src={img} alt={item.title} width={100} height={100} fit="cover" withPlaceholder />
         </Box>
+
         <Stack gap={6} style={{ flex: 1, minWidth: 0 }}>
           <Group position="apart" align="flex-start">
             <Text fw={600} size="sm" lineClamp={2}>
@@ -111,12 +120,28 @@ function CheckoutItemBox({
 
           <Group gap="xs" wrap="wrap">
             {item.size && <Text size="xs" c="dimmed">Size: {item.size}</Text>}
-            {item.color && <Text size="xs" c="dimmed">Color: {item.color}</Text>}
+            {item.color && (
+              <Group gap={6} align="center">
+                <Text size="xs" c="dimmed">Color:</Text>
+                <Box
+                  w={14}
+                  h={14}
+                  style={{
+                    backgroundColor: item.color,
+                    borderRadius: "50%",
+                    border: "1px solid #ccc",
+                  }}
+                  title={item.color}
+                />
+              </Group>
+            )}
           </Group>
 
           <Group gap="xs" align="center">
             <Text fw={700} size="sm">₹{unitPrice}</Text>
-            {item.salePrice && item.price && <Text size="xs" c="dimmed" td="line-through">₹{item.price}</Text>}
+            {item.salePrice && item.price && (
+              <Text size="xs" c="dimmed" td="line-through">₹{item.price}</Text>
+            )}
           </Group>
 
           <Group gap="xs" mt={2} wrap="nowrap">
@@ -227,7 +252,6 @@ export default function Checkout() {
   const reduxUser = useSelector((state: any) => state.auth?.user ?? state.user?.user ?? null);
   const reduxAddress = useSelector((state: any) => state.auth?.user?.address ?? state.user?.user?.address ?? state.address ?? null);
 
-
   const [user, setUser] = useState<any>(null);
   const [storedUserAddress, setStoredUserAddress] = useState<any>(null);
 
@@ -243,43 +267,41 @@ export default function Checkout() {
       setLoading(true);
       const resp = await axiosInstance.get(API_GET_UPDATE);
 
-      // map items for UI
       const mapped = mapServerCartToItems(resp.data ?? resp);
       setItems(mapped);
 
-      // If server returned scheme fields at top level (example you provided),
-      // use that as savedScheme. Tolerant checks.
+      // normalize scheme
       const root = resp?.data ?? resp;
-if (root && typeof root.isDiscountApplicable !== "undefined") {
-  // Normalize server scheme fields into numbers (tolerant)
-  const parsed = {
-    ...root,
-    totalSalesPrice: Number(root.totalSalesPrice ?? root.total_sales_price ?? 0),
-    minusValue: Number(root.minusValue ?? root.minus_value ?? root.discountAmount ?? 0),
-    finalAmount: Number(root.finalAmount ?? root.final_amount ?? 0),
-    gst: Math.round(Number(root.gst ?? 0)),
-    couponAmount: Number(root.couponAmount ?? root.coupon_amount ?? 0),
-    discountvalue: root.discountvalue ?? root.discount_value ?? root.couponOfferDiscount ?? root.discountvalue ?? 0,
-    isDiscountApplicable: Boolean(root.isDiscountApplicable),
-  };
-  setSavedScheme(parsed);
-} else if (root && root.scheme && typeof root.scheme.isDiscountApplicable !== "undefined") {
-  // same normalization for nested shape
-  const s = root.scheme;
-  const parsed = {
-    ...s,
-    totalSalesPrice: Number(s.totalSalesPrice ?? s.total_sales_price ?? 0),
-    minusValue: Number(s.minusValue ?? s.minus_value ?? s.discountAmount ?? 0),
-    finalAmount: Number(s.finalAmount ?? s.final_amount ?? 0),
-    gst: Math.round(Number(s.gst ?? 0)),
-    couponAmount: Number(s.couponAmount ?? s.coupon_amount ?? 0),
-    discountvalue: s.discountvalue ?? s.discount_value ?? s.couponOfferDiscount ?? s.discountvalue ?? 0,
-    isDiscountApplicable: Boolean(s.isDiscountApplicable),
-  };
-  setSavedScheme(parsed);
-} else {
-  setSavedScheme(null);
-}
+      if (root && typeof root.isDiscountApplicable !== "undefined") {
+        const parsed = {
+          ...root,
+          totalSalesPrice: Number(root.totalSalesPrice ?? root.total_sales_price ?? 0),
+          minusValue: Number(root.minusValue ?? root.minus_value ?? root.discountAmount ?? 0),
+          finalAmount: Number(root.finalAmount ?? root.final_amount ?? 0),
+          gst: Math.round(Number(root.gst ?? 0)),
+          couponAmount: Number(root.couponAmount ?? root.coupon_amount ?? 0),
+          discountvalue:
+            root.discountvalue ?? root.discount_value ?? root.couponOfferDiscount ?? root.discountvalue ?? 0,
+          isDiscountApplicable: Boolean(root.isDiscountApplicable),
+        };
+        setSavedScheme(parsed);
+      } else if (root && root.scheme && typeof root.scheme.isDiscountApplicable !== "undefined") {
+        const s = root.scheme;
+        const parsed = {
+          ...s,
+          totalSalesPrice: Number(s.totalSalesPrice ?? s.total_sales_price ?? 0),
+          minusValue: Number(s.minusValue ?? s.minus_value ?? s.discountAmount ?? 0),
+          finalAmount: Number(s.finalAmount ?? s.final_amount ?? 0),
+          gst: Math.round(Number(s.gst ?? 0)),
+          couponAmount: Number(s.couponAmount ?? s.coupon_amount ?? 0),
+          discountvalue:
+            s.discountvalue ?? s.discount_value ?? s.couponOfferDiscount ?? s.discountvalue ?? 0,
+          isDiscountApplicable: Boolean(s.isDiscountApplicable),
+        };
+        setSavedScheme(parsed);
+      } else {
+        setSavedScheme(null);
+      }
     } catch (err: any) {
       console.error("Fetch cart failed", err);
       showNotification({
@@ -299,7 +321,6 @@ if (root && typeof root.isDiscountApplicable !== "undefined") {
     fetchCart();
   }, [fetchCart]);
 
-  // Sync local user & address state from redux when available
   useEffect(() => {
     if (reduxUser) setUser(reduxUser);
     if (reduxAddress) setStoredUserAddress(reduxAddress);
@@ -311,53 +332,37 @@ if (root && typeof root.isDiscountApplicable !== "undefined") {
         productId: String(line.productId ?? line.id),
         quantity: newQuantity,
         selectedSize: line.size,
+        selectedColor: line.color,
       };
-      const resp = await axiosInstance.post(API_CART, body, { headers: { "Content-Type": "application/json" } });
+      const resp = await axiosInstance.post(API_CART, body, {
+        headers: { "Content-Type": "application/json" },
+      });
 
       if (resp?.status === 200 && resp?.data) {
         showNotification({
           title: newQuantity === 0 ? "Removed" : "Quantity updated",
-          message: resp.data?.message ?? (newQuantity === 0 ? "Item removed" : `Quantity updated to ${newQuantity}`),
+          message:
+            resp.data?.message ??
+            (newQuantity === 0 ? "Item removed" : `Quantity updated to ${newQuantity}`),
           color: "green",
           icon: <IconCheck size={16} />,
         });
 
-        // If server removed item (newQuantity === 0), remove it from Redux as well (exact variant)
-        if (newQuantity === 0) {
-          try {
-            await dispatch(removeFromCart({
-              id: line.productId,
-              size: line.size,
-              color: line.color,
+        // keep local store in sync for this variant
+        try {
+          await dispatch(
+            removeFromCart({
+              id: String(line.productId ?? line.id),
+              size: line.size ?? "",
+              color: line.color ?? "",
+              selectedColor: line.color ?? "",
               silent: true,
-            }));
-          } catch (e) {
-            // don't let Redux errors break UX
-            console.warn("Redux removeFromCart failed:", e);
-          }
-        } else {
-          // For safety: if server changed qty, update Redux to match server (attempt remove & re-add or adjust)
-          try {
-            await dispatch(removeFromCart({
-              id: line.productId,
-              size: line.size,
-              color: line.color,
-              silent: true,
-            }));
-          } catch (e) {
-            // Non-fatal
-          }
-          try {
-            const serverQty = Number(resp.data?.qty ?? resp.data?.quantity ?? newQuantity);
-            if (serverQty > 0) {
-              // rely on fetchCart below to sync authoritative state
-            }
-          } catch (e) {
-            // ignore
-          }
+            })
+          );
+        } catch (e) {
+          console.warn("Redux removeFromCart failed:", e);
         }
 
-        // refresh UI list from server (keeps authoritative state)
         await fetchCart();
       } else {
         showNotification({
@@ -390,230 +395,154 @@ if (root && typeof root.isDiscountApplicable !== "undefined") {
     updateLineQuantity(item, 0);
   };
 
- // optional: import your store if you export it somewhere to double-check state
-// import store from "../redux/store";
+  const handleClearCart = async () => {
+    if (!items?.length) return;
+    const itemsToClear = [...items];
 
-const handleClearCart = async () => {
-  if (!items?.length) return;
-  const itemsToClear = [...items]; // snapshot
+     dispatch(clearCart());
 
-  try {
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    // 1) Tell server to set qty = 0 for each item (best-effort)
-    const apiResults = await Promise.allSettled(
-      itemsToClear.map((it) =>
-        axiosInstance.post(API_CART, {
-          productId: String(it.productId ?? it.id),
-          quantity: 0,
-          selectedSize: it.size,
-          selectedColor: it.color,
-        })
-      )
-    );
+      // 1) Server: set each item qty = 0 (best-effort)
+      await Promise.allSettled(
+        itemsToClear.map((it) =>
+          axiosInstance.post(API_CART, {
+            productId: String(it.productId ?? it.id),
+            quantity: 0,
+            selectedSize: it.size,
+            selectedColor: it.color,
+          })
+        )
+      );
 
-    const rejected = apiResults.filter((r) => r.status === "rejected");
-    const fulfilled = apiResults.filter((r) => r.status === "fulfilled");
+      // 2) Redux: clear slice + purge persisted storage so it doesn't rehydrate
+      try {
+        dispatch(clearCart());
+        if (persistor?.purge) {
+          await persistor.purge();
+        }
+      } catch (e) {
+        console.warn("Redux clearCart/purge failed:", e);
+      }
 
-    if (rejected.length === 0) {
+      // Optional hard fallback if persistor import isn't available
+      try {
+        localStorage.removeItem("persist:root");
+        localStorage.removeItem("persist:cart");
+      } catch { /* ignore */ }
+
+      // 3) Refresh from server (authoritative)
+      await fetchCart();
+
       showNotification({
         title: "Cart cleared",
-        message: "All items removed from server",
+        message: "All items removed",
         color: "green",
         icon: <IconCheck size={16} />,
       });
-    } else if (fulfilled.length > 0) {
-      showNotification({
-        title: "Partially cleared",
-        message: `${fulfilled.length} items removed, ${rejected.length} failed`,
-        color: "yellow",
-        icon: <IconCheck size={16} />,
-      });
-    } else {
+    } catch (err: any) {
+      console.error("Clear cart failed", err);
       showNotification({
         title: "Clear failed",
-        message: "Server clear failed for all items",
+        message: err?.response?.data?.message ?? err?.message ?? "Unable to clear cart",
         color: "red",
         icon: <IconX size={16} />,
       });
+
+      // still attempt to clear local redux state
+      try {
+        dispatch(clearCart());
+        if (persistor?.purge) await persistor.purge();
+        localStorage.removeItem("persist:root");
+        localStorage.removeItem("persist:cart");
+      } catch { /* ignore */ }
+    } finally {
+      setLoading(false);
     }
-
-    // 2) Clear redux cart (primary)
-    try {
-      dispatch(clearCart());
-    } catch (e) {
-      console.warn("Redux clearCart dispatch failed:", e);
-    }
-
-    // 3) Extra safety: ensure no stale items remain by dispatching removeFromCart for each snapshot item.
-    // This helps if clearCart reducer didn't fully clear items for some reason.
-    try {
-      await Promise.allSettled(
-        itemsToClear.map((it) =>
-          Promise.resolve(
-            dispatch(
-              removeFromCart({
-                id: String(it.productId ?? it.id),
-                size: it.size,
-                color: it.color,
-                silent: true,
-              })
-            )
-          )
-        )
-      );
-    } catch (e) {
-      console.warn("Fallback removeFromCart calls failed:", e);
-    }
-
-    // 4) Optional: if you export your Redux store you can inspect it to confirm cart is empty.
-    // If you don't export store or prefer not to, comment out this block.
-    try {
-      // @ts-ignore
-      if (typeof store !== "undefined" && store?.getState) {
-        // adapt path if your cart slice is under a different key
-        const remaining = store.getState().cart?.items ?? [];
-        if (Array.isArray(remaining) && remaining.length > 0) {
-          console.warn("Cart still has items after clear:", remaining);
-          // final attempt: remove each remaining
-          remaining.forEach((it: any) => {
-            try {
-              dispatch(
-                removeFromCart({
-                  id: String(it.productId ?? it.id),
-                  size: it.size,
-                  color: it.color,
-                  silent: true,
-                })
-              );
-            } catch (e) {
-              // swallow
-            }
-          });
-        }
-      }
-    } catch (e) {
-      // ignore store-inspection failures
-    }
-
-    // 5) Refresh cart from server (best-effort)
-    try {
-      await fetchCart();
-    } catch (e) {
-      console.warn("fetchCart after clear failed:", e);
-    }
-  } catch (err: any) {
-    console.error("Clear cart failed", err);
-    showNotification({
-      title: "Clear failed",
-      message: err?.response?.data?.message ?? err?.message ?? "Unable to clear cart",
-      color: "red",
-      icon: <IconX size={16} />,
-    });
-
-    // still attempt to clear local redux state to keep UI consistent
-    try {
-      dispatch(clearCart());
-    } catch (e) {
-      console.warn("Redux clearCart failed in error handler:", e);
-    }
-  } finally {
-    setLoading(false);
-  }
-};
-
-
+  };
 
   /**
-   * Totals calculation:
-   * - We compute subtotal from items and local discounts (coupons).
-   * - If server returned a scheme (savedScheme) and savedScheme.isDiscountApplicable === true,
-   *   we use the savedScheme values as source of truth for subtotal, discounts and finalAmount.
+   * Totals calculation
    */
   const totals = useMemo(() => {
-  // local computed fallback subtotal & qty
-  const localSubtotal = (items || []).reduce((sum, i) => {
-    const p = i.salePrice ?? i.price ?? 0;
-    return sum + p * (i.qty ?? 1);
-  }, 0);
+    const localSubtotal = (items || []).reduce((sum, i) => {
+      const p = i.salePrice ?? i.price ?? 0;
+      return sum + p * (i.qty ?? 1);
+    }, 0);
 
-  const totalQty = (items || []).reduce((q, i) => q + (i.qty ?? 0), 0);
+    const totalQty = (items || []).reduce((q, i) => q + (i.qty ?? 0), 0);
 
-  // coupon handling (local-only fallback)
-  let couponDiscount = 0;
-  if (appliedCoupon?.code === "SAVE10") {
-    couponDiscount = Math.round(Math.min(100, localSubtotal * 0.1));
-  } else if (appliedCoupon) {
-    couponDiscount = appliedCoupon.discount ?? 0;
-  }
+    let couponDiscount = 0;
+    if (appliedCoupon?.code === "SAVE10") {
+      couponDiscount = Math.round(Math.min(100, localSubtotal * 0.1));
+    } else if (appliedCoupon) {
+      couponDiscount = appliedCoupon.discount ?? 0;
+    }
 
-  const totalDiscounts = Math.min(localSubtotal, couponDiscount);
-  const discountedBase = localSubtotal - totalDiscounts;
-  const gstRaw = discountedBase * GST_PERCENT;
-  const gstComputed = Math.round(gstRaw);
-  const shipping = paymentMethod === "COD" && items?.length ? COD_SHIPPING : 0;
-  let grandTotalComputed = Math.round(discountedBase + gstComputed + shipping);
-  let savingsPercentComputed = localSubtotal > 0 ? Math.round((totalDiscounts / localSubtotal) * 100) : 0;
+    const totalDiscounts = Math.min(localSubtotal, couponDiscount);
+    const discountedBase = localSubtotal - totalDiscounts;
+    const gstRaw = discountedBase * GST_PERCENT;
+    const gstComputed = Math.round(gstRaw);
+    const shipping = paymentMethod === "COD" && items?.length ? COD_SHIPPING : 0;
+    let grandTotalComputed = Math.round(discountedBase + gstComputed + shipping);
+    let savingsPercentComputed =
+      localSubtotal > 0 ? Math.round((totalDiscounts / localSubtotal) * 100) : 0;
 
-  // If server provided a saved scheme and it's applicable, override using savedScheme fields.
-  // Use fields exactly as requested:
-  // - Total MRP : totalSalesPrice
-  // - Scheme dis : minusValue
-  // - Cart subtotal : finalAmount
-  // - GST 5% : gst
-  if (savedScheme && savedScheme.isDiscountApplicable) {
-    const sTotalSales = Number(savedScheme.totalSalesPrice ?? 0);
-    const sMinus = Number(savedScheme.minusValue ?? 0);
-    const sFinal = Number(savedScheme.finalAmount ?? 0);
-    const sGst = Math.round(Number(savedScheme.gst ?? 0));
+    if (savedScheme && savedScheme.isDiscountApplicable) {
+      const sTotalSales = Number(savedScheme.totalSalesPrice ?? 0);
+      const sMinus = Number(savedScheme.minusValue ?? 0);
+      const sFinal = Number(savedScheme.finalAmount ?? 0);
+      const sGst = Math.round(Number(savedScheme.gst ?? 0));
+      const effectiveFinal = Math.round(
+        sFinal + (paymentMethod === "COD" ? COD_SHIPPING : 0)
+      );
 
-    // server's finalAmount is treated as cart subtotal (already discounted).
-    // If paymentMethod is COD, ensure we add COD shipping (your UI expects that).
-    const effectiveFinal = Math.round(sFinal + (paymentMethod === "COD" ? COD_SHIPPING : 0));
+      return {
+        subtotal: Math.round(sTotalSales),
+        totalQty,
+        couponDiscount: Number(savedScheme.couponAmount ?? couponDiscount),
+        totalDiscounts: Math.round(sMinus),
+        gst: Math.round(sGst),
+        shipping: paymentMethod === "COD" ? COD_SHIPPING : 0,
+        grandTotal: effectiveFinal,
+        savingsPercent: sTotalSales > 0 ? Math.round((sMinus / sTotalSales) * 100) : 0,
+      };
+    }
 
     return {
-      subtotal: Math.round(sTotalSales),
+      subtotal: Math.round(localSubtotal),
       totalQty,
-      couponDiscount: Number(savedScheme.couponAmount ?? couponDiscount),
-      totalDiscounts: Math.round(sMinus),
-      gst: Math.round(sGst),
-      shipping: paymentMethod === "COD" ? COD_SHIPPING : 0,
-      grandTotal: effectiveFinal,
-      savingsPercent: sTotalSales > 0 ? Math.round((sMinus / sTotalSales) * 100) : 0,
+      couponDiscount,
+      totalDiscounts,
+      gst: gstComputed,
+      shipping,
+      grandTotal: grandTotalComputed,
+      savingsPercent: savingsPercentComputed,
     };
-  }
+  }, [items, paymentMethod, appliedCoupon, savedScheme]);
 
-  return {
-    subtotal: Math.round(localSubtotal),
-    totalQty,
-    couponDiscount,
-    totalDiscounts,
-    gst: gstComputed,
-    shipping,
-    grandTotal: grandTotalComputed,
-    savingsPercent: savingsPercentComputed,
-  };
-}, [items, paymentMethod, appliedCoupon, savedScheme]);
-
-
-  // Build a promo object to pass into product cards.
-  // Priority:
-  //  1) savedScheme (server)
-  //  2) fallback to product.raw fields if present (couponDiscount/couponOfferDiscount)
   const promo = useMemo(() => {
     if (savedScheme && typeof savedScheme.isDiscountApplicable !== "undefined") {
-      const threshold = Number(savedScheme.couponAmount ?? savedScheme.totalSalesPrice ?? 0);
-      const discountPercent = Number(savedScheme.discountvalue ?? savedScheme.couponOfferDiscount ?? 0);
+      const threshold = Number(
+        savedScheme.couponAmount ?? savedScheme.totalSalesPrice ?? 0
+      );
+      const discountPercent = Number(
+        savedScheme.discountvalue ?? savedScheme.couponOfferDiscount ?? 0
+      );
       const applied = Boolean(savedScheme.isDiscountApplicable);
       if (threshold > 0 && discountPercent > 0) return { threshold, discountPercent, applied };
       return null;
     }
 
-    // fallback: check first product's raw fields (or any item)
     for (const it of items) {
       const raw = it.raw ?? {};
-      const threshold = Number(raw.couponDiscount ?? raw.couponAmount ?? raw.coupon_threshold ?? 0);
-      const discountPercent = Number(raw.couponOfferDiscount ?? raw.discountvalue ?? raw.couponPercent ?? 0);
+      const threshold = Number(
+        raw.couponDiscount ?? raw.couponAmount ?? raw.coupon_threshold ?? 0
+      );
+      const discountPercent = Number(
+        raw.couponOfferDiscount ?? raw.discountvalue ?? raw.couponPercent ?? 0
+      );
       const applied = Boolean(raw.isDiscountApplicable ?? false);
       if (threshold > 0 && discountPercent > 0) {
         return { threshold, discountPercent, applied };
@@ -623,7 +552,6 @@ const handleClearCart = async () => {
     return null;
   }, [savedScheme, items]);
 
-  // prefer Redux address, then storedUserAddress local state
   const flatUserAddress = reduxAddress ?? storedUserAddress ?? null;
 
   const ensureAuthAndAddress = () => {
@@ -640,32 +568,47 @@ const handleClearCart = async () => {
     return true;
   };
 
-  // apply coupon (simple)
   const applyCoupon = () => {
     const code = (couponCode || "").trim().toUpperCase();
     if (!code) {
-      showNotification({ title: "Coupon", message: "Enter a coupon code", color: "yellow", icon: <IconX size={16} /> });
+      showNotification({
+        title: "Coupon",
+        message: "Enter a coupon code",
+        color: "yellow",
+        icon: <IconX size={16} />,
+      });
       return;
     }
 
     if (code === "SAVE10") {
       setAppliedCoupon({ code: "SAVE10", discount: 0 });
-      showNotification({ title: "Coupon applied", message: "SAVE10 applied", color: "green", icon: <IconCheck size={16} /> });
+      showNotification({
+        title: "Coupon applied",
+        message: "SAVE10 applied",
+        color: "green",
+        icon: <IconCheck size={16} />,
+      });
     } else {
-      showNotification({ title: "Invalid coupon", message: "Coupon not recognized", color: "red", icon: <IconX size={16} /> });
+      showNotification({
+        title: "Invalid coupon",
+        message: "Coupon not recognized",
+        color: "red",
+        icon: <IconX size={16} />,
+      });
     }
   };
 
   const removeCoupon = () => {
     setAppliedCoupon(null);
     setCouponCode("");
-    showNotification({ title: "Coupon removed", message: "", color: "green", icon: <IconCheck size={16} /> });
+    showNotification({
+      title: "Coupon removed",
+      message: "",
+      color: "green",
+      icon: <IconCheck size={16} />,
+    });
   };
 
-  /**
-   * Helper - create order history on server (uses payload shape from your saved fetch snippet).
-   * Will include items array, shippingAddress, billingAddress, paymentMethod, notes, shippingCost, tax, discount.
-   */
   async function createOrderHistory({
     items,
     shippingAddress,
@@ -687,14 +630,14 @@ const handleClearCart = async () => {
     tax?: number;
     discount?: number;
     meta?: any;
-    amountToChargeOnDelivery?: number; // remaining COD amount to collect on delivery
+    amountToChargeOnDelivery?: number;
   }) {
     const payload = {
       items: items.map((it) => ({
         product: it.productId ?? it.id,
         quantity: it.qty,
         selectedSize: it.size ?? undefined,
-        productUrl: it.image ?? ''
+        productUrl: it.image ?? "",
       })),
       shippingAddress: shippingAddress ?? {},
       billingAddress: billingAddress ?? shippingAddress ?? {},
@@ -707,7 +650,6 @@ const handleClearCart = async () => {
       meta: meta ?? {},
     };
 
-    // tolerant token read from reduxUser
     const token =
       (reduxUser && (reduxUser.token ?? reduxUser.accessToken ?? reduxUser.authToken)) ?? null;
 
@@ -718,10 +660,6 @@ const handleClearCart = async () => {
     return resp.data ?? resp;
   }
 
-  /**
-   * Helper - create delhivery shipment(s) using the server order number
-   * Uses DELHIVERY_SHIPMENT_URL; expects shipments: [ { name, add, pin, city, state, country, phone, order, products_desc, cod_amount, order_date, total_amount, quantity } ]
-   */
   async function createDelhiveryShipment({
     orderNumber,
     items,
@@ -737,7 +675,6 @@ const handleClearCart = async () => {
     totalsLocal?: any;
     meta?: any;
   }) {
-    // build address fields tolerant to different shapes
     const reduxUserData = reduxUser?.address?.[0] ?? address;
     const name = reduxUserData?.name ?? "Customer";
     const streetParts: string[] = [];
@@ -747,17 +684,30 @@ const handleClearCart = async () => {
     if (reduxUserData?.city) streetParts.push(reduxUserData.city);
     if (reduxUserData?.state) streetParts.push(reduxUserData.state);
     const add = streetParts.join(", ") || (reduxUserData?.street ?? "");
-    const pin = reduxUserData?.zip ?? address?.pin ?? address?.zipCode ?? address?.zipcode ?? "";
+    const pin =
+      reduxUserData?.zip ?? address?.pin ?? address?.zipCode ?? address?.zipcode ?? "";
     const city = reduxUserData?.city ?? "";
     const state = reduxUserData?.state ?? "";
     const country = reduxUserData?.country ?? "India";
-    const phone = reduxUserData?.phone ?? address?.mobile ?? reduxUser?.mobile ?? reduxUser?.phone ?? "0000000000";
+    const phone =
+      reduxUserData?.phone ??
+      address?.mobile ??
+      reduxUser?.mobile ??
+      reduxUser?.phone ??
+      "0000000000";
 
     const products_desc = items.map((it) => `${it.title} x${it.qty}`).join(", ");
     const quantity = items.reduce((s, it) => s + (it.qty ?? 0), 0).toString();
     const total_amount = String(totalsLocal?.grandTotal ?? totalsLocal?.subtotal ?? 0);
-    const cod_amount = paymentMethod === "COD" || paymentMethod === "cod_token" ? String(totalsLocal?.amountToChargeOnDelivery ?? totalsLocal?.grandTotal ?? 0) : "0";
-    const order_date = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+    const cod_amount =
+      paymentMethod === "COD" || paymentMethod === "cod_token"
+        ? String(
+            totalsLocal?.amountToChargeOnDelivery ??
+              totalsLocal?.grandTotal ??
+              0
+          )
+        : "0";
+    const order_date = new Date().toISOString().split("T")[0];
 
     const shipments = [
       {
@@ -783,7 +733,6 @@ const handleClearCart = async () => {
     const headers: any = { "Content-Type": "application/json" };
     if (token) headers.Authorization = `Bearer ${token}`;
 
-    // POST to Delhivery endpoint
     const resp = await axiosInstance.post(DELHIVERY_SHIPMENT_URL, { shipments }, { headers });
     return resp.data ?? resp;
   }
@@ -792,13 +741,20 @@ const handleClearCart = async () => {
     if (!ensureAuthAndAddress()) return;
     try {
       if (!items?.length) {
-        showNotification({ title: "Cart empty", message: "Add items to proceed", color: "yellow", icon: <IconX size={16} /> });
+        showNotification({
+          title: "Cart empty",
+          message: "Add items to proceed",
+          color: "yellow",
+          icon: <IconX size={16} />,
+        });
         return;
       }
 
-      // amount to collect: respect saved scheme finalAmount if applicable
-      const baseFinal = savedScheme && savedScheme.isDiscountApplicable ? Number(savedScheme.finalAmount ?? totals.grandTotal) : totals.grandTotal;
-      const amountToCollect = Math.round(baseFinal); // online payment collects full final amount (shipping already added into totals.grandTotal)
+      const baseFinal =
+        savedScheme && savedScheme.isDiscountApplicable
+          ? Number(savedScheme.finalAmount ?? totals.grandTotal)
+          : totals.grandTotal;
+      const amountToCollect = Math.round(baseFinal);
 
       const amountPaise = Math.round(amountToCollect * 100);
       if (amountPaise <= 0) return;
@@ -815,7 +771,9 @@ const handleClearCart = async () => {
 
       const prefillName = (reduxUser?.name ?? user?.name) || "Customer";
       const prefillEmail = (reduxUser?.email ?? user?.email) || "customer@example.com";
-      const prefillContact = (reduxUser?.mobile ?? reduxUser?.phone ?? user?.mobile ?? user?.phone) || "9000000000";
+      const prefillContact =
+        (reduxUser?.mobile ?? reduxUser?.phone ?? user?.mobile ?? user?.phone) ||
+        "9000000000";
 
       const rzp = new (window as any).Razorpay({
         key: RAZORPAY_KEY_ID,
@@ -831,7 +789,6 @@ const handleClearCart = async () => {
           try {
             const { data: verify } = await axiosInstance.post(VERIFY_URL, resp);
             if (verify?.valid) {
-              // create server order history (include payment response for traceability)
               let createdOrder: any = null;
               try {
                 createdOrder = await createOrderHistory({
@@ -843,26 +800,31 @@ const handleClearCart = async () => {
                   shippingCost: totals.shipping,
                   tax: totals.gst,
                   discount: totals.totalDiscounts,
-                  meta: { razorpay: resp, savedScheme: savedScheme && savedScheme.isDiscountApplicable ? savedScheme : null },
+                  meta: {
+                    razorpay: resp,
+                    savedScheme:
+                      savedScheme && savedScheme.isDiscountApplicable ? savedScheme : null,
+                  },
                 });
               } catch (orderErr) {
                 console.error("Order history creation failed:", orderErr);
                 showNotification({
                   title: "Order saved partially",
-                  message: "Payment succeeded but we couldn't save order history. Contact support if needed.",
+                  message:
+                    "Payment succeeded but we couldn't save order history. Contact support if needed.",
                   color: "yellow",
                   icon: <IconInfoCircle size={16} />,
                 });
               }
 
-              // Attempt to create delhivery shipment if we have an order identifier
               try {
                 const serverOrderId =
                   createdOrder?.data?.id ||
                   createdOrder?.id ||
                   createdOrder?.orderNumber ||
                   createdOrder?.orderId ||
-                  (createdOrder && (createdOrder.data?.orderNumber || createdOrder.data?.orderId)) ||
+                  (createdOrder &&
+                    (createdOrder.data?.orderNumber || createdOrder.data?.orderId)) ||
                   `ORDER${Date.now()}`;
 
                 if (serverOrderId) {
@@ -885,7 +847,8 @@ const handleClearCart = async () => {
                 console.error("Delhivery shipment creation failed:", shipErr);
                 showNotification({
                   title: "Shipment creation failed",
-                  message: "Order was created but shipment creation failed. Support will assist.",
+                  message:
+                    "Order was created but shipment creation failed. Support will assist.",
                   color: "yellow",
                   icon: <IconInfoCircle size={16} />,
                 });
@@ -898,7 +861,9 @@ const handleClearCart = async () => {
             }
           } catch (e) {
             console.error("Verification/create shipment error:", e);
-            alert("Payment succeeded but verification or shipment creation failed. Please contact support.");
+            alert(
+              "Payment succeeded but verification or shipment creation failed. Please contact support."
+            );
           }
         },
       });
@@ -917,26 +882,28 @@ const handleClearCart = async () => {
     }
   };
 
-  // COD flow updated: collect fixed token (COD_TOKEN) via Razorpay,
-  // send remaining (orderTotal - COD_TOKEN) to server as the order value and to delhivery as cod amount.
   const onPlaceCOD = async () => {
     if (!ensureAuthAndAddress()) return;
     try {
       if (!items?.length) {
-        showNotification({ title: "Cart empty", message: "Add items to proceed", color: "yellow", icon: <IconX size={16} /> });
+        showNotification({
+          title: "Cart empty",
+          message: "Add items to proceed",
+          color: "yellow",
+          icon: <IconX size={16} />,
+        });
         return;
       }
 
-      // Base final amount (from saved scheme if applicable) BEFORE adding COD shipping
-      const baseFinal = savedScheme && savedScheme.isDiscountApplicable ? Number(savedScheme.finalAmount ?? totals.grandTotal) : totals.grandTotal;
-      // For COD we add the shipping cost (COD_SHIPPING)
+      const baseFinal =
+        savedScheme && savedScheme.isDiscountApplicable
+          ? Number(savedScheme.finalAmount ?? totals.grandTotal)
+          : totals.grandTotal;
       const orderTotal = Math.round(baseFinal + COD_SHIPPING);
 
-      // fixed token to collect via Razorpay
       const tokenToCollect = COD_TOKEN;
       const remainingAmount = Math.max(0, orderTotal - tokenToCollect);
 
-      // If tokenToCollect is zero or less (edge), create immediate COD order for full remaining amount
       if (tokenToCollect <= 0) {
         let createdOrder: any = null;
         try {
@@ -949,8 +916,12 @@ const handleClearCart = async () => {
             shippingCost: COD_SHIPPING,
             tax: totals.gst,
             discount: totals.totalDiscounts,
-            meta: { immediateCOD: true, savedScheme: savedScheme && savedScheme.isDiscountApplicable ? savedScheme : null },
-            amountToChargeOnDelivery: orderTotal, // full amount to collect on delivery
+            meta: {
+              immediateCOD: true,
+              savedScheme:
+                savedScheme && savedScheme.isDiscountApplicable ? savedScheme : null,
+            },
+            amountToChargeOnDelivery: orderTotal,
           });
         } catch (orderErr) {
           console.error("Order history creation failed (COD immediate):", orderErr);
@@ -962,14 +933,14 @@ const handleClearCart = async () => {
           });
         }
 
-        // create delhivery shipment with cod amount = orderTotal
         try {
           const serverOrderId =
             createdOrder?.data?.id ||
             createdOrder?.id ||
             createdOrder?.orderNumber ||
             createdOrder?.orderId ||
-            (createdOrder && (createdOrder.data?.orderNumber || createdOrder.data?.orderId)) ||
+            (createdOrder &&
+              (createdOrder.data?.orderNumber || createdOrder.data?.orderId)) ||
             `ORDER${Date.now()}`;
 
           if (serverOrderId) {
@@ -978,7 +949,11 @@ const handleClearCart = async () => {
               items,
               address: flatUserAddress,
               paymentMethod: "cod",
-              totalsLocal: { ...totals, grandTotal: orderTotal, amountToChargeOnDelivery: orderTotal },
+              totalsLocal: {
+                ...totals,
+                grandTotal: orderTotal,
+                amountToChargeOnDelivery: orderTotal,
+              },
               meta: { createdOrder },
             });
             showNotification({
@@ -999,12 +974,16 @@ const handleClearCart = async () => {
         }
 
         await handleClearCart();
-        showNotification({ title: "COD placed", message: `Delivery agent will collect ₹${orderTotal}`, color: "green", icon: <IconCheck size={16} /> });
+        showNotification({
+          title: "COD placed",
+          message: `Delivery agent will collect ₹${orderTotal}`,
+          color: "green",
+          icon: <IconCheck size={16} />,
+        });
         navigate("/order-success", { state: { order: createdOrder } });
         return;
       }
 
-      // Otherwise: charge token via Razorpay and create server order with remainingAmount as order value
       setPayLoading(true);
       await loadRazorpay();
 
@@ -1018,7 +997,9 @@ const handleClearCart = async () => {
 
       const prefillName = (reduxUser?.name ?? user?.name) || "Customer";
       const prefillEmail = (reduxUser?.email ?? user?.email) || "customer@example.com";
-      const prefillContact = (reduxUser?.mobile ?? reduxUser?.phone ?? user?.mobile ?? user?.phone) || "9000000000";
+      const prefillContact =
+        (reduxUser?.mobile ?? reduxUser?.phone ?? user?.mobile ?? user?.phone) ||
+        "9000000000";
 
       const rzp = new (window as any).Razorpay({
         key: RAZORPAY_KEY_ID,
@@ -1034,7 +1015,6 @@ const handleClearCart = async () => {
           try {
             const { data: verify } = await axiosInstance.post(VERIFY_URL, resp);
             if (verify?.valid) {
-              // Create server order with remainingAmount as order value (this is what you requested)
               let createdOrder: any = null;
               try {
                 createdOrder = await createOrderHistory({
@@ -1046,7 +1026,11 @@ const handleClearCart = async () => {
                   shippingCost: COD_SHIPPING,
                   tax: totals.gst,
                   discount: totals.totalDiscounts,
-                  meta: { razorpay: resp, savedScheme: savedScheme && savedScheme.isDiscountApplicable ? savedScheme : null },
+                  meta: {
+                    razorpay: resp,
+                    savedScheme:
+                      savedScheme && savedScheme.isDiscountApplicable ? savedScheme : null,
+                  },
                   amountToChargeOnDelivery: remainingAmount,
                 });
               } catch (orderErr) {
@@ -1059,14 +1043,14 @@ const handleClearCart = async () => {
                 });
               }
 
-              // create delhivery shipment; send cod_amount = remainingAmount
               try {
                 const serverOrderId =
                   createdOrder?.data?.id ||
                   createdOrder?.id ||
                   createdOrder?.orderNumber ||
                   createdOrder?.orderId ||
-                  (createdOrder && (createdOrder.data?.orderNumber || createdOrder.data?.orderId)) ||
+                  (createdOrder &&
+                    (createdOrder.data?.orderNumber || createdOrder.data?.orderId)) ||
                   `ORDER${Date.now()}`;
 
                 if (serverOrderId) {
@@ -1075,7 +1059,11 @@ const handleClearCart = async () => {
                     items,
                     address: flatUserAddress,
                     paymentMethod: "cod_token",
-                    totalsLocal: { ...totals, grandTotal: orderTotal, amountToChargeOnDelivery: remainingAmount },
+                    totalsLocal: {
+                      ...totals,
+                      grandTotal: orderTotal,
+                      amountToChargeOnDelivery: remainingAmount,
+                    },
                     meta: { createdOrder },
                   });
                   showNotification({
@@ -1108,7 +1096,9 @@ const handleClearCart = async () => {
             }
           } catch (e) {
             console.error("Verification or shipment create failed:", e);
-            alert("Token payment succeeded but verification or shipment creation failed. Please contact support.");
+            alert(
+              "Token payment succeeded but verification or shipment creation failed. Please contact support."
+            );
           }
         },
       });
@@ -1143,7 +1133,9 @@ const handleClearCart = async () => {
           <Card p="lg" withBorder>
             <Text fw={600} size="lg">Your cart is empty</Text>
             <Text c="dimmed" size="sm" mt="xs">Add some products to proceed to checkout.</Text>
-            <Button mt="md" onClick={async() => {await handleClearCart(); navigate("/")}}>Continue shopping</Button>
+            <Button mt="md" onClick={async () => { await handleClearCart(); navigate("/"); }}>
+              Continue shopping
+            </Button>
           </Card>
         </Container>
       ) : (
@@ -1155,16 +1147,23 @@ const handleClearCart = async () => {
                   <SimpleGrid cols={{ base: 1, md: 1 }} spacing="md">
                     {items.map((item, idx) => {
                       if ((item.qty ?? 0) > 0) {
-                        // pass promo and current subtotal so each product can show "add X more" message
                         return (
                           <CheckoutItemBox
                             key={`${item.id}-${item.size ?? ""}-${item.color ?? ""}-${idx}`}
-                            prodId={ item.productId }
+                            prodId={item.productId}
                             item={item}
                             onMinus={() => handleMinus(item)}
                             onPlus={() => handlePlus(item)}
                             onRemove={() => handleRemove(item)}
-                            promo={promo ? { threshold: promo.threshold, discountPercent: promo.discountPercent, applied: promo.applied } : null}
+                            promo={
+                              promo
+                                ? {
+                                    threshold: promo.threshold,
+                                    discountPercent: promo.discountPercent,
+                                    applied: promo.applied,
+                                  }
+                                : null
+                            }
                             subtotal={totals.subtotal}
                           />
                         );
@@ -1205,7 +1204,6 @@ const handleClearCart = async () => {
                     />
                   </Stack>
 
-                  {/* Scheme banner: show only when server returned savedScheme with isDiscountApplicable === true */}
                   {savedScheme && savedScheme.isDiscountApplicable && (
                     <Paper radius="md" p="12px" mb="12px" style={{ backgroundColor: "#f3fbf4", border: `1px solid ${LIGHT_GREEN}` }}>
                       <Text size="sm" fw={700} style={{ color: DARK_GREEN }}>
@@ -1217,7 +1215,6 @@ const handleClearCart = async () => {
                     </Paper>
                   )}
 
-                  {/* If savedScheme not present but promo derived from products exists and not applied, show banner */}
                   {!savedScheme && promo && !promo.applied && (
                     <Paper radius="md" p="12px" mb="12px" style={{ backgroundColor: "#f3fbf4", border: `1px solid ${LIGHT_GREEN}` }}>
                       <Text size="sm" fw={700} style={{ color: DARK_GREEN }}>
@@ -1234,22 +1231,34 @@ const handleClearCart = async () => {
                     <Text>₹{totals.subtotal}</Text>
                   </Group>
 
-                  {/* Scheme discount shown immediately after Total MRP with negative sign */}
                   {savedScheme && savedScheme.isDiscountApplicable ? (
                     <Group justify="space-between" mb="xs">
                       <Text c="dimmed">Scheme Discount ({savedScheme.discountvalue}% off)</Text>
-                      <Text style={{ color: LIGHT_GREEN, fontWeight: 700 }}>-₹{Math.round(Number(savedScheme.minusValue ?? 0))}</Text>
+                      <Text style={{ color: LIGHT_GREEN, fontWeight: 700 }}>
+                        -₹{Math.round(Number(savedScheme.minusValue ?? 0))}
+                      </Text>
                     </Group>
                   ) : (
                     <Group justify="space-between" mb="xs">
                       <Text c="dimmed">Discount</Text>
-                      <Text style={{ color: LIGHT_GREEN, fontWeight: 700 }}>-₹{totals.totalDiscounts ?? 0}</Text>
+                      <Text style={{ color: LIGHT_GREEN, fontWeight: 700 }}>
+                        -₹{totals.totalDiscounts ?? 0}
+                      </Text>
                     </Group>
                   )}
 
                   <Group justify="space-between" mb="xs">
                     <Text c="dimmed">Cart Subtotal</Text>
-                    <Text>₹{Math.max(0, totals.subtotal - (savedScheme && savedScheme.isDiscountApplicable ? Math.round(Number(savedScheme.minusValue ?? 0)) : (totals.totalDiscounts ?? 0)))}</Text>
+                    <Text>
+                      ₹
+                      {Math.max(
+                        0,
+                        totals.subtotal -
+                          (savedScheme && savedScheme.isDiscountApplicable
+                            ? Math.round(Number(savedScheme.minusValue ?? 0))
+                            : totals.totalDiscounts ?? 0)
+                      )}
+                    </Text>
                   </Group>
 
                   <Group justify="space-between" mb="xs">
@@ -1266,20 +1275,46 @@ const handleClearCart = async () => {
                   <Group justify="space-between" mb="md">
                     <Text fw={700}>You Pay</Text>
                     <Text fw={700}>
-                      {/* show grand total that includes shipping for COD */}
-                      ₹{savedScheme && savedScheme.isDiscountApplicable ? Math.round(Number(savedScheme.finalAmount) + (paymentMethod === "COD" ? COD_SHIPPING : 0)) : totals.grandTotal}
+                      ₹
+                      {savedScheme && savedScheme.isDiscountApplicable
+                        ? Math.round(
+                            Number(savedScheme.finalAmount) +
+                              (paymentMethod === "COD" ? COD_SHIPPING : 0)
+                          )
+                        : totals.grandTotal}
                     </Text>
                   </Group>
+
+                  {/* ✅ COD advance note */}
+                  {paymentMethod === "COD" && (
+                    <Paper
+                      radius="sm"
+                      p="xs"
+                      mb="sm"
+                      style={{ backgroundColor: "#f3fbf4" }}
+                    >
+                      <Text size="sm" fw={500} style={{ color: DARK_GREEN }}>
+                        Note: For COD orders, ₹100 is collected in advance online. The remaining amount is paid on delivery.
+                      </Text>
+                    </Paper>
+                  )}
 
                   <Paper radius="sm" p="md" style={{ backgroundColor: "#f7fff6" }}>
                     <Group position="apart" align="center">
                       <div>
                         <Text size="sm" style={{ color: DARK_GREEN }}>
-                          Your Savings ₹{savedScheme && savedScheme.isDiscountApplicable ? Math.round(savedScheme.minusValue) : totals.totalDiscounts}
+                          Your Savings ₹
+                          {savedScheme && savedScheme.isDiscountApplicable
+                            ? Math.round(savedScheme.minusValue)
+                            : totals.totalDiscounts}
                         </Text>
                         <Text size="xs" c="dimmed">
                           {savedScheme && savedScheme.isDiscountApplicable
-                            ? `${Math.round((Number(savedScheme.minusValue) / Number(savedScheme.totalSalesPrice)) * 100)}%`
+                            ? `${Math.round(
+                                (Number(savedScheme.minusValue) /
+                                  Number(savedScheme.totalSalesPrice)) *
+                                  100
+                              )}%`
                             : `${totals.savingsPercent ?? 0}%`}
                         </Text>
                       </div>
@@ -1310,11 +1345,17 @@ const handleClearCart = async () => {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                 <div>
                   <Text fw={700} size="lg" style={{ lineHeight: 1 }}>
-                    ₹{savedScheme && savedScheme.isDiscountApplicable ? Math.round(Number(savedScheme.finalAmount) + (paymentMethod === "COD" ? COD_SHIPPING : 0)) : totals.grandTotal}
+                    ₹
+                    {savedScheme && savedScheme.isDiscountApplicable
+                      ? Math.round(
+                          Number(savedScheme.finalAmount) +
+                            (paymentMethod === "COD" ? COD_SHIPPING : 0)
+                        )
+                      : totals.grandTotal}
                   </Text>
                   <Text size="xs" c="dimmed">View Price Details</Text>
-                  {/* small scheme hint in sticky bar */}
-                  { (savedScheme && savedScheme.isDiscountApplicable) ? (
+
+                  {(savedScheme && savedScheme.isDiscountApplicable) ? (
                     <Text size="xs" style={{ color: DARK_GREEN, marginTop: 4 }}>
                       Buy above ₹{Math.round(Number(savedScheme.couponAmount ?? 0))} — flat {savedScheme.discountvalue}% off applied
                     </Text>
@@ -1322,13 +1363,16 @@ const handleClearCart = async () => {
                     <Text size="xs" style={{ color: DARK_GREEN, marginTop: 4 }}>
                       Buy above ₹{Math.round(Number(promo.threshold))} — flat {promo.discountPercent}% off available
                     </Text>
-                  ) : null }
+                  ) : null}
                 </div>
 
                 <div style={{ textAlign: "right" }}>
                   <Text size="sm">Your Savings</Text>
                   <Text fw={700} style={{ color: LIGHT_GREEN }}>
-                    ₹{savedScheme && savedScheme.isDiscountApplicable ? Math.round(savedScheme.minusValue) : totals.totalDiscounts}
+                    ₹
+                    {savedScheme && savedScheme.isDiscountApplicable
+                      ? Math.round(savedScheme.minusValue)
+                      : totals.totalDiscounts}
                   </Text>
                 </div>
               </div>
@@ -1356,6 +1400,7 @@ const handleClearCart = async () => {
           </Box>
         </>
       )}
+      <Footer />
     </div>
   );
 }

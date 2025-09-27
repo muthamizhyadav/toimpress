@@ -2,9 +2,7 @@
 import {
   Burger,
   ScrollArea,
-  Image,
   Text,
-  Stack,
   Group,
   Divider,
   ActionIcon,
@@ -21,6 +19,43 @@ import { IconUserFilled, IconX, IconSearch } from "@tabler/icons-react";
 import axiosInstance from "../api/axiosInstance"; // adjust path if needed
 import { API_GET_CATEGORIES, API_GET_UPDATE, API_SEARCH_PRODUCTS } from "../api/api";
 import { showNotification } from "@mantine/notifications";
+
+// ---------- Cart count helpers (normalize + dedupe) ----------
+const normalizeQty = (raw: any) => {
+  const n = Number(raw ?? 0);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+};
+
+const buildKey = (it: any) => {
+  // stable key to collapse duplicates
+  return (
+    it.skuId ??
+    it.variantId ??
+    it._id ??
+    it.id ??
+    `${it.productId ?? it.product ?? ""}|${it.color ?? it.colour ?? ""}|${it.size ?? ""}`
+  );
+};
+
+const computeCountFromItems = (items: any[] = []) => {
+  const map = new Map<string, number>();
+  for (const it of items) {
+    // ignore removed/canceled lines if backend flags them
+    if (it?.removed || it?.deleted || it?.status === "removed" || it?.status === "canceled") continue;
+
+    const key = buildKey(it);
+    const q =
+      normalizeQty(it?.qty) ||
+      normalizeQty(it?.quantity) ||
+      normalizeQty(it?.count) ||
+      0;
+
+    map.set(key, (map.get(key) ?? 0) + q);
+  }
+  const total = Array.from(map.values()).reduce((a, b) => a + b, 0);
+  // if no explicit qtys present, fall back to number of *unique* items
+  return total > 0 ? total : map.size;
+};
 
 export default function Header() {
   const navigate = useNavigate();
@@ -77,21 +112,32 @@ export default function Header() {
     getCategories();
   }, []);
 
-  const computeCountFromItems = (items: any[] = []) =>
-    items.reduce((sum, it) => sum + (it.qty ?? it.quantity ?? 0), 0);
-
+  // -------- Fetch cart count (fixed) --------
   const fetchCartCount = useCallback(async (signal?: AbortSignal) => {
     try {
       const resp = await axiosInstance.get(API_GET_UPDATE, { signal });
-      const payload = resp.data ?? resp;
+      const payload = resp?.data ?? resp;
+
+      // Prefer explicit totals if API provides them
+      const apiTotal =
+        Number(payload?.totalQty) ||
+        Number(payload?.count) ||
+        Number(payload?.meta?.count) ||
+        0;
+
       let items: any[] = [];
+      if (Array.isArray(payload?.items)) items = payload.items;
+      else if (Array.isArray(payload?.data?.items)) items = payload.data.items;
+      else if (Array.isArray(payload?.data)) items = payload.data; // only if this is known to be cart lines
+      else if (Array.isArray(payload)) items = payload;
 
-      if (Array.isArray(payload)) items = payload;
-      else if (payload && Array.isArray(payload.items)) items = payload.items;
-      else if (payload && Array.isArray(payload.data)) items = payload.data;
-      else if (payload && payload.data && Array.isArray(payload.data.items)) items = payload.data.items;
+      console.log(items, "items")
 
-      const count = computeCountFromItems(items) || (Array.isArray(payload?.data) ? payload.data.length : 0);
+      const computed = computeCountFromItems(items);
+      const count = computed || apiTotal || 0;
+
+      console.log(count, "count")
+
       setCartCount(count);
     } catch (err: any) {
       if (err?.name === "CanceledError" || err?.name === "AbortError") return;
@@ -116,7 +162,7 @@ export default function Header() {
     };
   }, [isAuthenticated, fetchCartCount]);
 
-  // Search: debounced + abort previous
+  // -------- Search: debounced + abort previous --------
   useEffect(() => {
     if (!searchPanelOpen || !searchTerm || String(searchTerm).trim().length < 2) {
       setSearchResults([]);
@@ -124,7 +170,7 @@ export default function Header() {
       if (controllerRef.current) {
         try {
           controllerRef.current.abort();
-        } catch (e) {}
+        } catch {}
         controllerRef.current = null;
       }
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -136,7 +182,7 @@ export default function Header() {
       if (controllerRef.current) {
         try {
           controllerRef.current.abort();
-        } catch (e) {}
+        } catch {}
         controllerRef.current = null;
       }
       const controller = new AbortController();
@@ -165,9 +211,6 @@ export default function Header() {
       }
     }, 400);
 
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
   }, [searchTerm, searchPanelOpen]);
 
   const handleProductClick = (p: any) => {
@@ -178,7 +221,7 @@ export default function Header() {
     navigate(`/product?id=${pid}`);
   };
 
-  // header render
+  // ---------------- Render ----------------
   return (
     <>
       <header className="bg-sandle w-full h-[80px] md:h-[112px] flex items-center px-10 sm:px-12 md:px-14 lg:px-14 relative z-50">
@@ -191,12 +234,12 @@ export default function Header() {
 
         {isMobile && (
           <div className="ml-auto flex items-center">
-            {/* Mobile only: search icon placed BEFORE cart icon */}
+            {/* Mobile only: search icon BEFORE cart icon */}
             <div style={{ marginRight: 12 }}>
               <ActionIcon
-                variant="transparent"   // removes background
+                variant="transparent" // no background
                 size="lg"
-                color="black"           // makes icon black
+                color="black"        // black icon
                 onClick={() => {
                   setSearchPanelOpen((s) => {
                     const next = !s;
@@ -222,7 +265,7 @@ export default function Header() {
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                 <path
-                  d="M5 3C4.73478 3 4.48043 3.10536 4.29289 3.29289C4.10536 3.48043 4 3.73478 4 4C4 4.26522 4.10536 4.51957 4.29289 4.70711C4.48043 4.89464 4.73478 5 5 5H6.22L6.525 6.222L7.893 11.694L7 12.586C5.74 13.846 6.632 16 8.414 16H17C17.2652 16 17.5196 15.8946 17.7071 15.7071C17.8946 15.5196 18 15.2652 18 15C18 14.7348 17.8946 14.4804 17.7071 14.2929C17.5196 14.1054 17.2652 14 17 14H8.414L9.414 13H16C16.1857 13 16.3676 12.9481 16.5255 12.8504C16.6834 12.7528 16.811 12.6131 16.894 12.447L19.894 6.447C19.9702 6.29458 20.0061 6.12522 19.9985 5.95501C19.9908 5.78479 19.9398 5.61935 19.8502 5.47439C19.7606 5.32944 19.6355 5.20977 19.4867 5.12674C19.3379 5.04372 19.1704 5.00009 19 5H8.28L7.97 3.757C7.91583 3.54075 7.79095 3.34881 7.61521 3.21166C7.43946 3.0745 7.22293 3.00001 7 3H5ZM18 18.5C18 18.8978 17.842 19.2794 17.5607 19.5607C17.2794 19.842 16.8978 20 16.5 20C16.1022 20 15.7206 19.842 15.4393 19.5607C15.158 19.2794 15 18.8978 15 18.5C15 18.1022 15.158 17.7206 15.4393 17.4393C15.7206 17.158 16.1022 17 16.5 17C16.8978 17 17.2794 17.158 17.5607 17.4393C17.842 17.7206 18 18.1022 18 18.5ZM8.5 20C8.89782 20 9.27936 19.842 9.56066 19.5607C9.84196 19.2794 10 18.8978 10 18.5C10 18.1022 9.84196 17.7206 9.56066 17.4393C9.27936 17.158 8.89782 17 8.5 17C8.10218 17 7.72064 17.158 7.43934 17.4393C7.15804 17.7206 7 18.1022 7 18.5C7 18.8978 7.15804 19.2794 7.43934 19.5607C7.72064 19.842 8.10218 20 8.5 20Z"
+                  d="M5 3C4.73478 3 4.48043 3.10536 4.29289 3.29289C4.10536 3.48043 4 3.73478 4 4C4 4.26522 4.10536 4.51957 4.29289 4.70711C4.48043 4.89464 4.73478 5 5 5H6.22L6.525 6.222L7.893 11.694L7 12.586C5.74 13.846 6.632 16 8.414 16H17C17.2652 16 17.5196 15.8946 17.7071 15.7071C17.8946 15.5196 18 15.2652 18 15C18 14.7348 17.8946 14.4804 17.7071 14.2929C17.5196 14.1054 17.2652 14 17 14H8.414L9.414 13H16C16.1857 13 16.3676 12.9481 16.5255 12.8504C16.6834 12.7528 16.811 12.6131 16.894 12.447L19.894 6.447C19.9702 6.29458 20.0061 6.12522 19.9985 5.95501C19.9908 5.78479 19.9398 5.61935 19.8502 5.47439C19.7606 5.32944 19.6355 5.20977 19.4867 5.12674C19.3379 5.04372 19.1704 5.00009 19 5H8.28L7.97 3.757C7.91583 3.54075 7.79095 3.34881 7.61521 3.21166C7.43946 3.0745 7.22293 3.00001 7 3H5ZM18 18.5C18 18.8978 17.842 19.2794 17.5607 19.5607C17.2794 19.842 16.8978 20 16.5 20C16.1022 20 15.7206 19.842 15.4393 19.5607C15.158 19.2794 15 18.8978 15 18.5C15 18.1022 15.158 17.7206 15.4393 17.4393C15.7206 17.158 16.1022 17 16.5 17C16.8978 17 17.2794 17.158 17.5607 17.4393C17.842 17.7206 18 18.1022 18 18.5ZM8.5 20C8.89782 20 9.27936 19.842 9.56066 19.5607C9.84196 19.2794 10 18.8978 10 18.5C10 18.1022 9.84196 17.7206 9.56066 17.4393C9.27936 17.158 8.89782 17 8.5 17C8.10218 17 7.72064 17.158 7.43934 17.4393C7.15804 17.7206 7 18.1022 7 18.5C7 18.8978 7.72064 19.2794 7.43934 19.5607C7.72064 19.842 8.10218 20 8.5 20Z"
                   fill="#122F15"
                 />
               </svg>
@@ -238,11 +281,11 @@ export default function Header() {
           </div>
         )}
 
-        {/* Desktop header block (no mobile search icon here) */}
+        {/* Desktop header block */}
         <div className="hidden lg:flex ml-5 flex-col gap-5 w-full md:flex md:flex-col md:gap-5 md:w-full">
           <div className="hidden lg:w-full lg:flex md:flex md:w-full ">
             <div className="hidden md:flex md:w-full lg:w-full lg:flex">
-              {/* Keep desktop inline search input (no search icon) */}
+              {/* Desktop inline search input */}
               <input
                 type="search"
                 placeholder="Search products here "
@@ -329,7 +372,7 @@ export default function Header() {
             position: "absolute",
             left: 0,
             right: 0,
-            top: isMobile ? "80px" : "100px", // adjust to feel right for header height
+            top: isMobile ? "80px" : "100px",
             zIndex: 100,
             display: "flex",
             justifyContent: "center",
@@ -353,7 +396,7 @@ export default function Header() {
                 radius="md"
                 style={{ flex: 1 }}
                 rightSection={searchLoading ? <Loader size="xs" /> : null}
-                autoFocus={isMobile} // autofocus on mobile when panel opens
+                autoFocus={isMobile}
               />
               <ActionIcon
                 onClick={() => {
@@ -369,109 +412,114 @@ export default function Header() {
             <Divider />
 
             <div
-  style={{
-    position: "absolute",
-    zIndex: 100,
-    left: 0,
-    right: 0,
-    top: "160px", // adjust to sit below header
-    display: "flex",
-    justifyContent: "center",
-    pointerEvents: "auto",
-    width: "100vw"
-  }}
->
-  <div
-    style={{
-      width: "100vw",
-      background: "#fff",
-      borderRadius: 10,
-      boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
-      overflow: "hidden",
-    }}
-  >
-    {/* optional header inside panel */}
-    <div style={{ padding: "10px 12px", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
-      <Text fw={700}>Search results</Text>
-    </div>
-
-    {/* Fixed height ScrollArea so it becomes scrollable */}
-    <ScrollArea style={{ height: 400 }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: 8 }}>
-        {searchLoading ? (
-          <Group style={{ padding: 12 }}>
-            <Loader size="sm" />
-            <Text>Searching...</Text>
-          </Group>
-        ) : searchResults.length === 0 ? (
-          <Text c="dimmed" style={{ padding: 12 }}>
-            No results
-          </Text>
-        ) : (
-          searchResults.map((p: any) => {
-            const pid = p._id ?? p.id ?? String(p.product ?? "");
-            const title = p.productTitle ?? p.title ?? p.productName ?? "Product";
-            const img = (p.images && p.images[0]) || p.image || undefined;
-
-            return (
+              style={{
+                position: "absolute",
+                zIndex: 100,
+                left: 0,
+                right: 0,
+                top: "160px",
+                display: "flex",
+                justifyContent: "center",
+                pointerEvents: "auto",
+                width: "100vw",
+              }}
+            >
               <div
-                key={pid}
-                role="button"
-                tabIndex={0}
-                onClick={() => handleProductClick(p)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") handleProductClick(p);
-                }}
                 style={{
-                  display: "flex",
-                  gap: 12,
-                  alignItems: "center",
-                  padding: 10,
-                  borderRadius: 8,
+                  width: "100vw",
                   background: "#fff",
-                  cursor: "pointer",
-                  transition: "background .15s, transform .08s",
+                  borderRadius: 10,
+                  boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+                  overflow: "hidden",
                 }}
-                className="hover:bg-gray-50"
               >
-                <div style={{ width: 96, height: 96, flexShrink: 0, borderRadius: 8, overflow: "hidden", background: "#f6f6f6" }}>
-                  {img ? (
-                    // prefer img tag to Mantine Image if you want simpler control
-                    <img src={img} alt={title} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                  ) : (
-                    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 12 }}>
-                      No image
-                    </div>
-                  )}
+                <div style={{ padding: "10px 12px", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
+                  <Text fw={700}>Search results</Text>
                 </div>
 
-                <div style={{ minWidth: 0 }}>
-                  <Text fw={700} lineClamp={2} style={{ marginBottom: 6 }}>
-                    {title}
-                  </Text>
+                <ScrollArea style={{ height: 400 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: 8 }}>
+                    {searchLoading ? (
+                      <Group style={{ padding: 12 }}>
+                        <Loader size="sm" />
+                        <Text>Searching...</Text>
+                      </Group>
+                    ) : searchResults.length === 0 ? (
+                      <Text c="dimmed" style={{ padding: 12 }}>
+                        No results
+                      </Text>
+                    ) : (
+                      searchResults.map((p: any) => {
+                        const pid = p._id ?? p.id ?? String(p.product ?? "");
+                        const title = p.productTitle ?? p.title ?? p.productName ?? "Product";
+                        const img = (p.images && p.images[0]) || p.image || undefined;
 
-                  {p.salePrice ?? p.price ? (
-                    <Text size="sm" c="dimmed">
-                      ₹{p.salePrice ?? p.price}
-                    </Text>
-                  ) : null}
+                        return (
+                          <div
+                            key={pid}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => handleProductClick(p)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") handleProductClick(p);
+                            }}
+                            style={{
+                              display: "flex",
+                              gap: 12,
+                              alignItems: "center",
+                              padding: 10,
+                              borderRadius: 8,
+                              background: "#fff",
+                              cursor: "pointer",
+                              transition: "background .15s, transform .08s",
+                            }}
+                            className="hover:bg-gray-50"
+                          >
+                            <div style={{ width: 96, height: 96, flexShrink: 0, borderRadius: 8, overflow: "hidden", background: "#f6f6f6" }}>
+                              {img ? (
+                                <img src={img} alt={title} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                              ) : (
+                                <div
+                                  style={{
+                                    width: "100%",
+                                    height: "100%",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    color: "#999",
+                                    fontSize: 12,
+                                  }}
+                                >
+                                  No image
+                                </div>
+                              )}
+                            </div>
 
-                  {/* optionally show category or excerpt */}
-                  {p.category && (
-                    <Text size="xs" c="dimmed" style={{ marginTop: 6 }}>
-                      {p.category}
-                    </Text>
-                  )}
-                </div>
+                            <div style={{ minWidth: 0 }}>
+                              <Text fw={700} lineClamp={2} style={{ marginBottom: 6 }}>
+                                {title}
+                              </Text>
+
+                              {p.salePrice ?? p.price ? (
+                                <Text size="sm" c="dimmed">
+                                  ₹{p.salePrice ?? p.price}
+                                </Text>
+                              ) : null}
+
+                              {p.category && (
+                                <Text size="xs" c="dimmed" style={{ marginTop: 6 }}>
+                                  {p.category}
+                                </Text>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </ScrollArea>
               </div>
-            );
-          })
-        )}
-      </div>
-    </ScrollArea>
-  </div>
-</div>
-
+            </div>
           </Box>
         </Box>
       )}

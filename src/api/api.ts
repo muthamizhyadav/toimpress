@@ -22,6 +22,9 @@ export const API_DELETE_CART_PRODUCTS = "cart/"
 export const API_GET_CATEGORIES = "category"
 export const API_GET_CATEGORIES_PRODUCTS = "products/products/category/";
 
+export const API_GET_CATEGORIES_PRODUCTS_BYSIZE = "products/size/products/";
+
+
 export const API_GET_CART_DATA = API_URL + "products/"
 export const API_SEARCH_PRODUCTS = API_URL + "products/global/search?searchkey="
 

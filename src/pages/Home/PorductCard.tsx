@@ -1,6 +1,6 @@
 // components/ProductCard.tsx
 import { useMediaQuery } from "@mantine/hooks";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import SizeSelectorDrawer from "../../components/SizeSelectorDrawer";
 import { showNotification } from "@mantine/notifications";
@@ -9,15 +9,19 @@ import { API_CART } from "../../api/api";
 import axiosInstance from "../../api/axiosInstance";
 import { useSelector } from "react-redux";
 
-// Colour tokens
-const DARK_GREEN = "#133215";
-const LIGHT_GREEN = "#92B775";
-
 interface PromoInfo {
   threshold: number;
   discountPercent: number;
   applied?: boolean;
 }
+
+type ColorDataMap = Record<
+  string,
+  {
+    sizes: string[];
+    images: string[];
+  }
+>;
 
 interface ProductCardProps {
   id: string | number;
@@ -30,22 +34,12 @@ interface ProductCardProps {
   isNew?: boolean;
   isOnSale?: boolean;
   sizeOptions?: Parameters<typeof SizeSelectorDrawer>[0]["options"];
+  // NEW
+  colors?: string[];
+  colorData?: ColorDataMap;
   selectedColor?: string;
   promo?: PromoInfo | null;
 }
-
-const PANTY_SIZES = [
-  { label: "XS", hip: "75–82 cm" },
-  { label: "S", hip: "83–89 cm" },
-  { label: "M", hip: "90–97 cm" },
-  { label: "L", hip: "98–104 cm" },
-  { label: "XL", hip: "105–112 cm" },
-  { label: "2XL", hip: "113–119 cm" },
-  { label: "3XL", hip: "120–127 cm" },
-  { label: "4XL", hip: "128–134 cm" },
-  { label: "5XL", hip: "135–142 cm" },
-  { label: "6XL", hip: "143–149 cm" },
-];
 
 const ProductCard: React.FC<ProductCardProps> = ({
   id,
@@ -58,31 +52,31 @@ const ProductCard: React.FC<ProductCardProps> = ({
   isNew = false,
   isOnSale = false,
   sizeOptions,
+  colors = [],
+  colorData,
   selectedColor,
   promo = null,
 }) => {
   const isMobile = useMediaQuery("(max-width: 600px)");
   const navigate = useNavigate();
 
-  
-  // aggregated product-level quantity (local best-effort)
   const [qty, setQty] = useState<number>(0);
   const [openSizeDrawer, setOpenSizeDrawer] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [lastSize, setLastSize] = useState<string | undefined>(undefined);
 
-  // authoritative cart items from redux (used to compute existing qty)
+  // NEW: keep selected color locally (so cart + image react to drawer selection)
+  const [selectedColorLocal, setSelectedColorLocal] = useState<string | undefined>(selectedColor);
+
   const cartItems: any[] = useSelector((s: any) => (s?.cart?.items ?? []) as any[]);
 
   const handleNavigation = () => navigate(`/product/?id=${id}`);
 
-  // derive qty from response payload if possible (keeps local display accurate)
   const deriveQtyFromResponse = (respData: any) => {
     try {
       const payload = respData?.data ?? respData ?? {};
       const thisId = String(id);
 
-      // if response returns items array
       if (Array.isArray(payload.items)) {
         const totalForThis =
           payload.items
@@ -92,7 +86,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
         return true;
       }
 
-      // some APIs return single item update info
       if ((typeof payload.itemqty !== "undefined" || typeof payload.quantity !== "undefined") && payload.product) {
         if (String(payload.product) === thisId) {
           setQty(Number(payload.itemqty ?? payload.quantity ?? 0));
@@ -100,7 +93,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
         }
       }
 
-      // nested shapes
       if (payload.data && Array.isArray(payload.data.items)) {
         const totalForThis =
           payload.data.items
@@ -124,56 +116,57 @@ const ProductCard: React.FC<ProductCardProps> = ({
     }
   };
 
-  // central POST helper (sets absolute quantity for a variant)
   const postCartQuantity = async (newQuantity: number, selectedSize?: string) => {
     const body = {
       productId: String(id),
       quantity: newQuantity,
-      selectedColor: selectedColor ?? undefined,
+      selectedColor: selectedColorLocal ?? undefined, // use local color
       selectedSize: selectedSize ?? lastSize,
     };
+    
     const resp = await axiosInstance.post(API_CART, body, {
       headers: { "Content-Type": "application/json" },
     });
     return resp;
   };
 
-  // helper to find existing qty for this product+variant from redux
   const getExistingQtyForVariant = (variantLabel?: string) => {
     const label = variantLabel ?? "";
     const found = cartItems.find((it: any) => {
       const sameId = String(it.id) === String(id) || String(it.productId ?? "") === String(id);
       const sameSize = (it.size ?? "") === (label ?? "");
-      const sameColor = (it.color ?? "") === (selectedColor ?? "");
+      const sameColor = (it.color ?? "") === (selectedColorLocal ?? "");
       return sameId && sameSize && sameColor;
     });
     return Number(found?.qty ?? 0);
   };
 
-  // handle confirm from drawer (initial add)
-  // We ALWAYS compute authoritative existing qty from redux at the moment of confirm
-  const handleConfirmSize = async (sel: { band: number; cup: string; label: string; quantity?: number }) => {
+  // NOTE: now receives selectedColor from drawer
+  const handleConfirmSize = async (sel: {
+    band: number;
+    cup: string;
+    label: string;
+    quantity?: number;
+    selectedColor?: string | undefined;
+  }) => {
     const chosen = sel.label;
     try {
       setSubmitting(true);
 
-      // authoritative existing qty (from redux) — ensure we use this to compute absolute quantity to send
+      // sync local color from drawer selection (if provided)
+      if (sel.selectedColor) setSelectedColorLocal(sel.selectedColor);
+
       const existing = getExistingQtyForVariant(chosen);
-      const qtyToSend = existing + 1; // user clicked add -> increment by one
+      const qtyToSend = existing + 1;
 
       const response = await postCartQuantity(qtyToSend, chosen);
 
       if (response?.status === 200 || response?.status === 201) {
         setLastSize(chosen);
 
-        // best-effort update qty from API response
         const derived = deriveQtyFromResponse(response.data);
-        if (!derived) {
-          // fallback: set local qty to qtyToSend
-          setQty(qtyToSend);
-        }
+        if (!derived) setQty(qtyToSend);
 
-        // notify other parts of the app to refresh if needed
         window.dispatchEvent(new Event("cart:updated"));
 
         showNotification({
@@ -215,29 +208,23 @@ const ProductCard: React.FC<ProductCardProps> = ({
       console.error("Increment/Decrement error:", err);
     } finally {
       setSubmitting(false);
-      // NOTE: intentionally do NOT close the drawer here so user can add more variants
     }
   };
 
-  // + handler (explicit increment button)
   const handleAddMore = async () => {
     if (!lastSize) {
       setOpenSizeDrawer(true);
       return;
     }
-
     try {
       setSubmitting(true);
-      // use redux-authoritative current qty (not local stale state)
       const existing = getExistingQtyForVariant(lastSize);
       const nextQty = existing + 1;
       const response = await postCartQuantity(nextQty, lastSize);
 
       if (response?.status === 200 || response?.status === 201) {
         const derived = deriveQtyFromResponse(response.data);
-        if (!derived) {
-          setQty(nextQty);
-        }
+        if (!derived) setQty(nextQty);
         window.dispatchEvent(new Event("cart:updated"));
         showNotification({
           title: "Cart updated",
@@ -267,7 +254,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
     }
   };
 
-  // - handler
   const handleDecrement = async () => {
     if (!lastSize) {
       showNotification({
@@ -278,7 +264,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
       });
       return;
     }
-
     try {
       setSubmitting(true);
       const existing = getExistingQtyForVariant(lastSize);
@@ -287,9 +272,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
       if (response?.status === 200 || response?.status === 201) {
         const derived = deriveQtyFromResponse(response.data);
-        if (!derived) {
-          setQty(nextQty);
-        }
+        if (!derived) setQty(nextQty);
         window.dispatchEvent(new Event("cart:updated"));
         showNotification({
           title: "Cart updated",
@@ -322,13 +305,18 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const addCtaDisabled = submitting;
   const showImagePromo = !!promo && !promo.applied;
 
+  // NEW: switch main image when color changes (fallback to provided imageUrl)
+  const displayImageUrl =
+    (selectedColorLocal && colorData?.[selectedColorLocal]?.images?.[0]) || imageUrl;
+
   return (
     <div className="rounded-xl shadow p-2 bg-white flex flex-col w-full h-full">
-      <div
-        className="relative w-full aspect-[4/4] overflow-hidden rounded-lg"
-        onClick={handleNavigation}
-      >
-        <img src={imageUrl} alt={productName} className={`${isMobile ? "w-[250px]" : "w-full"} h-full object-cover`} />
+      <div className="relative w-full aspect-[4/4] overflow-hidden rounded-lg" onClick={handleNavigation}>
+        <img
+          src={displayImageUrl}
+          alt={productName}
+          className={`${isMobile ? "w-[250px]" : "w-full"} h-full object-cover`}
+        />
         <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
           {isOnSale && <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">Sale!</span>}
           {isNew && <span className="bg-cyan-500 text-white text-xs px-2 py-0.5 rounded-full">New</span>}
@@ -369,11 +357,14 @@ const ProductCard: React.FC<ProductCardProps> = ({
         onConfirm={handleConfirmSize}
         productTitle={productName}
         price={price}
-        imageUrl={imageUrl}
+        imageUrl={displayImageUrl}
         category={category}
         options={sizeOptions}
         productId={id}
-        selectedColor={selectedColor}
+        selectedColor={selectedColorLocal}
+        // NEW
+        colors={colors}
+        colorData={colorData}
       />
     </div>
   );

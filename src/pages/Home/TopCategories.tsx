@@ -6,18 +6,9 @@ import BraModel from "../../assets/svg/braModel.svg";
 import ProductCard from "./PorductCard"; // keep your path
 import { useMediaQuery } from "@mantine/hooks";
 import axiosInstance from "../../api/axiosInstance";
-import { GET_PRODUCTS, API_GET_CATEGORIES, API_GET_CATEGORIES_PRODUCTS } from "../../api/api";
+import { API_GET_CATEGORIES, API_GET_CATEGORIES_PRODUCTS } from "../../api/api";
 import { IconX } from "@tabler/icons-react";
 import { showNotification } from "@mantine/notifications";
-
-/**
- * TopCategories:
- * - Fetches categories and products (by category name)
- * - Converts product.selectedSizes (["30B","32C",...]) into SizeOption[]:
- *   [{ band: 30, cups: ["B","C"] }, { band: 32, cups: ["B","C"] }, ...]
- *
- * This allows SizeSelectorDrawer to show proper sizes per product.
- */
 
 type Category = {
   id?: number | string;
@@ -29,25 +20,20 @@ type Category = {
 
 export default function TopCategories() {
   const [categories, setCategories] = useState<Category[]>([]);
-  const [selectedTab, setSelectedTab] = useState<string | null>(null); // we'll store category.name here
+  const [selectedTab, setSelectedTab] = useState<string | null>(null);
   const [products, setProducts] = useState<any[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(false);
   const [loadingProducts, setLoadingProducts] = useState(false);
-
   const isMobile = useMediaQuery("(max-width: 640px)");
 
-  // normalize category shape coming from API
-  const normalizeCategory = (cat: any): Category => {
-    return {
-      id: cat.id ?? cat._id ?? cat.categoryId ?? cat._id_string ?? cat.slug ?? undefined,
-      _id: cat._id,
-      name: cat.name ?? cat.title ?? cat.label ?? cat.categoryTitle ?? "Unknown",
-      slug: cat.slug,
-      ...cat,
-    };
-  };
+  const normalizeCategory = (cat: any): Category => ({
+    id: cat.id ?? cat._id ?? cat.categoryId ?? cat._id_string ?? cat.slug ?? undefined,
+    _id: cat._id,
+    name: cat.name ?? cat.title ?? cat.label ?? cat.categoryTitle ?? "Unknown",
+    slug: cat.slug,
+    ...cat,
+  });
 
-  // fetch categories
   const fetchCategories = async () => {
     setLoadingCategories(true);
     try {
@@ -55,50 +41,34 @@ export default function TopCategories() {
       const payload = (resp as any)?.data ?? resp;
 
       let found: any[] = [];
-
-      if (Array.isArray(payload)) {
-        found = payload;
-      } else if (payload && Array.isArray((payload as any).data)) {
-        found = payload.data;
-      } else {
-        // fallback: try to find first array in object values
+      if (Array.isArray(payload)) found = payload;
+      else if (payload && Array.isArray(payload.data)) found = payload.data;
+      else {
         const firstArray = Object.values(payload).find((v) => Array.isArray(v)) as any;
         if (firstArray) found = firstArray;
       }
 
       const normalized = found.map((c) => normalizeCategory(c));
       setCategories(normalized);
-
-      // select first category by name (so Tabs value is a name)
-      if (normalized.length > 0) {
-        setSelectedTab(normalized[0].name ?? null);
-      }
-
-      setLoadingCategories(false);
-      return payload;
+      if (normalized.length > 0) setSelectedTab(normalized[0].name ?? null);
     } catch (error: any) {
-      setLoadingCategories(false);
       showNotification({
         title: "Error",
         message: error?.response?.data?.message || "Failed to fetch categories.",
         color: "red",
         icon: <IconX size={16} />,
       });
-      return null;
+    } finally {
+      setLoadingCategories(false);
     }
   };
 
-  // Helper: convert selectedSizes (string[]) -> SizeOption[]
-  // Example input: ["30B","30C","32B","34D"]
-  // Output: [{ band: 30, cups: ["B","C"] }, { band: 32, cups: ["B"] }, { band: 34, cups: ["D"] }]
   const buildSizeOptionsFromSelectedSizes = (sizesInput: any): any[] | undefined => {
     if (!Array.isArray(sizesInput) || sizesInput.length === 0) return undefined;
-
     const map = new Map<number, Set<string>>();
     for (const s of sizesInput) {
       if (!s) continue;
       const str = String(s).toUpperCase().trim();
-      // match e.g. 30B, 32C, 34DD, 36A etc.
       const m = /^(\d{2})([A-Z]+)$/.exec(str);
       if (!m) continue;
       const band = Number(m[1]);
@@ -106,54 +76,43 @@ export default function TopCategories() {
       if (!map.has(band)) map.set(band, new Set());
       map.get(band)!.add(cup);
     }
-
     const arr = Array.from(map.entries())
       .sort((a, b) => a[0] - b[0])
       .map(([band, cupsSet]) => ({
         band,
         cups: Array.from(cupsSet.values()).sort(),
       }));
-
     return arr.length ? arr : undefined;
   };
 
- // fetch products for a category name
- const getAllProducts = async (categoryName: string | null) => {
-  if (!categoryName) {
-    setProducts([]);
-    return;
-  }
+  const getAllProducts = async (categoryName: string | null) => {
+    if (!categoryName) {
+      setProducts([]);
+      return;
+    }
+    setLoadingProducts(true);
+    try {
+      const encoded = encodeURIComponent(String(categoryName));
+      const response = await axiosInstance.get(
+        `${API_GET_CATEGORIES_PRODUCTS}${encoded}?page=1&limit=10`
+      );
+      const payload = (response as any)?.data ?? response;
+      const prods =
+        payload?.data?.data ?? payload?.data ?? (Array.isArray(payload) ? payload : []);
+      setProducts(prods);
+    } catch (error) {
+      console.error("Failed to fetch products:", error);
+      setProducts([]);
+    } finally {
+      setLoadingProducts(false);
+    }
+  };
 
-  setLoadingProducts(true);
-
-  try {
-    // encode categoryName for safe URL usage
-    const encoded = encodeURIComponent(String(categoryName));
-    const response = await axiosInstance.get(
-      `${API_GET_CATEGORIES_PRODUCTS}${encoded}?page=1&limit=10`
-    );
-    const payload = (response as any)?.data ?? response;
-
-
-    // common shapes: payload.data.data, payload.data, or array
-    const prods =
-      payload?.data?.data ?? payload?.data ?? (Array.isArray(payload) ? payload : []);
-    setProducts(prods);
-  } catch (error) {
-    console.error("Failed to fetch products:", error);
-    setProducts([]);
-  } finally {
-    setLoadingProducts(false);
-  }
-};
-
-  // initial load
   useEffect(() => {
     fetchCategories();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // re-fetch products whenever selectedTab changes (i.e. navigation by name)
   useEffect(() => {
     if (selectedTab && categories.length > 0) {
       getAllProducts(selectedTab);
@@ -161,7 +120,6 @@ export default function TopCategories() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTab, categories]);
 
-  // scroll-to-center logic for tabs
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -170,26 +128,14 @@ export default function TopCategories() {
       const el = tabRefs.current[selectedTab];
       const container = scrollContainerRef.current;
       if (!el || !container) return;
-
       const offset = el.offsetLeft - container.clientWidth / 2 + el.clientWidth / 2;
-      container.scrollTo({
-        left: offset - 40,
-        behavior: "smooth",
-      });
+      container.scrollTo({ left: offset - 40, behavior: "smooth" });
     }
   }, [selectedTab, categories]);
 
   return (
-    <Container
-      size="xl"
-      px="sm"
-      style={{ paddingTop: "1rem", paddingBottom: "1rem" }}
-    >
-      <p
-        className={`text-[20px] md:text-[40px] text-center font-bold ${
-          isMobile ? "mb-4" : "mb-8"
-        }`}
-      >
+    <Container size="xl" px="sm" style={{ paddingTop: "1rem", paddingBottom: "1rem" }}>
+      <p className={`text-[20px] md:text-[40px] text-center font-bold ${isMobile ? "mb-4" : "mb-8"}`}>
         Top Categories
       </p>
 
@@ -210,10 +156,7 @@ export default function TopCategories() {
                         border: "none",
                         boxShadow: "none",
                         background: "transparent",
-                        "&[data-active]": {
-                          border: "none",
-                          boxShadow: "none",
-                        },
+                        "&[data-active]": { border: "none", boxShadow: "none" },
                       },
                     }}
                   >
@@ -221,11 +164,10 @@ export default function TopCategories() {
                       radius="xl"
                       size="lg"
                       className="border-0"
-                      onClick={() => setSelectedTab(tabValue)} // ensure explicit navigation-by-name
+                      onClick={() => setSelectedTab(tabValue)}
                       styles={{
                         root: {
-                          backgroundColor:
-                            selectedTab === tabValue ? "#133215" : "#ffffff",
+                          backgroundColor: selectedTab === tabValue ? "#133215" : "#ffffff",
                           color: selectedTab === tabValue ? "#ffffff" : "#000000",
                           fontWeight: 700,
                           paddingLeft: 32,
@@ -247,7 +189,6 @@ export default function TopCategories() {
           </Tabs.List>
         </div>
 
-        {/* Panels: one panel per category name */}
         {categories.map((cat) => {
           const panelValue = cat.name ?? String(cat.id ?? cat._id ?? "unknown");
           return (
@@ -265,9 +206,7 @@ export default function TopCategories() {
                   withIndicators={false}
                   loop
                   dragFree
-                  classNames={{
-                    control: "carousel-control",
-                  }}
+                  classNames={{ control: "carousel-control" }}
                   styles={{
                     control: {
                       backgroundColor: "#133215",
@@ -293,25 +232,33 @@ export default function TopCategories() {
                       </Carousel.Slide>
                     ) : (
                       products.map((product: any, i: number) => {
-                        // compute sizeOptions from product.selectedSizes if present
                         const sizeOptions = buildSizeOptionsFromSelectedSizes(product.selectedSizes);
+                        const colors =
+                          Array.isArray(product.selectedColors) && product.selectedColors.length
+                            ? product.selectedColors
+                            : Object.keys(product.colorData ?? {});
+                        const imageUrl =
+                          product.images?.[0] ||
+                          (colors?.length ? product.colorData?.[colors[0]]?.images?.[0] : null) ||
+                          BraModel;
 
                         return (
                           <Carousel.Slide key={product._id || product.id || i}>
                             <ProductCard
                               id={product._id ?? product.id}
-                              imageUrl={product.images?.[0] || BraModel}
+                              imageUrl={imageUrl}
                               productName={product.productTitle ?? product.name}
                               price={product.salePrice ?? product.price}
                               originalPrice={product.price}
                               rating={4.5}
                               isNew={false}
-                              isOnSale={
-                                (product.salePrice ?? product.price) < (product.price ?? 0)
-                              }
+                              isOnSale={(product.salePrice ?? product.price) < (product.price ?? 0)}
                               category={product.category}
-                              // pass dynamic sizeOptions (undefined falls back to default)
                               sizeOptions={sizeOptions}
+                              // NEW: pass color data downstream
+                              colors={colors}
+                              colorData={product.colorData}
+                              selectedColor={colors?.[0]} // optional: preselect first color
                             />
                           </Carousel.Slide>
                         );

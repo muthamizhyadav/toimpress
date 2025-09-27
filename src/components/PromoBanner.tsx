@@ -14,10 +14,10 @@ const DARK = "#133215";
 const LIGHT = "#92B775";
 
 const cards: Banner[] = [
-  { headline: "FLAT", percent: "50%", tail: "OFF", label: "Brassiere" },
-  { headline: "FLAT", percent: "30%", tail: "OFF", label: "Panties" },
-  { headline: "FLAT", percent: "20%", tail: "OFF", label: "Combo" },
-  { headline: "FLAT", percent: "20%", tail: "OFF", label: "Offer Zone" },
+  { headline: "FLAT @", percent: "399", tail: "OFF", label: "Combo" },
+  { headline: "FLAT @", percent: "699", tail: "OFF", label: "Combo" },
+  { headline: "FLAT @", percent: "799", tail: "OFF", label: "Combo" },
+  { headline: "FLAT @", percent: "999", tail: "OFF", label: "Combo" },
 ];
 
 function BannerCard({ headline, percent, tail, label }: Banner) {
@@ -108,6 +108,7 @@ export default function PromoBanners() {
         width: isMobile ? "100vw" : "85vw",
         margin: "0 auto",
         padding: "15px 15px 35px 15px ",
+        height: "100%"
       }}
     >
       <Text

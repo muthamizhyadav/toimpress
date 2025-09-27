@@ -1,25 +1,17 @@
+// components/SizeSelectorDrawer.tsx
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  Drawer,
-  Button,
-  Badge,
-  Group,
-  Text,
-  ActionIcon,
-  Tooltip,
-} from "@mantine/core";
+import { Drawer, Button, Text, ActionIcon, Tooltip } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { IconPlus, IconMinus } from "@tabler/icons-react";
-import {
-  addToCart,
-  increaseQty,
-  decreaseQty,
-} from "../redux/features/cartSlice"; // adjust path if needed
-
-// axios + API constant
+import { addToCart, increaseQty, decreaseQty } from "../redux/features/cartSlice";
 import axiosInstance from "../api/axiosInstance";
 import { API_GET_CART_DATA } from "../api/api";
+
+
+// Colour tokens requested
+const DARK_GREEN = "#133215";
+const LIGHT_GREEN = "#92B775";
 
 export type SizeOption = {
   band: number;
@@ -27,6 +19,14 @@ export type SizeOption = {
   underband?: string;
   overbust?: string;
 };
+
+type ColorDataMap = Record<
+  string,
+  {
+    sizes: string[];
+    images: string[];
+  }
+>;
 
 type Props = {
   opened: boolean;
@@ -46,6 +46,8 @@ type Props = {
   productId?: string | number;
   selectedColor?: string | undefined;
   colors?: string[];
+  // NEW
+  colorData?: ColorDataMap;
 };
 
 const BAND_TABLE: any[] = [
@@ -66,8 +68,8 @@ const buildOptionsFromBandTable = (): SizeOption[] =>
       band: b.band,
       cups,
       underband: `${b.underBust[0]}–${b.underBust[1]} cm`,
-      overbust: `${Math.min(...Object.values(b.overBustByCup).map((r) => r[0]))}–${Math.max(
-        ...Object.values(b.overBustByCup).map((r) => r[1])
+      overbust: `${Math.min(...Object.values(b.overBustByCup).map((r: any) => r[0]))}–${Math.max(
+        ...Object.values(b.overBustByCup).map((r: any) => r[1])
       )} cm`,
     };
   });
@@ -85,6 +87,29 @@ const PANTY_SIZES = [
   { label: "6XL", hip: "143–149 cm" },
 ];
 
+// helper: from ["32B","34B"] -> SizeOption[]
+const buildSizeOptionsFromSelectedSizes = (sizesInput?: string[]): SizeOption[] | undefined => {
+  if (!Array.isArray(sizesInput) || sizesInput.length === 0) return undefined;
+  const map = new Map<number, Set<string>>();
+  for (const s of sizesInput) {
+    if (!s) continue;
+    const str = String(s).toUpperCase().trim();
+    const m = /^(\d{2})([A-Z]+)$/.exec(str);
+    if (!m) continue;
+    const band = Number(m[1]);
+    const cup = m[2];
+    if (!map.has(band)) map.set(band, new Set());
+    map.get(band)!.add(cup);
+  }
+  const arr: SizeOption[] = Array.from(map.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([band, cupsSet]) => ({
+      band,
+      cups: Array.from(cupsSet.values()).sort(),
+    }));
+  return arr.length ? arr : undefined;
+};
+
 export default function SizeSelectorDrawer({
   opened,
   onClose,
@@ -97,8 +122,8 @@ export default function SizeSelectorDrawer({
   productId,
   selectedColor: initialSelectedColor,
   colors = [],
+  colorData,
 }: Props) {
-
   type Mode = "Brassiere" | "Panties" | "Both";
   const [mode, setMode] = useState<"Brassiere" | "Panties">("Brassiere");
   const [availableMode, setAvailableMode] = useState<Mode>("Both");
@@ -108,32 +133,46 @@ export default function SizeSelectorDrawer({
   const [pantySize, setPantySize] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | undefined>(initialSelectedColor);
 
+  const [addedClicked, setAddedClicked] = useState(false);
+
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  // Combined size list: e.g. { value: '30A', band: 30, cup: 'A' }
+  // When color changes, reset selected size
+  useEffect(() => {
+    setBand(null);
+    setCup(null);
+    setPantySize(null);
+  }, [selectedColor]);
+
+  // Which size options to show? If a color is selected and colorData has sizes, filter by that.
+  const effectiveOptions: SizeOption[] = useMemo(() => {
+    if (mode === "Brassiere") {
+      const colorSizes = selectedColor ? colorData?.[selectedColor]?.sizes : undefined;
+      const colorOptions = buildSizeOptionsFromSelectedSizes(colorSizes);
+      return colorOptions ?? options;
+    }
+    return [];
+  }, [mode, selectedColor, colorData, options]);
+
+  // Build combined sizes grid from effective options
   const combinedSizes = useMemo(() => {
     const arr: { value: string; band: number; cup: string }[] = [];
-    options.forEach((o) => {
-      o.cups.forEach((c) => {
-        arr.push({ value: `${o.band}${c}`, band: o.band, cup: c });
-      });
+    effectiveOptions.forEach((o) => {
+      o.cups.forEach((c) => arr.push({ value: `${o.band}${c}`, band: o.band, cup: c }));
     });
     return arr;
-  }, [options]);
+  }, [effectiveOptions]);
 
-  const cupList = useMemo(() => {
-    const found = options.find((o) => o.band === band);
-    return found?.cups ?? [];
-  }, [band, options]);
-
-  const bandInfo = useMemo(() => options.find((o) => o.band === band), [band, options]);
+  const bandInfo = useMemo(
+    () => effectiveOptions.find((o) => o.band === band),
+    [band, effectiveOptions]
+  );
 
   useEffect(() => {
     const cat = typeof category === "string" ? category.toLowerCase() : "";
     const isBra = cat.includes("bra") || cat.includes("brassiere");
     const isPant = cat.includes("pant") || cat.includes("Pant") || cat.includes("panties") || cat.includes("panty");
-
 
     if (isBra && !isPant) {
       setAvailableMode("Brassiere");
@@ -141,14 +180,12 @@ export default function SizeSelectorDrawer({
       resetState();
       return;
     }
-
     if (isPant && !isBra) {
       setAvailableMode("Panties");
       setMode("Panties");
       resetState();
       return;
     }
-
     setAvailableMode("Both");
   }, [category]);
 
@@ -162,7 +199,6 @@ export default function SizeSelectorDrawer({
     return null;
   }, [mode, band, cup, pantySize]);
 
-  // currentQty driven from Redux (exact variant match: id + size + color)
   const currentQty: number = useSelector((state: any) => {
     if (!productId || !currentLabel) return 0;
     const items: any[] = state?.cart?.items ?? [];
@@ -176,10 +212,16 @@ export default function SizeSelectorDrawer({
     return Number(found?.qty ?? 0);
   });
 
+  const totalCartQty: number = useSelector((state: any) => {
+    const items: any[] = state?.cart?.items ?? [];
+    return items.reduce((sum, it) => sum + Number(it?.qty ?? 0), 0);
+  });
+
   const resetState = () => {
     setBand(null);
     setCup(null);
     setPantySize(null);
+    setAddedClicked(false);
   };
 
   const handleClose = () => {
@@ -187,20 +229,17 @@ export default function SizeSelectorDrawer({
     onClose();
   };
 
-  // -- API call: fetch cart data when drawer opens --
   useEffect(() => {
     if (!opened) return;
-    // make the API call and log response
     (async () => {
       try {
-        const resp = await axiosInstance.get(API_GET_CART_DATA + productId);
+        await axiosInstance.get(API_GET_CART_DATA + productId);
       } catch (err) {
         console.error("Failed to fetch API_GET_CART_DATA:", err);
       }
     })();
   }, [opened]);
 
-  // Redux operations
   const reduxAddOne = () => {
     if (!productId || !currentLabel) return;
     if (currentQty > 0) {
@@ -210,7 +249,7 @@ export default function SizeSelectorDrawer({
         addToCart({
           id: productId,
           title: productTitle,
-          image: imageUrl,
+          image: headerImageUrl, // use current color image
           price,
           qty: 1,
           size: currentLabel,
@@ -219,6 +258,7 @@ export default function SizeSelectorDrawer({
         } as any)
       );
     }
+    setAddedClicked(true);
 
     const [b, c] =
       mode === "Brassiere" && band && cup
@@ -226,7 +266,13 @@ export default function SizeSelectorDrawer({
         : mode === "Panties"
         ? [0, pantySize ?? ""]
         : [0, ""];
-    onConfirm({ band: b as number, cup: String(c), label: String(currentLabel), quantity: currentQty + 1, selectedColor });
+    onConfirm({
+      band: b as number,
+      cup: String(c),
+      label: String(currentLabel),
+      quantity: currentQty + 1,
+      selectedColor,
+    });
   };
 
   const reduxRemoveOne = () => {
@@ -238,7 +284,13 @@ export default function SizeSelectorDrawer({
         : mode === "Panties"
         ? [0, pantySize ?? ""]
         : [0, ""];
-    onConfirm({ band: b as number, cup: String(c), label: String(currentLabel), quantity: Math.max(0, currentQty - 1), selectedColor });
+    onConfirm({
+      band: b as number,
+      cup: String(c),
+      label: String(currentLabel),
+      quantity: Math.max(0, currentQty - 1),
+      selectedColor,
+    });
   };
 
   const confirmSize = () => reduxAddOne();
@@ -247,13 +299,10 @@ export default function SizeSelectorDrawer({
     reduxRemoveOne();
   };
 
+  const canCheckout = totalCartQty > 0 || addedClicked;
+
   const handleCheckout = () => {
-    if (mode === "Brassiere") {
-      if (!band || !cup) return;
-    } else {
-      if (!pantySize) return;
-    }
-    reduxAddOne();
+    if (!canCheckout) return;
     navigate("/checkout");
     handleClose();
   };
@@ -276,6 +325,10 @@ export default function SizeSelectorDrawer({
     );
   };
 
+  // NEW: color-aware header preview image
+  const headerImageUrl =
+    (selectedColor && colorData?.[selectedColor]?.images?.[0]) || imageUrl;
+
   return (
     <Drawer
       opened={opened}
@@ -287,20 +340,12 @@ export default function SizeSelectorDrawer({
       padding="md"
       title="Choose size"
     >
-      {/* colors */}
-      {Array.isArray(colors) && colors.length > 0 && (
-        <div style={{ marginBottom: 12 }}>
-          <Text size="sm" fw={600} mb={6}>Colors</Text>
-          <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 6 }}>
-            {colors.map((c, idx) => renderSwatch(c, idx))}
-          </div>
-        </div>
-      )}
+     
 
       {/* header */}
       <div className="flex gap-3 mb-3">
         <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 shrink-0">
-          <img src={imageUrl} alt={productTitle} className="w-full h-full object-cover" />
+          <img src={headerImageUrl} alt={productTitle} className="w-full h-full object-cover" />
         </div>
         <div className="flex-1">
           <div className="text-sm font-medium line-clamp-2">{productTitle}</div>
@@ -311,7 +356,17 @@ export default function SizeSelectorDrawer({
         </div>
       </div>
 
-      {/* Brassiere sizes grid (scrollable) */}
+        {/* colors */}
+      {Array.isArray(colors) && colors.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <Text size="sm" fw={600} mb={6}>Colors</Text>
+          <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 6 }}>
+            {colors.map((c, idx) => renderSwatch(c, idx))}
+          </div>
+        </div>
+      )}
+
+      {/* Brassiere sizes grid (color-aware) */}
       {mode === "Brassiere" && (
         <div className="mt-2">
           <div className="text-sm font-semibold mb-2">SIZES</div>
@@ -321,7 +376,7 @@ export default function SizeSelectorDrawer({
               display: "grid",
               gridTemplateColumns: "repeat(auto-fill, minmax(68px, 1fr))",
               gap: 8,
-              maxHeight: 260, // <-- scrollable area
+              maxHeight: 260,
               overflowY: "auto",
               paddingRight: 6,
               paddingBottom: 6,
@@ -338,15 +393,17 @@ export default function SizeSelectorDrawer({
                     setBand(s.band);
                     setCup(s.cup);
                   }}
-                  sx={{
-                    borderRadius: 8,
-                    padding: "6px 8px",
-                    minHeight: 36,
-                    backgroundColor: active ? "#96BD75" : undefined,
-                    color: active ? "#fff" : undefined,
-                    borderColor: active ? "#96BD75" : undefined,
-                    "&:hover": active ? { backgroundColor: "#86ad65" } : {},
-                  }}
+                  styles={{
+                        root: {
+                          backgroundColor: active ? "#92b775" : "transparent",
+                          color: active ? "#fff" : DARK_GREEN,
+                          borderColor: DARK_GREEN,
+                          "&:hover": {
+                            backgroundColor: "#92b775",
+                            color: "#fff",
+                          },
+                        },
+                      }}
                 >
                   {s.value}
                 </Button>
@@ -387,21 +444,24 @@ export default function SizeSelectorDrawer({
         </div>
       )}
 
+     
+
       {/* Selected variant area */}
       {currentLabel && (
         <div>
           <div>
             <Text size="sm" fw={600}>Selected</Text>
-            <Text size="sm">{currentLabel}</Text>
+            <Text size="sm">
+              {currentLabel} {selectedColor ? <span className="text-gray-600">({selectedColor})</span> : null}
+            </Text>
           </div>
 
           <div className="mt-3 w-full">
-            {/* If qty is zero, show single Add to cart button (full width) */}
             {currentQty <= 0 ? (
               <div style={{ width: "100%" }}>
                 <Button
                   fullWidth
-                  onClick={reduxAddOne}
+                  onClick={confirmSize}
                   disabled={!currentLabel}
                   style={{ background: "#96BD75", color: "#fff", borderRadius: 999 }}
                 >
@@ -409,15 +469,9 @@ export default function SizeSelectorDrawer({
                 </Button>
               </div>
             ) : (
-              // If qty > 0, show - / qty / + controls (and they will disappear again when qty reaches 0)
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <ActionIcon
-                    onClick={reduceSize}
-                    title="Decrease"
-                    variant="light"
-                    size="lg"
-                  >
+                  <ActionIcon onClick={reduceSize} title="Decrease" variant="light" size="lg">
                     <IconMinus size={16} />
                   </ActionIcon>
 
@@ -475,8 +529,9 @@ export default function SizeSelectorDrawer({
 
         <Button
           onClick={handleCheckout}
-          style={{ flex: 1, background: "#96BD75", color: "#fff", borderRadius: 999 }}
-          disabled={mode === "Brassiere" ? !band || !cup : !pantySize}
+          style={{ flex: 1, background: canCheckout ? "#96BD75" : "#b9cf9f", color: "#fff", borderRadius: 999 }}
+          disabled={!canCheckout}
+          title={!canCheckout ? "Add at least 1 item to proceed" : "Go to checkout"}
         >
           Go to checkout
         </Button>

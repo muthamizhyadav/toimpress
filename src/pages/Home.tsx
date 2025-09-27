@@ -19,7 +19,7 @@ const Home = () => {
   const isMobile = useMediaQuery('(max-width: 640px)');
 
   return (
-    <div className="w-full h-[100vh]">
+    <div className="w-full min-h-screen pb-16">
       <SmallHeader />
       <Header />
       <HomeBanner />

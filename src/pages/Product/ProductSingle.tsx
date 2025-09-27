@@ -104,6 +104,8 @@ export default function ProductPage() {
         const detail = resp?.data?.product;
         const sims = resp?.data?.similerProducts || resp?.data?.similarProducts;
 
+        
+
         setProductDetails(detail);
         setSimilarProducts(sims || []);
 
@@ -845,7 +847,7 @@ const buildSizeOptionsForProduct = (prod: any): SizeOption[] => {
           </Group>
 
           {/* Colors */}
-          <Box mt="md">
+          { productDetails?.category !== "Combo" &&  <Box mt="md">
             <Text fw={500}>Colors</Text>
             <Group mt="xs">
               {colorsInput.map((clr: string, i: number) => (
@@ -870,7 +872,7 @@ const buildSizeOptionsForProduct = (prod: any): SizeOption[] => {
               ))}
               {colorsInput.length === 0 && <Text size="xs" c="dimmed">Single Color</Text>}
             </Group>
-          </Box>
+          </Box> }
 
           {/* Size breakdown */}
           <Box mt="md">
@@ -881,37 +883,40 @@ const buildSizeOptionsForProduct = (prod: any): SizeOption[] => {
               ) : (
                 <Group spacing="xs" wrap="wrap">
                  {sizeOptions
-  .flatMap((opt) =>
-    // if band === 0 we keep the cup label as-is (S, M, L, 28, 30)
-    opt.band === 0
-      ? opt.cups.map((cup) => cup)
-      : opt.cups.map((cup) => `${opt.band}${cup}`)
-  )
-  .filter((label) =>
-    // normalize check against availableSizesSet (availableSizesSet contains uppercase labels)
-    availableSizesSet.size ? availableSizesSet.has(String(label).toUpperCase()) : true
-  )
-  .map((label) => {
-    const active = (selectedSize || "").toUpperCase() === String(label).toUpperCase();
-    return (
-      <Button
-        key={label}
-        size="xs"
-        variant={active ? "filled" : "outline"}
-        onClick={() => onSizeSelect(label)}
-        sx={{
-          backgroundColor: active ? DARK_GREEN : undefined,
-          color: active ? "#fff" : DARK_GREEN,
-          borderColor: DARK_GREEN,
-          "&:hover": active
-            ? { backgroundColor: "#0f2a12" }
-            : { backgroundColor: "#f2fbf2" },
-        }}
-      >
-        {label}
-      </Button>
-    );
-  })}
+                .flatMap((opt) =>
+                  // if band === 0 we keep the cup label as-is (S, M, L, 28, 30)
+                  opt.band === 0
+                    ? opt.cups.map((cup) => cup)
+                    : opt.cups.map((cup) => `${opt.band}${cup}`)
+                )
+                .filter((label) =>
+                  // normalize check against availableSizesSet (availableSizesSet contains uppercase labels)
+                  availableSizesSet.size ? availableSizesSet.has(String(label).toUpperCase()) : true
+                )
+                .map((label) => {
+                  const active = (selectedSize || "").toUpperCase() === String(label).toUpperCase();
+                  return (
+                    <Button
+                      key={label}
+                      size="xs"
+                      variant="outline"                      
+                      onClick={() => onSizeSelect(label)}
+                      styles={{
+                        root: {
+                          backgroundColor: active ? "#92b775" : "transparent",
+                          color: active ? "#fff" : DARK_GREEN,
+                          borderColor: DARK_GREEN,
+                          "&:hover": {
+                            backgroundColor: "#92b775",
+                            color: "#fff",
+                          },
+                        },
+                      }}
+                    >
+                      {label}
+                    </Button>
+                  );
+                })}
 
                 </Group>
               )}
@@ -970,30 +975,42 @@ const buildSizeOptionsForProduct = (prod: any): SizeOption[] => {
               </Group>
             ) : (
               <>
-                <Button
-                  loading={!!addingMap["current"]}
-                  sx={{
-                    backgroundColor: DARK_GREEN,
-                    color: "#fff",
-                    "&:hover": { backgroundColor: "#0f2a12" },
-                  }}
-                  onClick={handleAddToCart}
-                >
-                  Add to cart
-                </Button>
-                <Button
-                  loading={!!addingMap["current"]}
-                  variant="outline"
-                  onClick={handleBuyNow}
-                  sx={{
-                    borderColor: DARK_GREEN,
-                    color: DARK_GREEN,
-                    "&:hover": { backgroundColor: "#f2fbf2" },
-                  }}
-                >
-                  Buy Now
-                </Button>
-              </>
+  <Button
+    loading={!!addingMap["current"]}
+    color="brand"
+    styles={(theme) => ({
+      root: {
+        backgroundColor: "#92B775", // LIGHT_GREEN
+        color: "#FFF",           // DARK_GREEN text
+        fontWeight: 600,
+        
+      },
+    })}
+    onClick={handleAddToCart}
+  >
+    Add to cart
+  </Button>
+
+  <Button
+    loading={!!addingMap["current"]}
+    variant="filled"
+    color="brand"
+    styles={(theme) => ({
+      root: {
+        borderColor: "#92B775", // LIGHT_GREEN border
+        color: "#133215",       // DARK_GREEN text
+        fontWeight: 600,
+        "&:hover": {
+          backgroundColor: "rgba(146,183,117,0.15)", // subtle LIGHT_GREEN hover
+        },
+      },
+    })}
+    onClick={handleBuyNow}
+  >
+    Buy Now
+  </Button>
+</>
+
             )}
           </Group>
 
@@ -1030,36 +1047,53 @@ const buildSizeOptionsForProduct = (prod: any): SizeOption[] => {
 
       {/* Tabs */}
       <Tabs defaultValue="description" mt="xl">
+        {((productDetails?.Descriptionimages ?? []).length > 0) && ( 
         <Tabs.List>
           <Tabs.Tab value="description">Description</Tabs.Tab>
         </Tabs.List>
+        )}
 
         <Tabs.Panel value="description" pt="xs">
           <Group
             mt="sm" wrap="nowrap" gap="sm"
             style={{ overflowX: isMobile ? "auto" : "unset" }}
           >
-            {items.map((item, idx) => (
-              <Stack key={idx} align="center" style={{ flexShrink: 0 }}>
-                <Image
-                  src={item.image}
-                  alt={item.tag}
-                  radius="md"
-                  w={isMobile ? 120 : 150}
-                  h={isMobile ? 120 : 150}
-                />
-                <Text size="sm">{item.tag}</Text>
-              </Stack>
-            ))}
+
+         {((productDetails?.Descriptionimages ?? []).length > 0) && (
+            <>
+              {(productDetails?.Descriptionimages ?? []).map((img, idx) => (
+                <Stack key={idx} align="center" style={{ flexShrink: 0 }}>
+                  <Image
+                    src={img}
+                    alt={`description-${idx}`}
+                    radius="md"
+                    w={ "100%" }
+                    h={isMobile ? 120 : 150}
+                  />
+                </Stack>
+              ))}
+            </>
+          )}            
           </Group>
 
-          <Box mt="md">
-            <Text fw={600}>Features:</Text>
+         <Box mt="md">
+          <Text fw={600}>Features:</Text>
+          {productDetails?.braAttributes?.length > 0 ? (
+            <ul>
+              {productDetails.braAttributes.map((attr: string, idx: number) => (
+                <li key={idx}>
+                  <Text size="sm">{attr}</Text>
+                </li>
+              ))}
+            </ul>
+          ) : (
             <ul>
               <li>Made with full cotton</li>
               <li>Slim fit for any body</li>
             </ul>
-          </Box>
+          )}
+        </Box>
+
         </Tabs.Panel>
       </Tabs>
 
