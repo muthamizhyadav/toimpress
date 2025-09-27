@@ -1,3 +1,4 @@
+// src/components/SizeCalculator.tsx
 import {
   Box,
   Text,
@@ -17,34 +18,20 @@ import { useMediaQuery } from "@mantine/hooks";
 import BodySize from "../../assets/svg/BodySize.svg";
 
 // ---------------- BRA SIZE LOGIC ----------------
-type CupLetter = "A" | "B" | "C" | "D";
+type CupLetter = "A" | "B" | "C" | "D" | "E" | "F";
 type BandCol = {
-  band: 28 | 30 | 32 | 34 | 36 | 38 | 40 | 42;
+  band: 28 | 30 | 32 | 34 | 36 | 38 | 40 | 42 | 44;
   underBust: [number, number]; // cm
   overBustByCup: Record<CupLetter, [number, number]>; // cm
 };
 
-const BAND_TABLE: BandCol[] = [
-  { band: 28, underBust: [58, 62], overBustByCup: { A: [72, 74], B: [74, 76], C: [76, 78], D: [78, 80] } },
-  { band: 30, underBust: [63, 67], overBustByCup: { A: [77, 79], B: [79, 81], C: [81, 83], D: [83, 85] } },
-  { band: 32, underBust: [68, 72], overBustByCup: { A: [82, 84], B: [84, 86], C: [86, 88], D: [88, 90] } },
-  { band: 34, underBust: [73, 77], overBustByCup: { A: [87, 89], B: [89, 91], C: [91, 93], D: [93, 95] } },
-  { band: 36, underBust: [78, 82], overBustByCup: { A: [92, 94], B: [94, 96], C: [96, 98], D: [98, 100] } },
-  { band: 38, underBust: [83, 87], overBustByCup: { A: [97, 99], B: [99, 101], C: [101, 103], D: [103, 105] } },
-  { band: 40, underBust: [88, 92], overBustByCup: { A: [102, 104], B: [104, 106], C: [106, 108], D: [108, 110] } },
-  { band: 42, underBust: [93, 97], overBustByCup: { A: [107, 109], B: [109, 111], C: [111, 113], D: [113, 115] } },
-];
-
 // small epsilon tolerance to avoid edge mismatches (in cm)
 const EPS_CM = 0.05;
-
-// helpers
 const inRangeCm = (vCm: number, [lo, hi]: [number, number]) => vCm + EPS_CM >= lo && vCm - EPS_CM <= hi;
-const inchToCm = (inch: number) => +(inch * 2.54).toFixed(1); // single multiplication, keep 1 decimal for clarity
+const inchToCm = (inch: number) => +(inch * 2.54).toFixed(1);
 const cmToIn = (cm: number) => +((cm / 2.54)).toFixed(1);
 
-// ---------------- BRA SIZE TABLE (INCH) - from image reference ----------------
-// underBust and over-bust ranges in inches (matching the screenshot table)
+// ---------------- BRA SIZE TABLE (INCH) - matches provided image ----------------
 type BandColInch = {
   band: 28 | 30 | 32 | 34 | 36 | 38 | 40 | 42 | 44;
   underBustIn: [number, number]; // inches
@@ -52,21 +39,51 @@ type BandColInch = {
 };
 
 const BAND_TABLE_INCH: BandColInch[] = [
-  { band: 28, underBustIn: [23, 24], overBustByCupIn: { A: [28, 29], B: [29, 30], C: [30, 31], D: [31, 32] } },
-  { band: 30, underBustIn: [25, 26], overBustByCupIn: { A: [30, 31], B: [31, 32], C: [32, 33], D: [33, 34] } },
-  { band: 32, underBustIn: [27, 28], overBustByCupIn: { A: [32, 33], B: [33, 34], C: [34, 35], D: [35, 36] } },
-  { band: 34, underBustIn: [29, 30], overBustByCupIn: { A: [34, 35], B: [35, 36], C: [36, 37], D: [37, 38] } },
-  { band: 36, underBustIn: [31, 32], overBustByCupIn: { A: [36, 37], B: [37, 38], C: [38, 39], D: [39, 40] } },
-  { band: 38, underBustIn: [33, 34], overBustByCupIn: { A: [38, 39], B: [39, 40], C: [40, 41], D: [41, 42] } },
-  { band: 40, underBustIn: [35, 36], overBustByCupIn: { A: [40, 41], B: [41, 42], C: [42, 43], D: [43, 44] } },
-  { band: 42, underBustIn: [37, 38], overBustByCupIn: { A: [42, 43], B: [43, 44], C: [44, 45], D: [45, 46] } },
-  // <-- ADDED band 44 so 39-40" under-bust maps to band 44
-  { band: 44, underBustIn: [39, 40], overBustByCupIn: { A: [44, 45], B: [45, 46], C: [46, 47], D: [47, 48] } },
+  { band: 28, underBustIn: [23, 24], overBustByCupIn: {
+      A: [28, 29], B: [29, 30], C: [30, 31], D: [31, 32], E: [32, 33], F: [33, 34]
+    } },
+  { band: 30, underBustIn: [25, 26], overBustByCupIn: {
+      A: [30, 31], B: [31, 32], C: [32, 33], D: [33, 34], E: [34, 35], F: [35, 36]
+    } },
+  { band: 32, underBustIn: [27, 28], overBustByCupIn: {
+      A: [32, 33], B: [33, 34], C: [34, 35], D: [35, 36], E: [36, 37], F: [37, 38]
+    } },
+  { band: 34, underBustIn: [29, 30], overBustByCupIn: {
+      A: [34, 35], B: [35, 36], C: [36, 37], D: [37, 38], E: [38, 39], F: [39, 40]
+    } },
+  { band: 36, underBustIn: [31, 32], overBustByCupIn: {
+      A: [36, 37], B: [37, 38], C: [38, 39], D: [39, 40], E: [40, 41], F: [41, 42]
+    } },
+  { band: 38, underBustIn: [33, 34], overBustByCupIn: {
+      A: [38, 39], B: [39, 40], C: [40, 41], D: [41, 42], E: [42, 43], F: [43, 44]
+    } },
+  { band: 40, underBustIn: [35, 36], overBustByCupIn: {
+      A: [40, 41], B: [41, 42], C: [42, 43], D: [43, 44], E: [44, 45], F: [45, 46]
+    } },
+  { band: 42, underBustIn: [37, 38], overBustByCupIn: {
+      A: [42, 43], B: [43, 44], C: [44, 45], D: [45, 46], E: [46, 47], F: [47, 48]
+    } },
+  { band: 44, underBustIn: [39, 40], overBustByCupIn: {
+      A: [44, 45], B: [45, 46], C: [46, 47], D: [47, 48], E: [48, 49], F: [49, 50]
+    } },
 ];
 
-// small epsilon tolerance for inches
 const EPS_IN = 0.02;
 const inRangeIn = (vIn: number, [lo, hi]: [number, number]) => vIn + EPS_IN >= lo && vIn - EPS_IN <= hi;
+
+// ----------------- Build CM table by converting inches -> cm to keep both modes consistent ---------------
+const BAND_TABLE: BandCol[] = BAND_TABLE_INCH.map((b) => ({
+  band: b.band,
+  underBust: [inchToCm(b.underBustIn[0]), inchToCm(b.underBustIn[1])],
+  overBustByCup: {
+    A: [inchToCm(b.overBustByCupIn.A[0]), inchToCm(b.overBustByCupIn.A[1])],
+    B: [inchToCm(b.overBustByCupIn.B[0]), inchToCm(b.overBustByCupIn.B[1])],
+    C: [inchToCm(b.overBustByCupIn.C[0]), inchToCm(b.overBustByCupIn.C[1])],
+    D: [inchToCm(b.overBustByCupIn.D[0]), inchToCm(b.overBustByCupIn.D[1])],
+    E: [inchToCm(b.overBustByCupIn.E[0]), inchToCm(b.overBustByCupIn.E[1])],
+    F: [inchToCm(b.overBustByCupIn.F[0]), inchToCm(b.overBustByCupIn.F[1])],
+  },
+}));
 
 // ---------------- PANTY SIZE LOGIC ----------------
 const PANTY_SIZES = [
@@ -99,27 +116,21 @@ type SendPayload =
 
 export default function SizeCalculator({ onSend }: { onSend?: (payload: SendPayload) => void }) {
   const [tab, setTab] = useState<"bra" | "panties">("bra");
-  // default can be "inch" or "cm" — set "inch" if you prefer the UI to start in inches
   const [unit, setUnit] = useState<"cm" | "inch">("inch");
-  const [underBust, setUnderBust] = useState<number | undefined>(undefined); // numeric input now
+  const [underBust, setUnderBust] = useState<number | undefined>(undefined);
   const [overBust, setOverBust] = useState<number | undefined>(undefined);
   const [hip, setHip] = useState<number | undefined>(undefined);
 
   const isMobile = useMediaQuery("(max-width: 640px)");
 
-  // build ranges for display only (not used as selects anymore)
   const underOptionsDisplay = useMemo(() => {
-    if (unit === "inch") {
-      return `${25}–${40} in`;
-    }
-    return `${58}–${97} cm`;
+    if (unit === "inch") return `25–40 in`;
+    return `58–102 cm`;
   }, [unit]);
 
   const overOptionsDisplay = useMemo(() => {
-    if (unit === "inch") {
-      return `${30}–${49} in`;
-    }
-    return `${72}–${115} cm`;
+    if (unit === "inch") return `30–50 in`;
+    return `${inchToCm(30)}–${inchToCm(50)} cm`;
   }, [unit]);
 
   const hipOptionsDisplay = useMemo(() => {
@@ -140,28 +151,23 @@ export default function SizeCalculator({ onSend }: { onSend?: (payload: SendPayl
       // find band matching under-bust
       let bandCol = BAND_TABLE_INCH.find((b) => inRangeIn(underIn, b.underBustIn));
 
-      // NEW: if under-bust is BELOW smallest band's under range -> default to 28A
-      const smallestBand = BAND_TABLE_INCH[0]; // band 28
-      const largestBand = BAND_TABLE_INCH[BAND_TABLE_INCH.length - 1]; // band 44
+      // fallback handling: if below smallest, default to 28A; if above largest, use last band
+      const smallestBand = BAND_TABLE_INCH[0];
+      const largestBand = BAND_TABLE_INCH[BAND_TABLE_INCH.length - 1];
       if (!bandCol) {
         const minUnder = smallestBand.underBustIn[0];
         const maxUnder = largestBand.underBustIn[1];
-
         if (underIn < minUnder) {
-          // default to 28A
           return { label: `28A`, note: "Under-bust below chart — defaulted to 28A" };
         }
-
-        // if above the chart, set bandCol to the last band so we show last band's size
         if (underIn > maxUnder) {
           bandCol = largestBand;
         }
       }
 
-      // now bandCol exists (either found or set to last band)
       if (!bandCol) return { label: "—", note: "Under-bust out of chart range" };
 
-      const cup = (Object.keys(bandCol.overBustByCupIn) as CupLetter[]).find((c) =>
+      const cup = (["A","B","C","D","E","F"] as CupLetter[]).find((c) =>
         inRangeIn(overIn, bandCol!.overBustByCupIn[c])
       ) ?? null;
 
@@ -178,7 +184,7 @@ export default function SizeCalculator({ onSend }: { onSend?: (payload: SendPayl
     const bandCol = BAND_TABLE.find((b) => inRangeCm(underCm, b.underBust));
     if (!bandCol) return { label: "—", note: "Under-bust out of chart range" };
 
-    const cup = (Object.keys(bandCol.overBustByCup) as CupLetter[]).find((c) =>
+    const cup = (["A","B","C","D","E","F"] as CupLetter[]).find((c) =>
       inRangeCm(overCm, bandCol.overBustByCup[c])
     ) ?? null;
 
@@ -206,13 +212,7 @@ export default function SizeCalculator({ onSend }: { onSend?: (payload: SendPayl
         alert("Please enter both under-bust and over-bust to send.");
         return;
       }
-      const payload: SendPayload = {
-        type: "bra",
-        unit,
-        underBust,
-        overBust,
-        result: braResult,
-      };
+      const payload: SendPayload = { type: "bra", unit, underBust, overBust, result: braResult };
       if (typeof onSend === "function") {
         try { onSend(payload); } catch (e) { console.warn("onSend handler failed", e); }
       }
@@ -228,12 +228,7 @@ export default function SizeCalculator({ onSend }: { onSend?: (payload: SendPayl
         alert("Please enter hip measurement to send.");
         return;
       }
-      const payload: SendPayload = {
-        type: "panties",
-        unit,
-        hip,
-        result: pantyResult,
-      };
+      const payload: SendPayload = { type: "panties", unit, hip, result: pantyResult };
       if (typeof onSend === "function") {
         try { onSend(payload); } catch (e) { console.warn("onSend handler failed", e); }
       }
@@ -249,9 +244,7 @@ export default function SizeCalculator({ onSend }: { onSend?: (payload: SendPayl
 
   return (
     <Box w={isMobile ? "100%" : "70vw"} mx="auto" p="md">
-      <Text ta="center" fw={600} size="lg" mb="xs">
-        Size Calculator
-      </Text>
+      <Text ta="center" fw={600} size="lg" mb="xs">Size Calculator</Text>
 
       <Tabs
         value={tab}
@@ -263,26 +256,10 @@ export default function SizeCalculator({ onSend }: { onSend?: (payload: SendPayl
         }}
       >
         <Tabs.List grow mb="md">
-          <Tabs.Tab
-            value="bra"
-            style={{
-              backgroundColor: tab === "bra" ? "#96BD75" : "transparent",
-              color: tab === "bra" ? "white" : "black",
-              fontWeight: 600,
-              borderRadius: 8,
-            }}
-          >
+          <Tabs.Tab value="bra" style={{ backgroundColor: tab === "bra" ? "#96BD75" : "transparent", color: tab === "bra" ? "white" : "black", fontWeight: 600, borderRadius: 8 }}>
             Bra Size
           </Tabs.Tab>
-          <Tabs.Tab
-            value="panties"
-            style={{
-              backgroundColor: tab === "panties" ? "#96BD75" : "transparent",
-              color: tab === "panties" ? "white" : "black",
-              fontWeight: 600,
-              borderRadius: 8,
-            }}
-          >
+          <Tabs.Tab value="panties" style={{ backgroundColor: tab === "panties" ? "#96BD75" : "transparent", color: tab === "panties" ? "white" : "black", fontWeight: 600, borderRadius: 8 }}>
             Panty Size
           </Tabs.Tab>
         </Tabs.List>
@@ -299,18 +276,12 @@ export default function SizeCalculator({ onSend }: { onSend?: (payload: SendPayl
                 setOverBust(undefined);
                 setHip(undefined);
               }}
-              data={[
-                { label: "INCH", value: "inch" },
-                { label: "CM", value: "cm" },
-              ]}
+              data={[ { label: "INCH", value: "inch" }, { label: "CM", value: "cm" } ]}
             />
           </Group>
 
           <Group align="stretch" wrap={isMobile ? "wrap" : "nowrap"} gap="lg" mb="md">
-            <Box
-              w={isMobile ? "100%" : "50%"}
-              style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
-            >
+            <Box w={isMobile ? "100%" : "50%"} style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Image src={BodySize} alt="Body Measurement Guide" w="100%" h={isMobile ? 240 : 380} fit="contain" />
             </Box>
 
@@ -318,7 +289,6 @@ export default function SizeCalculator({ onSend }: { onSend?: (payload: SendPayl
               <Stack gap="md">
                 <Stack gap={6}>
                   <Text fw={600} size="sm">Under-Bust ({unit})</Text>
-                  {/* NumberInput allows decimal and direct typing */}
                   <NumberInput
                     placeholder={underOptionsDisplay}
                     value={underBust}
@@ -355,20 +325,16 @@ export default function SizeCalculator({ onSend }: { onSend?: (payload: SendPayl
                         ? `Entered: ${underBust} in under — ${overBust} in over`
                         : `Entered: ${underBust} cm under — ${overBust} cm over`}
                     </Text>
-
-                    <Button mt="md" fullWidth onClick={handleSend}>Send Size</Button>
+                    {/* <Button mt="md" fullWidth onClick={handleSend}>Send Size</Button> */}
                   </>
                 ) : (
-                  <>
-                    <Text size="sm" c="dimmed">Enter both values to see your size</Text>
-                    <Button mt="md" fullWidth disabled onClick={handleSend}>Send Size</Button>
-                  </>
+                  <Text size="sm" c="dimmed">Enter both values to see your size</Text>
                 )}
               </Box>
             </Box>
           </Group>
 
-          {/* Size Chart (unchanged) */}
+          {/* Size Chart */}
           <Card withBorder radius="lg" mt="xl" p="lg">
             <Text fw={700} ta="center" mb="md" size="xl">Bra Size Chart ({unit.toUpperCase()})</Text>
 
@@ -382,7 +348,7 @@ export default function SizeCalculator({ onSend }: { onSend?: (payload: SendPayl
                     </Text>
                     <Divider my="xs" />
                     <Stack gap={4}>
-                      {(["A", "B", "C", "D"] as CupLetter[]).map((cup) => {
+                      {(["A","B","C","D","E","F"] as CupLetter[]).map((cup) => {
                         const [lo, hi] = b.overBustByCup[cup];
                         const isSelected = braResult && braResult.label.includes(String(b.band)) && braResult.label.endsWith(cup);
                         return (
@@ -418,7 +384,7 @@ export default function SizeCalculator({ onSend }: { onSend?: (payload: SendPayl
                 <Group align="start" wrap="nowrap" gap="xs">
                   <Box w={140}>
                     <Stack gap={8}>
-                      {(["A", "B", "C", "D"] as CupLetter[]).map((cup) => (
+                      {(["A","B","C","D","E","F"] as CupLetter[]).map((cup) => (
                         <Card key={cup} p="xs" radius="sm" withBorder><Text fw={700} size="sm">{cup}</Text></Card>
                       ))}
                     </Stack>
@@ -427,7 +393,7 @@ export default function SizeCalculator({ onSend }: { onSend?: (payload: SendPayl
                   <Group gap="xs" align="start">
                     {BAND_TABLE.map((b) => (
                       <Stack key={b.band} gap={8}>
-                        {(["A", "B", "C", "D"] as CupLetter[]).map((cup) => {
+                        {(["A","B","C","D","E","F"] as CupLetter[]).map((cup) => {
                           const [lo, hi] = b.overBustByCup[cup];
                           const isSelected = braResult && braResult.label.includes(String(b.band)) && braResult.label.endsWith(cup);
                           return (
@@ -464,8 +430,6 @@ export default function SizeCalculator({ onSend }: { onSend?: (payload: SendPayl
 
           <Stack gap="md" align="center">
             <Text fw={600} size="sm">Hip Measurement ({unit})</Text>
-
-            {/* Number input for hip */}
             <NumberInput
               placeholder={hipOptionsDisplay}
               value={hip}
@@ -480,13 +444,8 @@ export default function SizeCalculator({ onSend }: { onSend?: (payload: SendPayl
               <>
                 <Text fw={700} size="sm">YOUR PANTY SIZE IS</Text>
                 <Text fz={36} fw={900} c="red">{pantyResult}</Text>
-                <Button mt="md" fullWidth onClick={handleSend}>Send Size</Button>
               </>
-            ) : (
-              <>
-                <Button mt="md" fullWidth disabled onClick={handleSend}>Send Size</Button>
-              </>
-            )}
+            ) : null}
           </Stack>
 
           <Card withBorder radius="lg" mt="xl" p="lg">

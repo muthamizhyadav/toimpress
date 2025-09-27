@@ -26,6 +26,7 @@ import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { UPDATE_PROFILE } from "../api/api";
 import { persistor } from "../redux/store"; // used to purge persisted store
+import { clearCart } from "../redux/features/cartSlice";
 
 type Address = {
   id: number;
@@ -333,21 +334,33 @@ export default function ProfileCard() {
   }, [fetchAddress]);
 
   const handleLogout = async () => {
-    dispatch(logout());
+  // 1) Clear auth and cart state in Redux
+  dispatch(logout());
+  dispatch(clearCart());
+
+  // 2) Purge persisted store (fallback: remove the persisted root)
+  try {
+    await persistor.purge();
+  } catch (e:any) {
     try {
-      await persistor.purge();
-    } catch (e) {
-      try {
-        localStorage.removeItem("persist:root");
-      } catch {}
-    }
-    try {
-      localStorage.removeItem("user");
-      localStorage.removeItem("token");
-      localStorage.removeItem("refreshToken");
-      localStorage.removeItem("userAddress");
+      localStorage.removeItem("persist:root");
     } catch {}
-  };
+  }
+
+  // 3) Remove tokens/user/address + any cart keys you use locally
+  try {
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("userAddress");
+
+    // common cart keys (keep ones that apply in your app)
+    localStorage.removeItem("cart");
+    localStorage.removeItem("cartItems");
+    localStorage.removeItem("cart_count");
+  } catch {}
+};
+
 
   return (
     <>
