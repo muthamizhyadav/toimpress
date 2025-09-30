@@ -34,6 +34,9 @@ import { useSelector, useDispatch } from "react-redux";
 import { removeFromCart, clearCart } from "../../redux/features/cartSlice";
 import * as storeModule from "../../redux/store";
 
+const normalizeColor = (c?: string) => (c ?? "").toString().trim().toLowerCase();
+
+
 
 // ✅ Fallback to null if persistor isn't exported
 let persistor: any = null;
@@ -251,7 +254,8 @@ export default function Checkout() {
 
   // Redux selectors (adapt to your store shape if needed)
   const reduxUser = useSelector((state: any) => state.auth?.user ?? state.user?.user ?? null);
-  const reduxAddress = useSelector((state: any) => state.auth?.user?.address ?? state.user?.user?.address ?? state.address ?? null);
+  const reduxAddress = useSelector((state: any) => state.auth?.userAddress ?? state.user?.user?.address ?? state.address ?? null);
+
 
   const [user, setUser] = useState<any>(null);
   const [storedUserAddress, setStoredUserAddress] = useState<any>(null);
@@ -328,61 +332,62 @@ export default function Checkout() {
   }, [reduxUser, reduxAddress]);
 
   const updateLineQuantity = async (line: CartItem, newQuantity: number) => {
-    try {
-      const body = {
-        productId: String(line.productId ?? line.id),
-        quantity: newQuantity,
-        selectedSize: line.size,
-        selectedColor: line.color,
-      };
-      const resp = await axiosInstance.post(API_CART, body, {
-        headers: { "Content-Type": "application/json" },
+  try {
+    const body = {
+      productId: String(line.productId ?? line.id),
+      quantity: newQuantity,
+      selectedSize: line.size,
+      selectedColor: line.color,
+    };
+
+    const resp = await axiosInstance.post(API_CART, body, {
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (resp?.status === 200 && resp?.data) {
+      showNotification({
+        title: newQuantity === 0 ? "Removed" : "Quantity updated",
+        message:
+          resp.data?.message ??
+          (newQuantity === 0 ? "Item removed" : `Quantity updated to ${newQuantity}`),
+        color: "green",
+        icon: <IconCheck size={16} />,
       });
 
-      if (resp?.status === 200 && resp?.data) {
-        showNotification({
-          title: newQuantity === 0 ? "Removed" : "Quantity updated",
-          message:
-            resp.data?.message ??
-            (newQuantity === 0 ? "Item removed" : `Quantity updated to ${newQuantity}`),
-          color: "green",
-          icon: <IconCheck size={16} />,
-        });
-
-        // keep local store in sync for this variant
-        try {
-          await dispatch(
-            removeFromCart({
-              id: String(line.productId ?? line.id),
-              size: line.size ?? "",
-              color: line.color ?? "",
-              selectedColor: line.color ?? "",
-              silent: true,
-            })
-          );
-        } catch (e) {
-          console.warn("Redux removeFromCart failed:", e);
-        }
-
-        await fetchCart();
-      } else {
-        showNotification({
-          title: "Update failed",
-          message: "Unable to update cart. Try again.",
-          color: "red",
-          icon: <IconX size={16} />,
-        });
+      // ✅ Only remove from Redux when qty becomes 0
+      //    and use EXACT keys the slice matches on:
+      //    id (as string) + size + *normalized* color.
+      if (newQuantity === 0) {
+        dispatch(
+          removeFromCart({
+            id: String(line.productId ?? line.id),
+            size: line.size ?? "",
+            selectedColor: normalizeColor(line.color ?? ""),
+            silent: true,
+          } as any)
+        );
       }
-    } catch (err: any) {
-      console.error("Update line failed", err);
+
+      // Server is source of truth — refresh UI
+      await fetchCart();
+    } else {
       showNotification({
         title: "Update failed",
-        message: err?.response?.data?.message ?? err?.message ?? "Unable to update cart",
+        message: "Unable to update cart. Try again.",
         color: "red",
         icon: <IconX size={16} />,
       });
     }
-  };
+  } catch (err: any) {
+    console.error("Update line failed", err);
+    showNotification({
+      title: "Update failed",
+      message: err?.response?.data?.message ?? err?.message ?? "Unable to update cart",
+      color: "red",
+      icon: <IconX size={16} />,
+    });
+  }
+};
 
   const handleMinus = (item: CartItem) => {
     const nextQty = Math.max(0, item.qty - 1);
@@ -555,6 +560,9 @@ export default function Checkout() {
 
   const flatUserAddress = reduxAddress ?? storedUserAddress ?? null;
 
+
+  console.log(flatUserAddress, "flatUserAddress")
+
   const ensureAuthAndAddress = () => {
     if (!flatUserAddress) {
       showNotification({
@@ -619,6 +627,7 @@ export default function Checkout() {
     paymentMethod,
     notes,
     shippingCost,
+    localOrderId,
     tax,
     discount,
     meta,
@@ -630,6 +639,7 @@ export default function Checkout() {
     paymentMethod: string;
     notes?: string;
     shippingCost?: number;
+    localOrderId?:any;
     tax?: number;
     discount?: number;
     meta?: any;
@@ -841,6 +851,7 @@ export default function Checkout() {
               shippingCost: totals.shipping,
               tax: totals.gst,
               discount: totals.totalDiscounts,
+              localOrderId: order.id,
               meta: {
                 razorpay: resp,
                 savedScheme:
@@ -1087,6 +1098,7 @@ export default function Checkout() {
               shippingCost: COD_SHIPPING,
               tax: totals.gst,
               discount: totals.totalDiscounts,
+              localOrderId: order.id,
               meta: {
                 razorpay: resp,
                 savedScheme:
@@ -1520,23 +1532,27 @@ useEffect(() => {
               </div>
 
               <div style={{ display: "flex", gap: 8 }}>
-                <Button
-                  radius="md"
-                  size="md"
-                  fullWidth
-                  onClick={() => {
-                    if (paymentMethod === "RAZORPAY") onPayNow();
-                    else onPlaceCOD();
-                  }}
-                  loading={payLoading}
-                  sx={{
-                    backgroundColor: DARK_GREEN,
-                    color: "#fff",
-                    "&:hover": { backgroundColor: "#0f2a12" },
-                  }}
-                >
-                  PLACE ORDER
-                </Button>
+                 <Button
+                    radius="md"
+                    size="md"
+                    fullWidth
+                    onClick={() => {
+                      if (flatUserAddress.length == 0) {
+                        navigate("/account");
+                        return;
+                      }
+                      if (paymentMethod === "RAZORPAY") onPayNow();
+                      else onPlaceCOD();
+                    }}
+                    loading={payLoading}
+                    sx={{
+                      backgroundColor: DARK_GREEN,
+                      color: "#fff",
+                      "&:hover": { backgroundColor: "#0f2a12" },
+                    }}
+                  >
+                    PLACE ORDER
+                  </Button>
               </div>
             </Container>
           </Box>

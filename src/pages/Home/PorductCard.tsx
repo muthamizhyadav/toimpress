@@ -354,7 +354,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
       <SizeSelectorDrawer
         opened={openSizeDrawer}
         onClose={() => setOpenSizeDrawer(false)}
-        onConfirm={handleConfirmSize}
+        onConfirm={()=>{}}
         productTitle={productName}
         price={price}
         imageUrl={displayImageUrl}

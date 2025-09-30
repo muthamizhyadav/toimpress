@@ -18,20 +18,25 @@ const fetchProducts = async (
   offset: number,
   limit: number,
   categoryName: string,
-  size?: string
+  size?: string,
+  price?:string | any
 ): Promise<Product[]> => {
   try {
     const page = Math.max(1, Math.floor(offset / limit) + 1);
 
     let url = "";
-    if (size) {
-      // ✅ size filter endpoint
-      const encodedSize = encodeURIComponent(size);
-      url = `${API_GET_CATEGORIES_PRODUCTS_BYSIZE}?size=${encodedSize}&page=${page}&limit=${limit}`;
-    } else {
-      // ✅ normal category endpoint
+
+    if(price){
+      const encodedPrice= encodeURIComponent(price);
       const encodedName = encodeURIComponent(categoryName || "");
-      url = `${API_GET_CATEGORIES_PRODUCTS}${encodedName}?page=${page}&limit=${limit}`;
+      url = `${API_GET_CATEGORIES_PRODUCTS}${encodedName}?price=${encodedPrice}&page=${page}&limit=${limit}`;
+    }else if (size) {
+      const encodedSize = encodeURIComponent(size);
+      const encodedPrice= encodeURIComponent(price);
+      url = `${API_GET_CATEGORIES_PRODUCTS_BYSIZE}?size=${encodedSize}&price=${encodedPrice}&page=${page}&limit=${limit}`;
+    } else {
+      const encodedName = encodeURIComponent(categoryName || "");
+      url = `${API_GET_CATEGORIES_PRODUCTS}${encodedName}?&page=${page}&limit=${limit}`;
     }
 
     const response = await axiosInstance.get(url);
@@ -86,10 +91,10 @@ export default function CategoryPage() {
       <Header />
       {/* ✅ pass size to ProductGrid */}
       <ProductGrid
-        fetchProducts={(offset, limit) =>
-          fetchProducts(offset, limit, categoryName, rawSize || undefined)
-        }
+        fetchProducts={fetchProducts}
         categoryName={categoryName}
+        size={rawSize || undefined}
+        price={searchParams.get("price") || undefined}
       />
       <Footer />
       <MobileBottomNavbar />

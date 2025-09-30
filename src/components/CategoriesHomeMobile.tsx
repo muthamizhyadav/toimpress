@@ -7,14 +7,12 @@ import { API_GET_CATEGORIES } from "../api/api";
 import { showNotification } from "@mantine/notifications";
 import { IconX } from "@tabler/icons-react";
 
-// local icons
-import Bra_Logo from "../assets/images/Bra_Logo.jpg";
 
-// import Bra_Logo from "../assets/images/Brassiere.jpg";
-// import Combo_Logo from "../assets/images/Combo.jpg";
-// import Offerzone_Logo from "../assets/images/Offers Zone.jpg";
-// import New_Arrivals_Logo from "../assets/images/New Arrivals.jpg";
-// import Panties_Logo from "../assets/images/Panty.jpg";
+import Bra_Logo from "../assets/images/Bra_thumbnail.jpeg";
+import Combo_Logo from "../assets/images/Combo_thumbnail.jpeg";
+import Offerzone_Logo from "../assets/images/Offerzone_thumbnail.jpeg";
+import New_Arrivals_Logo from "../assets/images/New_Arrivals_thumbnail.jpeg";
+import Panties_Logo from "../assets/images/Panties_thumbnail.jpeg";
 
 // default/fallback icon
 const Default_Logo = Bra_Logo;
@@ -34,18 +32,18 @@ type Category = { id: string; label: string; icon: string; name: string };
 // keep a local mapping for icons — keys are normalized to lowercase
 const ICON_MAP: Record<string, string> = {
   brassiere: Bra_Logo,
-  panties: Bra_Logo,
-  combo: Bra_Logo,
-  "new arrivals": Bra_Logo,
-  "offers zone": Bra_Logo,
+  panties: Panties_Logo,
+  combo: Combo_Logo,
+  "new arrivals": New_Arrivals_Logo,
+  "offers zone": Offerzone_Logo,
 };
 
 const hardcodedCategories: Category[] = [
   { id: "1", label: "bra", icon: Bra_Logo, name: "Bra" },
-  { id: "5", label: "combo", icon: Bra_Logo, name: "Combo" },
-  { id: "2", label: "panties", icon: Bra_Logo, name: "Panties" },
-  { id: "4", label: "new arrivals", icon: Bra_Logo, name: "New Arrivals" },
-  { id: "3", label: "offers zone", icon: Bra_Logo, name: "Offer Zone" },
+  { id: "5", label: "combo", icon: Combo_Logo, name: "Combo" },
+  { id: "2", label: "panties", icon: Panties_Logo, name: "Panties" },
+  { id: "4", label: "new arrivals", icon: New_Arrivals_Logo, name: "New Arrivals" },
+  { id: "3", label: "offers zone", icon: Offerzone_Logo, name: "Offer Zone" },
 ];
 
 function normalizeLabel(raw?: string) {
@@ -56,7 +54,7 @@ function normalizeLabel(raw?: string) {
 function pickIconForLabel(label?: string) {
   console.log(label)
   const key = normalizeLabel(label);
-  return Default_Logo;
+  return ICON_MAP[key] ?? Default_Logo;
 }
 
 export default function CategoriesHomeMobile() {

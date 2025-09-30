@@ -27,6 +27,8 @@ import axios from "axios";
 import { UPDATE_PROFILE } from "../api/api";
 import { persistor } from "../redux/store"; // used to purge persisted store
 import { clearCart } from "../redux/features/cartSlice";
+import { useNavigate } from "react-router-dom";
+
 
 type Address = {
   id: number;
@@ -66,6 +68,7 @@ axiosInstance.interceptors.request.use(
 
 export default function ProfileCard() {
   const isMobile = useMediaQuery("(max-width: 768px)");
+  const navigate = useNavigate()
 
   const { user, userAddress } = useSelector((state: RootState) => {
     const storeUser = state.auth.user as any;
@@ -249,6 +252,9 @@ export default function ProfileCard() {
         setDisplayEmail(addressForStore.email || "No email available");
         setForm(addressForStore);
         setModalOpen(false);
+        window.location.reload()
+        navigate('/')
+
       } else {
         const msg = (response && (response as any).data?.message) || "Failed to save address. Please try again.";
         setErrors({ ...errors, general: msg });

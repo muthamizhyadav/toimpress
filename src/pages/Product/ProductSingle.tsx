@@ -1174,7 +1174,7 @@ const buildSizeOptionsForProduct = (prod: any): SizeOption[] => {
       <SizeSelectorDrawer
         opened={openSizeDrawer}
         onClose={onDrawerClose}
-        onConfirm={onDrawerConfirm}
+        onConfirm={()=>{}}
         productTitle={drawerProduct ? (drawerProduct.productTitle ?? drawerProduct.title ?? "Product") : titleInput}
         price={drawerProduct ? (drawerProduct.salePrice ?? drawerProduct.price) : (salePriceInput ?? priceInput)}
         imageUrl={drawerProduct ? ((drawerProduct.images && drawerProduct.images[0]) || drawerProduct.image || "") : (mainImage || galleryImages?.[0] || imagesInput?.[0] || "")}

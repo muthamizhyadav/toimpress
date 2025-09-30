@@ -16,8 +16,17 @@ export type Product = {
 };
 
 type ProductGridProps = {
-  fetchProducts: (offset: number, limit: number, categoryName: string) => Promise<Product[]>;
-  categoryName: string; // mandatory — grid will re-fetch when this changes
+  // 👇 fetch expects (offset, limit, categoryName, size?, price?)
+  fetchProducts: (
+    offset: number,
+    limit: number,
+    categoryName: string,
+    size?: string,
+    price?: string
+  ) => Promise<Product[]>;
+  categoryName: string;
+  size?: string;          // 👈 optional size filter
+  price?: string;         // 👈 optional price filter (now supported)
   pageSize?: number;
 };
 
@@ -58,7 +67,13 @@ const SkeletonGrid: React.FC<{ count: number; isMobile: boolean }> = ({ count, i
   );
 };
 
-const ProductGrid: React.FC<ProductGridProps> = ({ fetchProducts, categoryName, pageSize = 16 }) => {
+const ProductGrid: React.FC<ProductGridProps> = ({
+  fetchProducts,
+  categoryName,
+  size,
+  price,
+  pageSize = 16,
+}) => {
   const isMobile = useMediaQuery("(max-width: 640px)");
   const [items, setItems] = useState<Product[]>([]);
   const [hasMore, setHasMore] = useState(true);
@@ -68,7 +83,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({ fetchProducts, categoryName, 
   // requestId prevents stale responses from overwriting newer state
   const requestIdRef = useRef(0);
 
-  // Reset and initial load when categoryName changes
+  // Reset and initial load when filters change
   useEffect(() => {
     const currentRequestId = ++requestIdRef.current;
 
@@ -78,7 +93,8 @@ const ProductGrid: React.FC<ProductGridProps> = ({ fetchProducts, categoryName, 
 
     (async () => {
       try {
-        const newItems = await fetchProducts(0, limit, categoryName || "");
+        // 👇 Correct param order: (offset, limit, categoryName, size, price)
+        const newItems = await fetchProducts(0, limit, categoryName || "", size, price);
         if (currentRequestId !== requestIdRef.current) return; // stale
         setItems(newItems);
         setOffset(newItems.length);
@@ -90,15 +106,14 @@ const ProductGrid: React.FC<ProductGridProps> = ({ fetchProducts, categoryName, 
         setHasMore(false);
       }
     })();
-
-    // cleanup not needed — next effect run increments requestIdRef, ignoring earlier responses
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoryName]);
+    // Re-run when any filter changes
+  }, [categoryName, size, price]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadMore = async () => {
     const baseRequestId = ++requestIdRef.current;
     try {
-      const newItems = await fetchProducts(offset, limit, categoryName || "");
+      // 👇 Include size & price on subsequent pages too
+      const newItems = await fetchProducts(offset, limit, categoryName || "", size, price);
       if (baseRequestId !== requestIdRef.current) return; // stale
       setItems((prev) => [...prev, ...newItems]);
       setOffset((prev) => prev + newItems.length);

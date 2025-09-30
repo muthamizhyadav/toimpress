@@ -5,13 +5,13 @@ import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { IconPlus, IconMinus } from "@tabler/icons-react";
 import { addToCart, increaseQty, decreaseQty } from "../redux/features/cartSlice";
+import { addOrUpdateCartLine } from "../redux/features/cartThunks"; // single-line API
 import axiosInstance from "../api/axiosInstance";
 import { API_GET_CART_DATA } from "../api/api";
 
-
-// Colour tokens requested
 const DARK_GREEN = "#133215";
-const LIGHT_GREEN = "#92B775";
+
+const normalizeColor = (c?: string) => (c ?? "").toString().trim().toLowerCase();
 
 export type SizeOption = {
   band: number;
@@ -36,7 +36,7 @@ type Props = {
     cup: string;
     label: string;
     quantity?: number;
-    selectedColor?: string | undefined;
+    selectedColor?: string | undefined; // raw for UI/server if needed
   }) => void;
   productTitle: string;
   price: number;
@@ -44,9 +44,8 @@ type Props = {
   options?: SizeOption[];
   category?: string | any;
   productId?: string | number;
-  selectedColor?: string | undefined;
+  selectedColor?: string | undefined; // initial (raw) like "#23AD7D"
   colors?: string[];
-  // NEW
   colorData?: ColorDataMap;
 };
 
@@ -87,13 +86,11 @@ const PANTY_SIZES = [
   { label: "6XL", hip: "143–149 cm" },
 ];
 
-// helper: from ["32B","34B"] -> SizeOption[]
 const buildSizeOptionsFromSelectedSizes = (sizesInput?: string[]): SizeOption[] | undefined => {
   if (!Array.isArray(sizesInput) || sizesInput.length === 0) return undefined;
   const map = new Map<number, Set<string>>();
   for (const s of sizesInput) {
-    if (!s) continue;
-    const str = String(s).toUpperCase().trim();
+    const str = String(s ?? "").toUpperCase().trim();
     const m = /^(\d{2})([A-Z]+)$/.exec(str);
     if (!m) continue;
     const band = Number(m[1]);
@@ -103,27 +100,26 @@ const buildSizeOptionsFromSelectedSizes = (sizesInput?: string[]): SizeOption[] 
   }
   const arr: SizeOption[] = Array.from(map.entries())
     .sort((a, b) => a[0] - b[0])
-    .map(([band, cupsSet]) => ({
-      band,
-      cups: Array.from(cupsSet.values()).sort(),
-    }));
+    .map(([band, cupsSet]) => ({ band, cups: Array.from(cupsSet.values()).sort() }));
   return arr.length ? arr : undefined;
 };
 
-export default function SizeSelectorDrawer({
-  opened,
-  onClose,
-  onConfirm,
-  productTitle,
-  price,
-  category,
-  imageUrl,
-  options = buildOptionsFromBandTable(),
-  productId,
-  selectedColor: initialSelectedColor,
-  colors = [],
-  colorData,
-}: Props) {
+export default function SizeSelectorDrawer(props: Props) {
+  const {
+    opened,
+    onClose,
+    onConfirm,
+    productTitle,
+    price,
+    category,
+    imageUrl,
+    options = buildOptionsFromBandTable(),
+    productId,
+    selectedColor: initialSelectedColor,
+    colors = [],
+    colorData,
+  } = props;
+
   type Mode = "Brassiere" | "Panties" | "Both";
   const [mode, setMode] = useState<"Brassiere" | "Panties">("Brassiere");
   const [availableMode, setAvailableMode] = useState<Mode>("Both");
@@ -131,48 +127,51 @@ export default function SizeSelectorDrawer({
   const [band, setBand] = useState<number | null>(null);
   const [cup, setCup] = useState<string | null>(null);
   const [pantySize, setPantySize] = useState<string | null>(null);
-  const [selectedColor, setSelectedColor] = useState<string | undefined>(initialSelectedColor);
+
+  // Track BOTH raw & normalized colors
+  const [selectedColorNorm, setSelectedColorNorm] = useState<string | undefined>(
+    initialSelectedColor ? normalizeColor(initialSelectedColor) : undefined
+  );
+  const [selectedColorRaw, setSelectedColorRaw] = useState<string | undefined>(initialSelectedColor);
 
   const [addedClicked, setAddedClicked] = useState(false);
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  // When color changes, reset selected size
   useEffect(() => {
     setBand(null);
     setCup(null);
     setPantySize(null);
-  }, [selectedColor]);
+    setAddedClicked(false);
+  }, [selectedColorNorm]);
 
-  // Which size options to show? If a color is selected and colorData has sizes, filter by that.
+  useEffect(() => {
+    setSelectedColorNorm(initialSelectedColor ? normalizeColor(initialSelectedColor) : undefined);
+    setSelectedColorRaw(initialSelectedColor);
+  }, [initialSelectedColor, colors]);
+
   const effectiveOptions: SizeOption[] = useMemo(() => {
     if (mode === "Brassiere") {
-      const colorSizes = selectedColor ? colorData?.[selectedColor]?.sizes : undefined;
+      const colorSizes = selectedColorRaw ? colorData?.[selectedColorRaw]?.sizes : undefined;
       const colorOptions = buildSizeOptionsFromSelectedSizes(colorSizes);
       return colorOptions ?? options;
     }
     return [];
-  }, [mode, selectedColor, colorData, options]);
+  }, [mode, selectedColorRaw, colorData, options]);
 
-  // Build combined sizes grid from effective options
   const combinedSizes = useMemo(() => {
     const arr: { value: string; band: number; cup: string }[] = [];
-    effectiveOptions.forEach((o) => {
-      o.cups.forEach((c) => arr.push({ value: `${o.band}${c}`, band: o.band, cup: c }));
-    });
+    effectiveOptions.forEach((o) => o.cups.forEach((c) => arr.push({ value: `${o.band}${c}`, band: o.band, cup: c })));
     return arr;
   }, [effectiveOptions]);
 
-  const bandInfo = useMemo(
-    () => effectiveOptions.find((o) => o.band === band),
-    [band, effectiveOptions]
-  );
+  const bandInfo = useMemo(() => effectiveOptions.find((o) => o.band === band), [band, effectiveOptions]);
 
   useEffect(() => {
     const cat = typeof category === "string" ? category.toLowerCase() : "";
     const isBra = cat.includes("bra") || cat.includes("brassiere");
-    const isPant = cat.includes("pant") || cat.includes("Pant") || cat.includes("panties") || cat.includes("panty");
+    const isPant = cat.includes("pant") || cat.includes("panties") || cat.includes("panty");
 
     if (isBra && !isPant) {
       setAvailableMode("Brassiere");
@@ -189,24 +188,53 @@ export default function SizeSelectorDrawer({
     setAvailableMode("Both");
   }, [category]);
 
-  useEffect(() => {
-    setSelectedColor(initialSelectedColor);
-  }, [initialSelectedColor, colors]);
-
   const currentLabel = useMemo(() => {
     if (mode === "Brassiere" && band && cup) return `${band}${cup}`;
     if (mode === "Panties" && pantySize) return pantySize;
     return null;
   }, [mode, band, cup, pantySize]);
 
+  // ---- FIX: resolve colorData by raw and normalized keys ----
+  const colorBlock = useMemo(() => {
+    if (!colorData || (!selectedColorRaw && !selectedColorNorm)) return undefined;
+
+    // try exact raw (e.g. "#23AD7D"), then normalized hex/name (e.g. "#23ad7d" or "black")
+    const raw = selectedColorRaw ?? "";
+    const norm = selectedColorNorm ?? normalizeColor(raw);
+
+    // also try trimming spaces (defensive)
+    const rawTrim = raw?.trim?.() ?? raw;
+
+    return (
+      colorData[rawTrim] ??
+      colorData[raw] ??
+      colorData[norm] ??
+      // in case keys were saved as uppercase/lowercase names
+      colorData[rawTrim.toLowerCase?.() || rawTrim] ??
+      colorData[rawTrim.toUpperCase?.() || rawTrim]
+    );
+  }, [colorData, selectedColorRaw, selectedColorNorm]);
+
+  const headerImageUrl = useMemo(() => {
+    console.log(colorBlock, "colorBlock")
+    const img =
+      colorBlock?.images?.[0] ||
+      imageUrl; 
+    console.log(img, "img")
+    return img;
+  }, [colorBlock, imageUrl]);
+
+  // Color-scoped quantity from Redux (STRICT to current normalized color)
   const currentQty: number = useSelector((state: any) => {
-    if (!productId || !currentLabel) return 0;
+    if (!productId || !currentLabel || !selectedColorNorm) return 0;
     const items: any[] = state?.cart?.items ?? [];
+    const wantColor = normalizeColor(selectedColorNorm);
+
     const found = items.find((it) => {
-      const sameId = String(it.id) === String(productId) || String(it.productId ?? "") === String(productId);
-      const sameSize = (it.size ?? "") === (currentLabel ?? "");
-      const colorToMatch = selectedColor ?? initialSelectedColor ?? undefined;
-      const sameColor = (it.color ?? "") === (colorToMatch ?? "");
+      const sameId =
+        String(it.id) === String(productId) || String(it.productId ?? "") === String(productId);
+      const sameSize = (it.size ?? "") === String(currentLabel);
+      const sameColor = normalizeColor(it.color) === wantColor;
       return sameId && sameSize && sameColor;
     });
     return Number(found?.qty ?? 0);
@@ -238,58 +266,99 @@ export default function SizeSelectorDrawer({
         console.error("Failed to fetch API_GET_CART_DATA:", err);
       }
     })();
-  }, [opened]);
+  }, [opened, productId]);
+
+  /** Send ONLY the current variant line with its ABSOLUTE qty */
+  const syncSingleVariant = (newQty: number) => {
+    if (!productId || !currentLabel || !selectedColorNorm) return;
+
+    const normColor = normalizeColor(selectedColorNorm);
+
+    console.log(headerImageUrl, "headerImageUrl")
+
+    dispatch<any>(addOrUpdateCartLine({
+      productId: String(productId),
+      size: String(currentLabel),
+      color: normColor,          
+      qty: newQty,               
+      price,                    
+      title: productTitle,
+      image: headerImageUrl,     
+      imageUrl: headerImageUrl,  
+    }));
+  };
 
   const reduxAddOne = () => {
-    if (!productId || !currentLabel) return;
+    if (!productId || !currentLabel || !selectedColorNorm) return;
+    const normColor = normalizeColor(selectedColorNorm);
+
     if (currentQty > 0) {
-      dispatch(increaseQty({ id: productId, size: currentLabel, color: selectedColor, silent: true }));
-    } else {
       dispatch(
-        addToCart({
-          id: productId,
-          title: productTitle,
-          image: headerImageUrl, // use current color image
-          price,
-          qty: 1,
-          size: currentLabel,
-          color: selectedColor,
+        increaseQty({
+          id: String(productId),
+          size: String(currentLabel),
+          selectedColor: normColor,
           silent: true,
         } as any)
       );
+      syncSingleVariant(currentQty + 1);
+    } else {
+      dispatch(
+        addToCart({
+          id: String(productId),
+          title: productTitle,
+          image: headerImageUrl,     // ✅ color-scoped image
+          price,
+          qty: 1,
+          size: String(currentLabel),
+          selectedColor: normColor,  // normalized in slice
+          displayColor: selectedColorRaw,
+          silent: true,
+        } as any)
+      );
+      syncSingleVariant(1);
     }
+
     setAddedClicked(true);
 
     const [b, c] =
-      mode === "Brassiere" && band && cup
-        ? [band, cup]
-        : mode === "Panties"
-        ? [0, pantySize ?? ""]
-        : [0, ""];
+      mode === "Brassiere" && band && cup ? [band, cup] : mode === "Panties" ? [0, pantySize ?? ""] : [0, ""];
     onConfirm({
       band: b as number,
       cup: String(c),
       label: String(currentLabel),
       quantity: currentQty + 1,
-      selectedColor,
+      selectedColor: selectedColorRaw, // raw for UI/server if needed elsewhere
     });
   };
 
   const reduxRemoveOne = () => {
-    if (!productId || !currentLabel) return;
-    dispatch(decreaseQty({ id: productId, size: currentLabel, color: selectedColor, silent: true }));
+    if (!productId || !currentLabel || !selectedColorNorm) return;
+
+    if (currentQty <= 0) return;
+
+    const normColor = normalizeColor(selectedColorNorm);
+
+    dispatch(
+      decreaseQty({
+        id: String(productId),
+        size: String(currentLabel),
+        selectedColor: normColor,
+        silent: true,
+      } as any)
+    );
+
+    const newQty = Math.max(0, currentQty - 1);
+    syncSingleVariant(newQty);
+
     const [b, c] =
-      mode === "Brassiere" && band && cup
-        ? [band, cup]
-        : mode === "Panties"
-        ? [0, pantySize ?? ""]
-        : [0, ""];
+      mode === "Brassiere" && band && cup ? [band, cup] : mode === "Panties" ? [0, pantySize ?? ""] : [0, ""];
     onConfirm({
       band: b as number,
       cup: String(c),
       label: String(currentLabel),
-      quantity: Math.max(0, currentQty - 1),
-      selectedColor,
+      quantity: newQty,
+      selectedColor: selectedColorRaw,
     });
   };
 
@@ -309,11 +378,16 @@ export default function SizeSelectorDrawer({
 
   const renderSwatch = (c: string, idx: number) => {
     const isHex = /^#([0-9A-F]{3}){1,2}$/i.test(String(c));
-    const active = selectedColor === c;
+    const norm = normalizeColor(c);
+    const active = selectedColorNorm === norm;
+
     return (
       <Tooltip key={idx} label={c}>
         <button
-          onClick={() => setSelectedColor(c)}
+          onClick={() => {
+            setSelectedColorNorm(norm); // normalized for matching
+            setSelectedColorRaw(c);     // raw for images/UI
+          }}
           className={`w-10 h-10 rounded-full border flex items-center justify-center transition ${
             active ? "ring-2 ring-[#96BD75]" : "border-gray-200"
           }`}
@@ -324,10 +398,6 @@ export default function SizeSelectorDrawer({
       </Tooltip>
     );
   };
-
-  // NEW: color-aware header preview image
-  const headerImageUrl =
-    (selectedColor && colorData?.[selectedColor]?.images?.[0]) || imageUrl;
 
   return (
     <Drawer
@@ -340,8 +410,6 @@ export default function SizeSelectorDrawer({
       padding="md"
       title="Choose size"
     >
-     
-
       {/* header */}
       <div className="flex gap-3 mb-3">
         <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 shrink-0">
@@ -356,7 +424,7 @@ export default function SizeSelectorDrawer({
         </div>
       </div>
 
-        {/* colors */}
+      {/* colors */}
       {Array.isArray(colors) && colors.length > 0 && (
         <div style={{ marginBottom: 12 }}>
           <Text size="sm" fw={600} mb={6}>Colors</Text>
@@ -366,7 +434,7 @@ export default function SizeSelectorDrawer({
         </div>
       )}
 
-      {/* Brassiere sizes grid (color-aware) */}
+      {/* Brassiere sizes grid */}
       {mode === "Brassiere" && (
         <div className="mt-2">
           <div className="text-sm font-semibold mb-2">SIZES</div>
@@ -394,16 +462,16 @@ export default function SizeSelectorDrawer({
                     setCup(s.cup);
                   }}
                   styles={{
-                        root: {
-                          backgroundColor: active ? "#92b775" : "transparent",
-                          color: active ? "#fff" : DARK_GREEN,
-                          borderColor: DARK_GREEN,
-                          "&:hover": {
-                            backgroundColor: "#92b775",
-                            color: "#fff",
-                          },
-                        },
-                      }}
+                    root: {
+                      backgroundColor: active ? "#92b775" : "transparent",
+                      color: active ? "#fff" : DARK_GREEN,
+                      borderColor: DARK_GREEN,
+                      "&:hover": {
+                        backgroundColor: "#92b775",
+                        color: "#fff",
+                      },
+                    },
+                  }}
                 >
                   {s.value}
                 </Button>
@@ -444,15 +512,13 @@ export default function SizeSelectorDrawer({
         </div>
       )}
 
-     
-
       {/* Selected variant area */}
       {currentLabel && (
         <div>
           <div>
             <Text size="sm" fw={600}>Selected</Text>
             <Text size="sm">
-              {currentLabel} {selectedColor ? <span className="text-gray-600">({selectedColor})</span> : null}
+              {currentLabel} {selectedColorRaw ? <span className="text-gray-600">({selectedColorRaw})</span> : null}
             </Text>
           </div>
 
@@ -462,7 +528,7 @@ export default function SizeSelectorDrawer({
                 <Button
                   fullWidth
                   onClick={confirmSize}
-                  disabled={!currentLabel}
+                  disabled={!currentLabel || !selectedColorNorm}
                   style={{ background: "#96BD75", color: "#fff", borderRadius: 999 }}
                 >
                   Add to cart

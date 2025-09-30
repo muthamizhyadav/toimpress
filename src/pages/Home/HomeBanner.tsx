@@ -46,9 +46,37 @@ const HomeBanner: React.FC = () => {
     return banners.filter((b) => b.active);
   }, [banners, isMobile]);
 
-  const handleNavigation = (str?: string) => {
-    if (!str) return;
-    navigate(`/${str}`);
+  // Build a category URL safely
+  const makeCategoryPath = (params: Record<string, string | number>) => {
+    const qs = Object.entries(params)
+      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+      .join("&");
+    return `/category?${qs}`;
+  };
+
+  // Desktop target resolver by slide index
+  const desktopTargetForIndex = (index: number): string => {
+    switch (index) {
+      case 0:
+        return makeCategoryPath({ name: "Combo", price: 999 });
+      case 1:
+        return makeCategoryPath({ name: "Brassiere" });
+      case 2:
+        return makeCategoryPath({ name: "Panties" });
+      case 3:
+        return makeCategoryPath({ name: "Offers Zone" });
+      default:
+        // Fallback for any 5th+ slides
+        return makeCategoryPath({ name: "Brassiere" });
+    }
+  };
+
+  const onSlideClick = (index: number) => {
+    if (isMobile) {
+       navigate(desktopTargetForIndex(index));
+    } else {
+      navigate(desktopTargetForIndex(index));
+    }
   };
 
   useEffect(() => {
@@ -93,7 +121,6 @@ const HomeBanner: React.FC = () => {
   const innerStyle: React.CSSProperties = isMobile
     ? {
         width: "100%",
-        /* use clamp to scale between a small and large mobile height */
         height: "clamp(320px, 60vh, 620px)",
         maxWidth: "100vw",
         marginLeft: "auto",
@@ -129,10 +156,10 @@ const HomeBanner: React.FC = () => {
           getEmblaApi={(api) => (emblaRef.current = api)}
           className="w-full h-full"
         >
-          {visibleBanners.map((banner) => (
+          {visibleBanners.map((banner, idx) => (
             <Carousel.Slide
               key={banner._id}
-              onClick={() => handleNavigation("category?name=Brassiere")}
+              onClick={() => onSlideClick(idx)}
               style={{
                 width: "100%",
                 height: "100%",
@@ -146,8 +173,7 @@ const HomeBanner: React.FC = () => {
                 src={banner.url}
                 alt={banner.title}
                 style={{
-                  /* On mobile allow the image to scale down while preserving center */
-                  width: isMobile ? "100%" : "100%",
+                  width: "100%",
                   maxWidth: "100%",
                   height: "100%",
                   objectFit: isMobile ? "contain" : "cover",

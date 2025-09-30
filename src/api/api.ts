@@ -30,4 +30,7 @@ export const API_SEARCH_PRODUCTS = API_URL + "products/global/search?searchkey="
 
 export const API_GET_STATUS = API_URL + "payments/status/"
 
+export const API_ADD_TO_CART = "cart";
+
+
 export const LOGIN = API_URL + "auth/login";
