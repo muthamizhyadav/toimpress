@@ -33,14 +33,20 @@ import { API_GET_UPDATE, API_CART } from "../../api/api";
 import { useSelector, useDispatch } from "react-redux";
 import { removeFromCart, clearCart } from "../../redux/features/cartSlice";
 
-// ✅ If you use redux-persist, import the persistor (adjust path if different)
-let persistor: any = null;
-try {
-  // Make this import resilient even if persistor isn't exported in some envs
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const storeModule = require("../../redux/store");
-  persistor = storeModule?.persistor ?? null;
-} catch { /* ignore if not available */ }
+// ✅ Vite/ESM-safe persistor loader
+let _persistorCache: any | undefined;
+
+export async function getPersistor(): Promise<any | null> {
+  if (_persistorCache !== undefined) return _persistorCache; // cached (can be null)
+  try {
+    const mod = await import("../../redux/store"); // adjust path if needed
+    _persistorCache = (mod as any)?.persistor ?? null;
+  } catch {
+    _persistorCache = null;
+  }
+  return _persistorCache;
+}
+
 
 // Razorpay config
 const RAZORPAY_KEY_ID = import.meta.env.VITE_RZP_KEY_ID as string;
@@ -417,14 +423,15 @@ export default function Checkout() {
       );
 
       // 2) Redux: clear slice + purge persisted storage so it doesn't rehydrate
-      try {
-        dispatch(clearCart());
-        if (persistor?.purge) {
-          await persistor.purge();
+        try {
+          const p = await getPersistor();
+          if (p?.purge) {
+            await p.purge();
+          }
+        } catch (e) {
+          console.warn("Persistor purge failed:", e);
         }
-      } catch (e) {
-        console.warn("Redux clearCart/purge failed:", e);
-      }
+
 
       // Optional hard fallback if persistor import isn't available
       try {
@@ -762,7 +769,6 @@ export default function Checkout() {
       if (amountPaise <= 0) return;
 
       setPayLoading(true);
-      await loadRazorpay();
 
       const { data: order } = await axiosInstance.post(CREATE_ORDER_URL, {
         amount: amountPaise,
@@ -770,6 +776,8 @@ export default function Checkout() {
         receipt: "rcpt_" + Date.now(),
         notes: { itemCount: String(items.length), paymentType: "FULL" },
       });
+
+      await loadRazorpay();
 
       const prefillName = (reduxUser?.name ?? user?.name) || "Customer";
       const prefillEmail = (reduxUser?.email ?? user?.email) || "customer@example.com";
@@ -987,7 +995,7 @@ export default function Checkout() {
       }
 
       setPayLoading(true);
-      await loadRazorpay();
+      
 
       const tokenPaise = Math.round(tokenToCollect * 100);
       const { data: order } = await axiosInstance.post(CREATE_ORDER_URL, {
@@ -996,6 +1004,8 @@ export default function Checkout() {
         receipt: "cod_token_rcpt_" + Date.now(),
         notes: { itemCount: String(items.length), paymentType: "COD_TOKEN" },
       });
+
+      await loadRazorpay();
 
       const prefillName = (reduxUser?.name ?? user?.name) || "Customer";
       const prefillEmail = (reduxUser?.email ?? user?.email) || "customer@example.com";
