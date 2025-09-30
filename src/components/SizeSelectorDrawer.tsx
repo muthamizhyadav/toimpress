@@ -128,7 +128,7 @@ export default function SizeSelectorDrawer(props: Props) {
   const [cup, setCup] = useState<string | null>(null);
   const [pantySize, setPantySize] = useState<string | null>(null);
 
-  // Track BOTH raw & normalized colors
+  // Track BOTH raw & normalized colors (color is optional)
   const [selectedColorNorm, setSelectedColorNorm] = useState<string | undefined>(
     initialSelectedColor ? normalizeColor(initialSelectedColor) : undefined
   );
@@ -139,11 +139,15 @@ export default function SizeSelectorDrawer(props: Props) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  useEffect(() => {
+  const resetState = () => {
     setBand(null);
     setCup(null);
     setPantySize(null);
     setAddedClicked(false);
+  };
+
+  useEffect(() => {
+    resetState();
   }, [selectedColorNorm]);
 
   useEffect(() => {
@@ -151,6 +155,7 @@ export default function SizeSelectorDrawer(props: Props) {
     setSelectedColorRaw(initialSelectedColor);
   }, [initialSelectedColor, colors]);
 
+  // Build size options based on color (if provided) for Brassiere
   const effectiveOptions: SizeOption[] = useMemo(() => {
     if (mode === "Brassiere") {
       const colorSizes = selectedColorRaw ? colorData?.[selectedColorRaw]?.sizes : undefined;
@@ -194,47 +199,48 @@ export default function SizeSelectorDrawer(props: Props) {
     return null;
   }, [mode, band, cup, pantySize]);
 
-  // ---- FIX: resolve colorData by raw and normalized keys ----
+  // Resolve color-specific block (optional)
   const colorBlock = useMemo(() => {
     if (!colorData || (!selectedColorRaw && !selectedColorNorm)) return undefined;
-
-    // try exact raw (e.g. "#23AD7D"), then normalized hex/name (e.g. "#23ad7d" or "black")
     const raw = selectedColorRaw ?? "";
     const norm = selectedColorNorm ?? normalizeColor(raw);
-
-    // also try trimming spaces (defensive)
     const rawTrim = raw?.trim?.() ?? raw;
 
     return (
       colorData[rawTrim] ??
       colorData[raw] ??
       colorData[norm] ??
-      // in case keys were saved as uppercase/lowercase names
       colorData[rawTrim.toLowerCase?.() || rawTrim] ??
       colorData[rawTrim.toUpperCase?.() || rawTrim]
     );
   }, [colorData, selectedColorRaw, selectedColorNorm]);
 
   const headerImageUrl = useMemo(() => {
-    console.log(colorBlock, "colorBlock")
-    const img =
-      colorBlock?.images?.[0] ||
-      imageUrl; 
-    console.log(img, "img")
+    const img = colorBlock?.images?.[0] || imageUrl;
     return img;
   }, [colorBlock, imageUrl]);
 
-  // Color-scoped quantity from Redux (STRICT to current normalized color)
+  // Quantity in cart for the current variant (color optional)
   const currentQty: number = useSelector((state: any) => {
-    if (!productId || !currentLabel || !selectedColorNorm) return 0;
+    if (!productId || !currentLabel) return 0;
     const items: any[] = state?.cart?.items ?? [];
-    const wantColor = normalizeColor(selectedColorNorm);
 
+    // If no color is selected/available, match by id + size only
+    if (!selectedColorNorm) {
+      const found = items.find((it) => {
+        const sameId = String(it.id) === String(productId) || String(it.productId ?? "") === String(productId);
+        const sameSize = (it.size ?? "") === String(currentLabel);
+        return sameId && sameSize;
+      });
+      return Number(found?.qty ?? 0);
+    }
+
+    // If color exists, match it too
+    const wantColor = normalizeColor(selectedColorNorm);
     const found = items.find((it) => {
-      const sameId =
-        String(it.id) === String(productId) || String(it.productId ?? "") === String(productId);
+      const sameId = String(it.id) === String(productId) || String(it.productId ?? "") === String(productId);
       const sameSize = (it.size ?? "") === String(currentLabel);
-      const sameColor = normalizeColor(it.color) === wantColor;
+      const sameColor = normalizeColor(it.color) === wantColor || normalizeColor(it.selectedColor) === wantColor;
       return sameId && sameSize && sameColor;
     });
     return Number(found?.qty ?? 0);
@@ -244,13 +250,6 @@ export default function SizeSelectorDrawer(props: Props) {
     const items: any[] = state?.cart?.items ?? [];
     return items.reduce((sum, it) => sum + Number(it?.qty ?? 0), 0);
   });
-
-  const resetState = () => {
-    setBand(null);
-    setCup(null);
-    setPantySize(null);
-    setAddedClicked(false);
-  };
 
   const handleClose = () => {
     resetState();
@@ -268,36 +267,37 @@ export default function SizeSelectorDrawer(props: Props) {
     })();
   }, [opened, productId]);
 
-  /** Send ONLY the current variant line with its ABSOLUTE qty */
+  /** Send ONLY the current variant line with its ABSOLUTE qty (color optional) */
   const syncSingleVariant = (newQty: number) => {
-    if (!productId || !currentLabel || !selectedColorNorm) return;
+    if (!productId || !currentLabel) return;
 
-    const normColor = normalizeColor(selectedColorNorm);
+    const normColor = selectedColorNorm ? normalizeColor(selectedColorNorm) : undefined;
 
-    console.log(headerImageUrl, "headerImageUrl")
-
-    dispatch<any>(addOrUpdateCartLine({
-      productId: String(productId),
-      size: String(currentLabel),
-      color: normColor,          
-      qty: newQty,               
-      price,                    
-      title: productTitle,
-      image: headerImageUrl,     
-      imageUrl: headerImageUrl,  
-    }));
+    dispatch<any>(
+      addOrUpdateCartLine({
+        productId: String(productId),
+        size: String(currentLabel),
+        color: normColor ?? "", // or null if your backend expects null
+        qty: newQty,
+        price,
+        title: productTitle,
+        image: headerImageUrl,
+        imageUrl: headerImageUrl,
+      })
+    );
   };
 
   const reduxAddOne = () => {
-    if (!productId || !currentLabel || !selectedColorNorm) return;
-    const normColor = normalizeColor(selectedColorNorm);
+    if (!productId || !currentLabel) return;
+
+    const normColor = selectedColorNorm ? normalizeColor(selectedColorNorm) : undefined;
 
     if (currentQty > 0) {
       dispatch(
         increaseQty({
           id: String(productId),
           size: String(currentLabel),
-          selectedColor: normColor,
+          selectedColor: normColor ?? "",
           silent: true,
         } as any)
       );
@@ -307,12 +307,12 @@ export default function SizeSelectorDrawer(props: Props) {
         addToCart({
           id: String(productId),
           title: productTitle,
-          image: headerImageUrl,     // ✅ color-scoped image
+          image: headerImageUrl,
           price,
           qty: 1,
           size: String(currentLabel),
-          selectedColor: normColor,  // normalized in slice
-          displayColor: selectedColorRaw,
+          selectedColor: normColor ?? "", // keep consistent with slice
+          displayColor: selectedColorRaw ?? "",
           silent: true,
         } as any)
       );
@@ -328,22 +328,21 @@ export default function SizeSelectorDrawer(props: Props) {
       cup: String(c),
       label: String(currentLabel),
       quantity: currentQty + 1,
-      selectedColor: selectedColorRaw, // raw for UI/server if needed elsewhere
+      selectedColor: selectedColorRaw, // may be undefined
     });
   };
 
   const reduxRemoveOne = () => {
-    if (!productId || !currentLabel || !selectedColorNorm) return;
-
+    if (!productId || !currentLabel) return;
     if (currentQty <= 0) return;
 
-    const normColor = normalizeColor(selectedColorNorm);
+    const normColor = selectedColorNorm ? normalizeColor(selectedColorNorm) : undefined;
 
     dispatch(
       decreaseQty({
         id: String(productId),
         size: String(currentLabel),
-        selectedColor: normColor,
+        selectedColor: normColor ?? "",
         silent: true,
       } as any)
     );
@@ -386,7 +385,7 @@ export default function SizeSelectorDrawer(props: Props) {
         <button
           onClick={() => {
             setSelectedColorNorm(norm); // normalized for matching
-            setSelectedColorRaw(c);     // raw for images/UI
+            setSelectedColorRaw(c); // raw for images/UI
           }}
           className={`w-10 h-10 rounded-full border flex items-center justify-center transition ${
             active ? "ring-2 ring-[#96BD75]" : "border-gray-200"
@@ -427,7 +426,9 @@ export default function SizeSelectorDrawer(props: Props) {
       {/* colors */}
       {Array.isArray(colors) && colors.length > 0 && (
         <div style={{ marginBottom: 12 }}>
-          <Text size="sm" fw={600} mb={6}>Colors</Text>
+          <Text size="sm" fw={600} mb={6}>
+            Colors
+          </Text>
           <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 6 }}>
             {colors.map((c, idx) => renderSwatch(c, idx))}
           </div>
@@ -492,7 +493,9 @@ export default function SizeSelectorDrawer(props: Props) {
       {mode === "Panties" && (
         <div className="mt-2">
           <div className="text-sm font-semibold mb-2">PANTY SIZE (HIP)</div>
-          <div style={{ maxHeight: 220, overflowY: "auto", paddingRight: 6, display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div
+            style={{ maxHeight: 220, overflowY: "auto", paddingRight: 6, display: "flex", gap: 8, flexWrap: "wrap" }}
+          >
             {PANTY_SIZES.map((s) => (
               <button
                 key={s.label}
@@ -516,7 +519,9 @@ export default function SizeSelectorDrawer(props: Props) {
       {currentLabel && (
         <div>
           <div>
-            <Text size="sm" fw={600}>Selected</Text>
+            <Text size="sm" fw={600}>
+              Selected
+            </Text>
             <Text size="sm">
               {currentLabel} {selectedColorRaw ? <span className="text-gray-600">({selectedColorRaw})</span> : null}
             </Text>
@@ -525,12 +530,7 @@ export default function SizeSelectorDrawer(props: Props) {
           <div className="mt-3 w-full">
             {currentQty <= 0 ? (
               <div style={{ width: "100%" }}>
-                <Button
-                  fullWidth
-                  onClick={confirmSize}
-                  disabled={!currentLabel || !selectedColorNorm}
-                  style={{ background: "#96BD75", color: "#fff", borderRadius: 999 }}
-                >
+                <Button fullWidth onClick={confirmSize} style={{ background: "#96BD75", color: "#fff", borderRadius: 999 }}>
                   Add to cart
                 </Button>
               </div>
@@ -542,8 +542,12 @@ export default function SizeSelectorDrawer(props: Props) {
                   </ActionIcon>
 
                   <div style={{ minWidth: 52, textAlign: "center" }}>
-                    <Text size="sm" fw={700}>{currentQty}</Text>
-                    <Text size="xs" c="dimmed">in cart</Text>
+                    <Text size="sm" fw={700}>
+                      {currentQty}
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      in cart
+                    </Text>
                   </div>
 
                   <ActionIcon
@@ -558,7 +562,9 @@ export default function SizeSelectorDrawer(props: Props) {
                 </div>
 
                 <div>
-                  <Text size="xs" c="dimmed">Tap + to add one more of this variant</Text>
+                  <Text size="xs" c="dimmed">
+                    Tap + to add one more of this variant
+                  </Text>
                 </div>
               </div>
             )}
