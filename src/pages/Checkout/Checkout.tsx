@@ -14,7 +14,6 @@ import {
   SimpleGrid,
   SegmentedControl,
   Loader,
-  TextInput,
   Badge,
   Paper,
 } from "@mantine/core";
@@ -35,7 +34,6 @@ import { removeFromCart, clearCart } from "../../redux/features/cartSlice";
 
 // ✅ Vite/ESM-safe persistor loader
 let _persistorCache: any | undefined;
-
 export async function getPersistor(): Promise<any | null> {
   if (_persistorCache !== undefined) return _persistorCache; // cached (can be null)
   try {
@@ -47,20 +45,20 @@ export async function getPersistor(): Promise<any | null> {
   return _persistorCache;
 }
 
-
-// Razorpay config
+// Razorpay config & constants
 const RAZORPAY_KEY_ID = import.meta.env.VITE_RZP_KEY_ID as string;
 const CREATE_ORDER_URL = "/payments/razorpay/order";
 const VERIFY_URL = "/payments/razorpay/verify";
 const SERVER_CREATE_ORDER_URL = "/orders";
 const DELHIVERY_SHIPMENT_URL = "/delhivery/shipment";
+const BASE_URL = window.location.origin; // used in callback_url
 
 // GST percent (5%)
 const GST_PERCENT = 0.05;
 const COD_TOKEN = 100;
 const COD_SHIPPING = 50;
 
-// Colour tokens requested
+// Colour tokens
 const DARK_GREEN = "#133215";
 const LIGHT_GREEN = "#92B775";
 
@@ -69,67 +67,54 @@ const isMobile = () => {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 };
 
-// Enhanced Razorpay options for better UPI support
-const getEnhancedRazorpayOptions = (baseOptions: any) => {
-  const mobile = isMobile();
-  
+// ✅ Enhanced Razorpay options – always force UPI intent + server callback/redirect
+const getEnhancedRazorpayOptions = (baseOptions: any, orderId?: string) => {
   return {
     ...baseOptions,
-    config: {
-      display: {
-        blocks: {
-          upi: {
-            name: 'Pay using UPI Apps',
-            instruments: [
-              {
-                method: 'upi',
-                flows: mobile ? ['intent', 'collect'] : ['collect', 'intent']
-              }
-            ],
-          },
-          card: {
-            name: 'Pay using Cards',
-            instruments: [
-              {
-                method: 'card'
-              }
-            ],
-          },
-          wallet: {
-            name: 'Pay using Wallets',
-            instruments: [
-              {
-                method: 'wallet'
-              }
-            ],
-          },
-        },
-        hide: [],
-        sequence: ['block.upi', 'block.card', 'block.wallet'],
-        preferences: {
-          show_default_blocks: true,
-        },
-      },
-    },
+
+    // For UPI intent flows (GPay/PhonePe), the handler is unreliable after app switch.
+    // Use redirect + server callback, then redirect back to the frontend.
+    redirect: true,
+    callback_url: `${BASE_URL}/payments/razorpay/callback?order_id=${orderId ?? ""}`,
+
+    // Keep all methods; force UPI intent for reliability with apps
     method: {
-      upi: {
-        flow: mobile ? 'intent' : 'collect'  // Use intent flow on mobile for better app integration
-      },
+      upi: true,
       card: true,
       wallet: true,
       netbanking: true,
     },
+    upi: {
+      flow: "intent",
+    },
+
+    config: {
+      display: {
+        blocks: {
+          upi: {
+            name: "Pay using UPI Apps",
+            instruments: [{ method: "upi", flows: ["intent"] }],
+          },
+          card: { name: "Pay using Cards", instruments: [{ method: "card" }] },
+          wallet: { name: "Pay using Wallets", instruments: [{ method: "wallet" }] },
+        },
+        hide: [],
+        sequence: ["block.upi", "block.card", "block.wallet"],
+        preferences: { show_default_blocks: true },
+      },
+    },
+
     modal: {
-      ondismiss: function() {
-        console.log('Payment modal was closed by user');
+      ondismiss() {
+        console.log("Payment modal was closed by user");
       },
       escape: true,
-      backdrop_close: false
+      backdrop_close: false,
     },
     retry: {
       enabled: true,
-      max_count: 3
-    }
+      max_count: 3,
+    },
   };
 };
 
@@ -184,7 +169,7 @@ function CheckoutItemBox({
         </Box>
 
         <Stack gap={6} style={{ flex: 1, minWidth: 0 }}>
-          <Group position="apart" align="flex-start">
+          <Group justify="space-between" align="flex-start">
             <Text fw={600} size="sm" lineClamp={2}>
               {item.title}
             </Text>
@@ -231,7 +216,7 @@ function CheckoutItemBox({
 
           {item.raw?.buy3For999 && (
             <Paper radius="sm" p="xs" style={{ backgroundColor: "#f3fbf4" }}>
-              <Group spacing="xs">
+              <Group gap={6}>
                 <Text size="sm" style={{ color: DARK_GREEN }}>✓</Text>
                 <Text size="sm" style={{ color: DARK_GREEN }}>Buy 3 For 999</Text>
                 <Text size="xs" c="dimmed">({item.qty} Qty)</Text>
@@ -241,7 +226,7 @@ function CheckoutItemBox({
         </Stack>
       </Group>
 
-      {/* Promo hint full width, after product row */}
+      {/* Promo hint */}
       {showPromoHint && promo && (
         <Paper
           radius="sm"
@@ -470,11 +455,26 @@ export default function Checkout() {
     updateLineQuantity(item, 0);
   };
 
+  const ensureAuthAndAddress = () => {
+    const flatUserAddress = reduxAddress ?? storedUserAddress ?? null;
+    if (!flatUserAddress) {
+      showNotification({
+        title: "Address required",
+        message: "Add your address in account before checkout",
+        color: "yellow",
+        icon: <IconInfoCircle size={16} />,
+      });
+      navigate("/account");
+      return false;
+    }
+    return true;
+  };
+
   const handleClearCart = async () => {
     if (!items?.length) return;
     const itemsToClear = [...items];
 
-     dispatch(clearCart());
+    dispatch(clearCart());
 
     try {
       setLoading(true);
@@ -492,21 +492,22 @@ export default function Checkout() {
       );
 
       // 2) Redux: clear slice + purge persisted storage so it doesn't rehydrate
-        try {
-          const p = await getPersistor();
-          if (p?.purge) {
-            await p.purge();
-          }
-        } catch (e) {
-          console.warn("Persistor purge failed:", e);
+      try {
+        const p = await getPersistor();
+        if (p?.purge) {
+          await p.purge();
         }
-
+      } catch (e) {
+        console.warn("Persistor purge failed:", e);
+      }
 
       // Optional hard fallback if persistor import isn't available
       try {
         localStorage.removeItem("persist:root");
         localStorage.removeItem("persist:cart");
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
 
       // 3) Refresh from server (authoritative)
       await fetchCart();
@@ -526,13 +527,16 @@ export default function Checkout() {
         icon: <IconX size={16} />,
       });
 
-      // still attempt to clear local redux state
+      // still attempt to clear local redux state (✅ fix: use getPersistor here, not undefined persistor)
       try {
         dispatch(clearCart());
-        if (persistor?.purge) await persistor.purge();
+        const p = await getPersistor();
+        if (p?.purge) await p.purge();
         localStorage.removeItem("persist:root");
         localStorage.removeItem("persist:cart");
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     } finally {
       setLoading(false);
     }
@@ -561,8 +565,8 @@ export default function Checkout() {
     const gstRaw = discountedBase * GST_PERCENT;
     const gstComputed = Math.round(gstRaw);
     const shipping = paymentMethod === "COD" && items?.length ? COD_SHIPPING : 0;
-    let grandTotalComputed = Math.round(discountedBase + gstComputed + shipping);
-    let savingsPercentComputed =
+    const grandTotalComputed = Math.round(discountedBase + gstComputed + shipping);
+    const savingsPercentComputed =
       localSubtotal > 0 ? Math.round((totalDiscounts / localSubtotal) * 100) : 0;
 
     if (savedScheme && savedScheme.isDiscountApplicable) {
@@ -570,9 +574,7 @@ export default function Checkout() {
       const sMinus = Number(savedScheme.minusValue ?? 0);
       const sFinal = Number(savedScheme.finalAmount ?? 0);
       const sGst = Math.round(Number(savedScheme.gst ?? 0));
-      const effectiveFinal = Math.round(
-        sFinal + (paymentMethod === "COD" ? COD_SHIPPING : 0)
-      );
+      const effectiveFinal = Math.round(sFinal + (paymentMethod === "COD" ? COD_SHIPPING : 0));
 
       return {
         subtotal: Math.round(sTotalSales),
@@ -600,12 +602,8 @@ export default function Checkout() {
 
   const promo = useMemo(() => {
     if (savedScheme && typeof savedScheme.isDiscountApplicable !== "undefined") {
-      const threshold = Number(
-        savedScheme.couponAmount ?? savedScheme.totalSalesPrice ?? 0
-      );
-      const discountPercent = Number(
-        savedScheme.discountvalue ?? savedScheme.couponOfferDiscount ?? 0
-      );
+      const threshold = Number(savedScheme.couponAmount ?? savedScheme.totalSalesPrice ?? 0);
+      const discountPercent = Number(savedScheme.discountvalue ?? savedScheme.couponOfferDiscount ?? 0);
       const applied = Boolean(savedScheme.isDiscountApplicable);
       if (threshold > 0 && discountPercent > 0) return { threshold, discountPercent, applied };
       return null;
@@ -613,12 +611,8 @@ export default function Checkout() {
 
     for (const it of items) {
       const raw = it.raw ?? {};
-      const threshold = Number(
-        raw.couponDiscount ?? raw.couponAmount ?? raw.coupon_threshold ?? 0
-      );
-      const discountPercent = Number(
-        raw.couponOfferDiscount ?? raw.discountvalue ?? raw.couponPercent ?? 0
-      );
+      const threshold = Number(raw.couponDiscount ?? raw.couponAmount ?? raw.coupon_threshold ?? 0);
+      const discountPercent = Number(raw.couponOfferDiscount ?? raw.discountvalue ?? raw.couponPercent ?? 0);
       const applied = Boolean(raw.isDiscountApplicable ?? false);
       if (threshold > 0 && discountPercent > 0) {
         return { threshold, discountPercent, applied };
@@ -629,22 +623,6 @@ export default function Checkout() {
   }, [savedScheme, items]);
 
   const flatUserAddress = reduxAddress ?? storedUserAddress ?? null;
-
-  const ensureAuthAndAddress = () => {
-    if (!flatUserAddress) {
-      showNotification({
-        title: "Address required",
-        message: "Add your address in account before checkout",
-        color: "yellow",
-        icon: <IconInfoCircle size={16} />,
-      });
-      // Navigate and scroll into view to make it obvious
-      navigate("/account");
-      return false;
-    }
-    return true;
-  };
-
 
   const applyCoupon = () => {
     const code = (couponCode || "").trim().toUpperCase();
@@ -854,20 +832,26 @@ export default function Checkout() {
         (reduxUser?.mobile ?? reduxUser?.phone ?? user?.mobile ?? user?.phone) ||
         "9000000000";
 
-      const rzpOptions = getEnhancedRazorpayOptions({
-        key: RAZORPAY_KEY_ID,
-        amount: order.amount,
-        currency: order.currency,
-        name: "TO IMPRESS",
-        description: "Order Payment",
-        order_id: order.id,
-        prefill: { name: prefillName, email: prefillEmail, contact: prefillContact },
-        notes: { cartItems: String(items.length), source: "web_checkout_full" },
-        theme: { color: DARK_GREEN },
-      });
+      const rzpOptions = getEnhancedRazorpayOptions(
+        {
+          key: RAZORPAY_KEY_ID,
+          amount: order.amount,
+          currency: order.currency,
+          name: "TO IMPRESS",
+          description: "Order Payment",
+          order_id: order.id,
+          prefill: { name: prefillName, email: prefillEmail, contact: prefillContact },
+          notes: { cartItems: String(items.length), source: "web_checkout_full" },
+          theme: { color: DARK_GREEN },
+        },
+        order.id // ✅ ensure callback_url contains this orderId
+      );
 
       const rzp = new (window as any).Razorpay({
         ...rzpOptions,
+
+        // Note: for UPI intent, Razorpay will redirect via callback_url (handler won't run).
+        // For card/netbanking or collect flow, handler still works.
         handler: async (resp: any) => {
           try {
             const { data: verify } = await axiosInstance.post(VERIFY_URL, resp);
@@ -958,40 +942,46 @@ export default function Checkout() {
         const errorCode = e?.error?.code;
         const errorDescription = e?.error?.description;
         const errorReason = e?.error?.reason;
-        
+
         let userFriendlyMessage = "Payment failed. Please try again.";
-        
-        // Handle specific UPI errors
-        if (errorCode === 'BAD_REQUEST_ERROR') {
-          if (errorDescription?.toLowerCase().includes('upi')) {
-            userFriendlyMessage = "UPI payment failed. Please try with a different UPI app or use Card/Wallet payment.";
+
+        if (errorCode === "BAD_REQUEST_ERROR") {
+          if (errorDescription?.toLowerCase().includes("upi")) {
+            userFriendlyMessage =
+              "UPI payment failed. Please try with a different UPI app or use Card/Wallet payment.";
           }
-        } else if (errorCode === 'GATEWAY_ERROR') {
+        } else if (errorCode === "GATEWAY_ERROR") {
           userFriendlyMessage = "Payment gateway error. Please try again or use a different payment method.";
-        } else if (errorCode === 'NETWORK_ERROR') {
+        } else if (errorCode === "NETWORK_ERROR") {
           userFriendlyMessage = "Network error. Please check your connection and try again.";
-        } else if (errorReason === 'payment_cancelled') {
+        } else if (errorReason === "payment_cancelled") {
           userFriendlyMessage = "Payment was cancelled. You can try again when ready.";
-        } else if (errorDescription?.toLowerCase().includes('timeout')) {
+        } else if (errorDescription?.toLowerCase().includes("timeout")) {
           userFriendlyMessage = "Payment timed out. Please check your UPI app and try again.";
-        } else if (errorDescription?.toLowerCase().includes('insufficient')) {
+        } else if (errorDescription?.toLowerCase().includes("insufficient")) {
           userFriendlyMessage = "Insufficient balance. Please check your account balance and try again.";
         }
-        
+
         showNotification({
           title: "Payment Failed",
           message: userFriendlyMessage,
           color: "red",
           icon: <IconX size={16} />,
         });
-        
-        // Log error details for debugging
-        console.error('Detailed payment error:', {
+
+        console.error("Detailed payment error:", {
           code: errorCode,
           description: errorDescription,
           reason: errorReason,
-          fullError: e
+          fullError: e,
         });
+      });
+
+      showNotification({
+        title: "Opening your UPI app",
+        message: "If Google Pay / PhonePe opens, complete the payment and you'll be redirected back.",
+        color: "green",
+        icon: <IconCheck size={16} />,
       });
 
       rzp.open();
@@ -1101,14 +1091,13 @@ export default function Checkout() {
           color: "green",
           icon: <IconCheck size={16} />,
         });
-         setTimeout(() => {
-                navigate("/order-success", { state: { order: createdOrder } });
-              }, 2000);
+        setTimeout(() => {
+          navigate("/order-success", { state: { order: createdOrder } });
+        }, 2000);
         return;
       }
 
       setPayLoading(true);
-      
 
       const tokenPaise = Math.round(tokenToCollect * 100);
       const { data: order } = await axiosInstance.post(CREATE_ORDER_URL, {
@@ -1126,20 +1115,25 @@ export default function Checkout() {
         (reduxUser?.mobile ?? reduxUser?.phone ?? user?.mobile ?? user?.phone) ||
         "9000000000";
 
-      const rzpOptions = getEnhancedRazorpayOptions({
-        key: RAZORPAY_KEY_ID,
-        amount: order.amount,
-        currency: order.currency,
-        name: "TO IMPRESS",
-        description: `COD token - ₹${tokenToCollect}`,
-        order_id: order.id,
-        prefill: { name: prefillName, email: prefillEmail, contact: prefillContact },
-        notes: { cartItems: String(items.length), source: "web_cod_token" },
-        theme: { color: DARK_GREEN },
-      });
+      const rzpOptions = getEnhancedRazorpayOptions(
+        {
+          key: RAZORPAY_KEY_ID,
+          amount: order.amount,
+          currency: order.currency,
+          name: "TO IMPRESS",
+          description: `COD token - ₹${tokenToCollect}`,
+          order_id: order.id,
+          prefill: { name: prefillName, email: prefillEmail, contact: prefillContact },
+          notes: { cartItems: String(items.length), source: "web_cod_token" },
+          theme: { color: DARK_GREEN },
+        },
+        order.id
+      );
 
       const rzp = new (window as any).Razorpay({
         ...rzpOptions,
+
+        // For UPI intent this will be bypassed via callback_url.
         handler: async (resp: any) => {
           try {
             const { data: verify } = await axiosInstance.post(VERIFY_URL, resp);
@@ -1237,40 +1231,46 @@ export default function Checkout() {
         const errorCode = e?.error?.code;
         const errorDescription = e?.error?.description;
         const errorReason = e?.error?.reason;
-        
+
         let userFriendlyMessage = "Token payment failed. Please try again.";
-        
-        // Handle specific UPI errors
-        if (errorCode === 'BAD_REQUEST_ERROR') {
-          if (errorDescription?.toLowerCase().includes('upi')) {
-            userFriendlyMessage = "UPI payment failed. Please try with a different UPI app or use Card/Wallet payment.";
+
+        if (errorCode === "BAD_REQUEST_ERROR") {
+          if (errorDescription?.toLowerCase().includes("upi")) {
+            userFriendlyMessage =
+              "UPI payment failed. Please try with a different UPI app or use Card/Wallet payment.";
           }
-        } else if (errorCode === 'GATEWAY_ERROR') {
+        } else if (errorCode === "GATEWAY_ERROR") {
           userFriendlyMessage = "Payment gateway error. Please try again or use a different payment method.";
-        } else if (errorCode === 'NETWORK_ERROR') {
+        } else if (errorCode === "NETWORK_ERROR") {
           userFriendlyMessage = "Network error. Please check your connection and try again.";
-        } else if (errorReason === 'payment_cancelled') {
+        } else if (errorReason === "payment_cancelled") {
           userFriendlyMessage = "Token payment was cancelled. You can try again when ready.";
-        } else if (errorDescription?.toLowerCase().includes('timeout')) {
+        } else if (errorDescription?.toLowerCase().includes("timeout")) {
           userFriendlyMessage = "Payment timed out. Please check your UPI app and try again.";
-        } else if (errorDescription?.toLowerCase().includes('insufficient')) {
+        } else if (errorDescription?.toLowerCase().includes("insufficient")) {
           userFriendlyMessage = "Insufficient balance. Please check your account balance and try again.";
         }
-        
+
         showNotification({
           title: "Token Payment Failed",
           message: userFriendlyMessage,
           color: "red",
           icon: <IconX size={16} />,
         });
-        
-        // Log error details for debugging
-        console.error('Detailed token payment error:', {
+
+        console.error("Detailed token payment error:", {
           code: errorCode,
           description: errorDescription,
           reason: errorReason,
-          fullError: e
+          fullError: e,
         });
+      });
+
+      showNotification({
+        title: "Opening your UPI app",
+        message: "If Google Pay / PhonePe opens, complete the token payment and you'll be redirected back.",
+        color: "green",
+        icon: <IconCheck size={16} />,
       });
 
       rzp.open();
@@ -1283,24 +1283,27 @@ export default function Checkout() {
   };
 
   // Fallback to localStorage if Redux hasn't hydrated on mobile
-useEffect(() => {
-  if (!reduxAddress && !storedUserAddress) {
-    try {
-      const raw = localStorage.getItem("userAddress");
-      if (raw) setStoredUserAddress(JSON.parse(raw));
-    } catch {/* ignore */}
-  }
-}, [reduxAddress, storedUserAddress]);
+  useEffect(() => {
+    if (!reduxAddress && !storedUserAddress) {
+      try {
+        const raw = localStorage.getItem("userAddress");
+        if (raw) setStoredUserAddress(JSON.parse(raw));
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [reduxAddress, storedUserAddress]);
 
-useEffect(() => {
-  if (!reduxUser && !user) {
-    try {
-      const raw = localStorage.getItem("user");
-      if (raw) setUser(JSON.parse(raw));
-    } catch {/* ignore */}
-  }
-}, [reduxUser, user]);
-
+  useEffect(() => {
+    if (!reduxUser && !user) {
+      try {
+        const raw = localStorage.getItem("user");
+        if (raw) setUser(JSON.parse(raw));
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [reduxUser, user]);
 
   return (
     <div>
@@ -1360,24 +1363,24 @@ useEffect(() => {
               </Grid.Col>
 
               <Grid.Col span={{ base: 12, md: 5 }} mb={120}>
-                  <Card
-                    withBorder
-                    p="lg"
-                    radius="md"
-                    styles={{
-                      root: {
-                        [`@media (min-width: 1024px)`]: {
-                          position: "sticky",
-                          top: 16,
-                          maxHeight: "calc(100vh - 32px)",
-                          overflow: "auto",
-                        },
+                <Card
+                  withBorder
+                  p="lg"
+                  radius="md"
+                  styles={{
+                    root: {
+                      ["@media (min-width: 1024px)"]: {
+                        position: "sticky",
+                        top: 16,
+                        maxHeight: "calc(100vh - 32px)",
+                        overflow: "auto",
                       },
-                    }}
-                  >
+                    },
+                  }}
+                >
                   <Text fw={700} mb="md">Order Summary</Text>
 
-                   <Stack gap="xs" mb="md">
+                  <Stack gap="xs" mb="md">
                     <Group justify="space-between" align="flex-start">
                       <Text size="sm" fw={600}>Shipping to</Text>
                       <Button
@@ -1390,52 +1393,52 @@ useEffect(() => {
                       </Button>
                     </Group>
 
-                      {flatUserAddress ? (
-                        <Paper radius="md" p="sm" withBorder>
-                          <Stack gap={2}>
-                            <Text size="sm" fw={600}>{flatUserAddress.name || "Customer"}</Text>
-                            {flatUserAddress.email ? (
-                              <Text size="xs" c="dimmed">{flatUserAddress.email}</Text>
-                            ) : null}
-                            <Text size="xs" c="dimmed">
-                              {[
-                                flatUserAddress.line1,
-                                flatUserAddress.line2,
-                                flatUserAddress.city,
-                                flatUserAddress.state,
-                                flatUserAddress.country,
-                              ]
-                                .filter(Boolean)
-                                .join(", ")}
-                              {flatUserAddress.pincode ? ` - ${flatUserAddress.pincode}` : ""}
-                            </Text>
-                            {flatUserAddress.phone ? (
-                              <Text size="xs" c="dimmed">Phone: +91 {flatUserAddress.phone}</Text>
-                            ) : null}
-                            {flatUserAddress.landmark ? (
-                              <Text size="xs" c="dimmed">Landmark: {flatUserAddress.landmark}</Text>
-                            ) : null}
-                          </Stack>
-                        </Paper>
-                      ) : (
-                        <Paper radius="md" p="sm" withBorder>
-                          <Stack gap={6}>
-                            <Text size="sm" c="dimmed">No address found.</Text>
-                            <Button
-                              size="xs"
-                              onClick={() => navigate("/account")}
-                              sx={{
-                                backgroundColor: DARK_GREEN,
-                                color: "#fff",
-                                "&:hover": { backgroundColor: "#0f2a12" },
-                                alignSelf: "flex-start",
-                              }}
-                            >
-                              Add Address
-                            </Button>
-                          </Stack>
-                        </Paper>
-                      )}
+                    {flatUserAddress ? (
+                      <Paper radius="md" p="sm" withBorder>
+                        <Stack gap={2}>
+                          <Text size="sm" fw={600}>{flatUserAddress.name || "Customer"}</Text>
+                          {flatUserAddress.email ? (
+                            <Text size="xs" c="dimmed">{flatUserAddress.email}</Text>
+                          ) : null}
+                          <Text size="xs" c="dimmed">
+                            {[
+                              flatUserAddress.line1,
+                              flatUserAddress.line2,
+                              flatUserAddress.city,
+                              flatUserAddress.state,
+                              flatUserAddress.country,
+                            ]
+                              .filter(Boolean)
+                              .join(", ")}
+                            {flatUserAddress.pincode ? ` - ${flatUserAddress.pincode}` : ""}
+                          </Text>
+                          {flatUserAddress.phone ? (
+                            <Text size="xs" c="dimmed">Phone: +91 {flatUserAddress.phone}</Text>
+                          ) : null}
+                          {flatUserAddress.landmark ? (
+                            <Text size="xs" c="dimmed">Landmark: {flatUserAddress.landmark}</Text>
+                          ) : null}
+                        </Stack>
+                      </Paper>
+                    ) : (
+                      <Paper radius="md" p="sm" withBorder>
+                        <Stack gap={6}>
+                          <Text size="sm" c="dimmed">No address found.</Text>
+                          <Button
+                            size="xs"
+                            onClick={() => navigate("/account")}
+                            sx={{
+                              backgroundColor: DARK_GREEN,
+                              color: "#fff",
+                              "&:hover": { backgroundColor: "#0f2a12" },
+                              alignSelf: "flex-start",
+                            }}
+                          >
+                            Add Address
+                          </Button>
+                        </Stack>
+                      </Paper>
+                    )}
                   </Stack>
 
                   <Stack gap="xs" mb="sm">
@@ -1533,12 +1536,7 @@ useEffect(() => {
 
                   {/* ✅ COD advance note */}
                   {paymentMethod === "COD" && (
-                    <Paper
-                      radius="sm"
-                      p="xs"
-                      mb="sm"
-                      style={{ backgroundColor: "#f3fbf4" }}
-                    >
+                    <Paper radius="sm" p="xs" mb="sm" style={{ backgroundColor: "#f3fbf4" }}>
                       <Text size="sm" fw={500} style={{ color: DARK_GREEN }}>
                         Note: For COD orders, ₹100 is collected in advance online. The remaining amount is paid on delivery.
                       </Text>
@@ -1546,7 +1544,7 @@ useEffect(() => {
                   )}
 
                   <Paper radius="sm" p="md" style={{ backgroundColor: "#f7fff6" }}>
-                    <Group position="apart" align="center">
+                    <Group justify="space-between" align="center">
                       <div>
                         <Text size="sm" style={{ color: DARK_GREEN }}>
                           Your Savings ₹
@@ -1574,20 +1572,20 @@ useEffect(() => {
             </Grid>
           </Container>
 
-         <Box
-          style={{
-            position: "fixed",
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 2000,              // was 999
-            pointerEvents: "auto",     // make sure it gets the tap
-            borderTop: "1px solid #eee",
-            background: "#fff",
-            padding: "10px 0px",
-            boxShadow: "0 -2px 10px rgba(0,0,0,0.04)",
-          }}
-        >
+          <Box
+            style={{
+              position: "fixed",
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 2000,
+              pointerEvents: "auto",
+              borderTop: "1px solid #eee",
+              background: "#fff",
+              padding: "10px 0px",
+              boxShadow: "0 -2px 10px rgba(0,0,0,0.04)",
+            }}
+          >
             <Container size="lg" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                 <div>
@@ -1602,7 +1600,7 @@ useEffect(() => {
                   </Text>
                   <Text size="xs" c="dimmed">View Price Details</Text>
 
-                  {(savedScheme && savedScheme.isDiscountApplicable) ? (
+                  {savedScheme && savedScheme.isDiscountApplicable ? (
                     <Text size="xs" style={{ color: DARK_GREEN, marginTop: 4 }}>
                       Buy above ₹{Math.round(Number(savedScheme.couponAmount ?? 0))} — flat {savedScheme.discountvalue}% off applied
                     </Text>

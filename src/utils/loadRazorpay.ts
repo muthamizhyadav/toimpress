@@ -1,39 +1,37 @@
+// src/utils/loadRazorpay.ts
 export function loadRazorpay(): Promise<void> {
   return new Promise((resolve, reject) => {
-    // Check if Razorpay is already loaded
+    // Already loaded?
     if ((window as any).Razorpay) return resolve();
-    
-    // Check if script is already added
-    if (document.getElementById('rzp-script')) {
-      // Wait a bit for the script to load
+
+    // Script tag already present? Poll for readiness.
+    const existing = document.getElementById("rzp-script");
+    if (existing) {
       const checkRazorpay = setInterval(() => {
         if ((window as any).Razorpay) {
           clearInterval(checkRazorpay);
           resolve();
         }
       }, 100);
-      
-      // Timeout after 10 seconds
+
       setTimeout(() => {
         clearInterval(checkRazorpay);
-        reject(new Error('Razorpay script loading timeout'));
+        reject(new Error("Razorpay script loading timeout"));
       }, 10000);
-      
+
       return;
     }
-    
-    const s = document.createElement('script');
-    s.id = 'rzp-script';
-    s.src = 'https://checkout.razorpay.com/v1/checkout.js';
+
+    // Fresh script load
+    const s = document.createElement("script");
+    s.id = "rzp-script";
+    s.src = "https://checkout.razorpay.com/v1/checkout.js";
+    s.async = true;
     s.onload = () => {
-      // Double check that Razorpay is actually available
-      if ((window as any).Razorpay) {
-        resolve();
-      } else {
-        reject(new Error('Razorpay object not found after script load'));
-      }
+      if ((window as any).Razorpay) resolve();
+      else reject(new Error("Razorpay object not found after script load"));
     };
-    s.onerror = () => reject(new Error('Failed to load Razorpay script'));
+    s.onerror = () => reject(new Error("Failed to load Razorpay script"));
     document.body.appendChild(s);
   });
 }
