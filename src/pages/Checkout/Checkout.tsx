@@ -64,6 +64,75 @@ const COD_SHIPPING = 50;
 const DARK_GREEN = "#133215";
 const LIGHT_GREEN = "#92B775";
 
+// Device detection utility
+const isMobile = () => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
+
+// Enhanced Razorpay options for better UPI support
+const getEnhancedRazorpayOptions = (baseOptions: any) => {
+  const mobile = isMobile();
+  
+  return {
+    ...baseOptions,
+    config: {
+      display: {
+        blocks: {
+          upi: {
+            name: 'Pay using UPI Apps',
+            instruments: [
+              {
+                method: 'upi',
+                flows: mobile ? ['intent', 'collect'] : ['collect', 'intent']
+              }
+            ],
+          },
+          card: {
+            name: 'Pay using Cards',
+            instruments: [
+              {
+                method: 'card'
+              }
+            ],
+          },
+          wallet: {
+            name: 'Pay using Wallets',
+            instruments: [
+              {
+                method: 'wallet'
+              }
+            ],
+          },
+        },
+        hide: [],
+        sequence: ['block.upi', 'block.card', 'block.wallet'],
+        preferences: {
+          show_default_blocks: true,
+        },
+      },
+    },
+    method: {
+      upi: {
+        flow: mobile ? 'intent' : 'collect'  // Use intent flow on mobile for better app integration
+      },
+      card: true,
+      wallet: true,
+      netbanking: true,
+    },
+    modal: {
+      ondismiss: function() {
+        console.log('Payment modal was closed by user');
+      },
+      escape: true,
+      backdrop_close: false
+    },
+    retry: {
+      enabled: true,
+      max_count: 3
+    }
+  };
+};
+
 type CartItem = {
   id: string;
   productId?: string;
@@ -785,7 +854,7 @@ export default function Checkout() {
         (reduxUser?.mobile ?? reduxUser?.phone ?? user?.mobile ?? user?.phone) ||
         "9000000000";
 
-      const rzp = new (window as any).Razorpay({
+      const rzpOptions = getEnhancedRazorpayOptions({
         key: RAZORPAY_KEY_ID,
         amount: order.amount,
         currency: order.currency,
@@ -795,6 +864,10 @@ export default function Checkout() {
         prefill: { name: prefillName, email: prefillEmail, contact: prefillContact },
         notes: { cartItems: String(items.length), source: "web_checkout_full" },
         theme: { color: DARK_GREEN },
+      });
+
+      const rzp = new (window as any).Razorpay({
+        ...rzpOptions,
         handler: async (resp: any) => {
           try {
             const { data: verify } = await axiosInstance.post(VERIFY_URL, resp);
@@ -882,7 +955,43 @@ export default function Checkout() {
 
       rzp.on("payment.failed", (e: any) => {
         console.error("Payment failed:", e?.error);
-        alert(e?.error?.description || "Payment failed. Please try again.");
+        const errorCode = e?.error?.code;
+        const errorDescription = e?.error?.description;
+        const errorReason = e?.error?.reason;
+        
+        let userFriendlyMessage = "Payment failed. Please try again.";
+        
+        // Handle specific UPI errors
+        if (errorCode === 'BAD_REQUEST_ERROR') {
+          if (errorDescription?.toLowerCase().includes('upi')) {
+            userFriendlyMessage = "UPI payment failed. Please try with a different UPI app or use Card/Wallet payment.";
+          }
+        } else if (errorCode === 'GATEWAY_ERROR') {
+          userFriendlyMessage = "Payment gateway error. Please try again or use a different payment method.";
+        } else if (errorCode === 'NETWORK_ERROR') {
+          userFriendlyMessage = "Network error. Please check your connection and try again.";
+        } else if (errorReason === 'payment_cancelled') {
+          userFriendlyMessage = "Payment was cancelled. You can try again when ready.";
+        } else if (errorDescription?.toLowerCase().includes('timeout')) {
+          userFriendlyMessage = "Payment timed out. Please check your UPI app and try again.";
+        } else if (errorDescription?.toLowerCase().includes('insufficient')) {
+          userFriendlyMessage = "Insufficient balance. Please check your account balance and try again.";
+        }
+        
+        showNotification({
+          title: "Payment Failed",
+          message: userFriendlyMessage,
+          color: "red",
+          icon: <IconX size={16} />,
+        });
+        
+        // Log error details for debugging
+        console.error('Detailed payment error:', {
+          code: errorCode,
+          description: errorDescription,
+          reason: errorReason,
+          fullError: e
+        });
       });
 
       rzp.open();
@@ -1017,7 +1126,7 @@ export default function Checkout() {
         (reduxUser?.mobile ?? reduxUser?.phone ?? user?.mobile ?? user?.phone) ||
         "9000000000";
 
-      const rzp = new (window as any).Razorpay({
+      const rzpOptions = getEnhancedRazorpayOptions({
         key: RAZORPAY_KEY_ID,
         amount: order.amount,
         currency: order.currency,
@@ -1027,6 +1136,10 @@ export default function Checkout() {
         prefill: { name: prefillName, email: prefillEmail, contact: prefillContact },
         notes: { cartItems: String(items.length), source: "web_cod_token" },
         theme: { color: DARK_GREEN },
+      });
+
+      const rzp = new (window as any).Razorpay({
+        ...rzpOptions,
         handler: async (resp: any) => {
           try {
             const { data: verify } = await axiosInstance.post(VERIFY_URL, resp);
@@ -1121,7 +1234,43 @@ export default function Checkout() {
 
       rzp.on("payment.failed", (e: any) => {
         console.error("Token payment failed:", e?.error);
-        alert(e?.error?.description || "Token payment failed. Please try again.");
+        const errorCode = e?.error?.code;
+        const errorDescription = e?.error?.description;
+        const errorReason = e?.error?.reason;
+        
+        let userFriendlyMessage = "Token payment failed. Please try again.";
+        
+        // Handle specific UPI errors
+        if (errorCode === 'BAD_REQUEST_ERROR') {
+          if (errorDescription?.toLowerCase().includes('upi')) {
+            userFriendlyMessage = "UPI payment failed. Please try with a different UPI app or use Card/Wallet payment.";
+          }
+        } else if (errorCode === 'GATEWAY_ERROR') {
+          userFriendlyMessage = "Payment gateway error. Please try again or use a different payment method.";
+        } else if (errorCode === 'NETWORK_ERROR') {
+          userFriendlyMessage = "Network error. Please check your connection and try again.";
+        } else if (errorReason === 'payment_cancelled') {
+          userFriendlyMessage = "Token payment was cancelled. You can try again when ready.";
+        } else if (errorDescription?.toLowerCase().includes('timeout')) {
+          userFriendlyMessage = "Payment timed out. Please check your UPI app and try again.";
+        } else if (errorDescription?.toLowerCase().includes('insufficient')) {
+          userFriendlyMessage = "Insufficient balance. Please check your account balance and try again.";
+        }
+        
+        showNotification({
+          title: "Token Payment Failed",
+          message: userFriendlyMessage,
+          color: "red",
+          icon: <IconX size={16} />,
+        });
+        
+        // Log error details for debugging
+        console.error('Detailed token payment error:', {
+          code: errorCode,
+          description: errorDescription,
+          reason: errorReason,
+          fullError: e
+        });
       });
 
       rzp.open();
