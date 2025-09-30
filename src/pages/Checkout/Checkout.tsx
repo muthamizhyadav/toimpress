@@ -67,33 +67,34 @@ const isMobile = () => {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 };
 
-// ✅ Enhanced Razorpay options – always force UPI intent + server callback/redirect
-const getEnhancedRazorpayOptions = (baseOptions: any, orderId?: string) => {
+// Force reliable in-modal flow: UPI 'collect' (no redirect, no intent)
+const getEnhancedRazorpayOptions = (baseOptions: any) => {
   return {
     ...baseOptions,
 
-    // For UPI intent flows (GPay/PhonePe), the handler is unreliable after app switch.
-    // Use redirect + server callback, then redirect back to the frontend.
-    redirect: true,
-    callback_url: `${BASE_URL}/payments/razorpay/callback?order_id=${orderId ?? ""}`,
+    // ✅ Stay inside modal, do not redirect to callback_url
+    redirect: false,
 
-    // Keep all methods; force UPI intent for reliability with apps
+    // ✅ Methods allowed
     method: {
       upi: true,
       card: true,
       wallet: true,
       netbanking: true,
     },
+
+    // ✅ Critical: force UPI 'collect' (NOT 'intent')
     upi: {
-      flow: "intent",
+      flow: "collect",
     },
 
+    // Optional UI blocks (show UPI first)
     config: {
       display: {
         blocks: {
           upi: {
-            name: "Pay using UPI Apps",
-            instruments: [{ method: "upi", flows: ["intent"] }],
+            name: "Pay using UPI (Enter UPI ID)",
+            instruments: [{ method: "upi", flows: ["collect"] }],
           },
           card: { name: "Pay using Cards", instruments: [{ method: "card" }] },
           wallet: { name: "Pay using Wallets", instruments: [{ method: "wallet" }] },
@@ -111,12 +112,14 @@ const getEnhancedRazorpayOptions = (baseOptions: any, orderId?: string) => {
       escape: true,
       backdrop_close: false,
     },
+
     retry: {
       enabled: true,
       max_count: 3,
     },
   };
 };
+
 
 type CartItem = {
   id: string;
@@ -832,20 +835,18 @@ export default function Checkout() {
         (reduxUser?.mobile ?? reduxUser?.phone ?? user?.mobile ?? user?.phone) ||
         "9000000000";
 
-      const rzpOptions = getEnhancedRazorpayOptions(
-        {
-          key: RAZORPAY_KEY_ID,
-          amount: order.amount,
-          currency: order.currency,
-          name: "TO IMPRESS",
-          description: "Order Payment",
-          order_id: order.id,
-          prefill: { name: prefillName, email: prefillEmail, contact: prefillContact },
-          notes: { cartItems: String(items.length), source: "web_checkout_full" },
-          theme: { color: DARK_GREEN },
-        },
-        order.id // ✅ ensure callback_url contains this orderId
-      );
+      const rzpOptions = getEnhancedRazorpayOptions({
+        key: RAZORPAY_KEY_ID,
+        amount: order.amount,
+        currency: order.currency,
+        name: "TO IMPRESS",
+        description: "Order Payment",
+        order_id: order.id,
+        prefill: { name: prefillName, email: prefillEmail, contact: prefillContact },
+        notes: { cartItems: String(items.length), source: "web_checkout_full" },
+        theme: { color: DARK_GREEN },
+      });
+
 
       const rzp = new (window as any).Razorpay({
         ...rzpOptions,
@@ -1115,8 +1116,7 @@ export default function Checkout() {
         (reduxUser?.mobile ?? reduxUser?.phone ?? user?.mobile ?? user?.phone) ||
         "9000000000";
 
-      const rzpOptions = getEnhancedRazorpayOptions(
-        {
+      const rzpOptions = getEnhancedRazorpayOptions({
           key: RAZORPAY_KEY_ID,
           amount: order.amount,
           currency: order.currency,
@@ -1126,9 +1126,8 @@ export default function Checkout() {
           prefill: { name: prefillName, email: prefillEmail, contact: prefillContact },
           notes: { cartItems: String(items.length), source: "web_cod_token" },
           theme: { color: DARK_GREEN },
-        },
-        order.id
-      );
+        });
+
 
       const rzp = new (window as any).Razorpay({
         ...rzpOptions,
