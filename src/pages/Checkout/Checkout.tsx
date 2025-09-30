@@ -827,7 +827,14 @@ export default function Checkout() {
         notes: { itemCount: String(items.length), paymentType: "FULL" },
       });
 
+     try {
       await loadRazorpay();
+      console.log("✅ Razorpay script is ready, window.Razorpay:", (window as any).Razorpay);
+    } catch (err) {
+      console.error("❌ Failed to load Razorpay script", err);
+      setPayLoading(false);
+      return; // stop payment flow
+    }
 
       const prefillName = (reduxUser?.name ?? user?.name) || "Customer";
       const prefillEmail = (reduxUser?.email ?? user?.email) || "customer@example.com";
@@ -978,12 +985,7 @@ export default function Checkout() {
         });
       });
 
-      showNotification({
-        title: "Opening your UPI app",
-        message: "If Google Pay / PhonePe opens, complete the payment and you'll be redirected back.",
-        color: "green",
-        icon: <IconCheck size={16} />,
-      });
+     
 
       rzp.open();
     } catch (err) {
@@ -1108,7 +1110,15 @@ export default function Checkout() {
         notes: { itemCount: String(items.length), paymentType: "COD_TOKEN" },
       });
 
-      await loadRazorpay();
+      try {
+        await loadRazorpay();
+        console.log("✅ Razorpay script is ready, window.Razorpay:", (window as any).Razorpay);
+      } catch (err) {
+        console.error("❌ Failed to load Razorpay script", err);
+        setPayLoading(false);
+        return; // stop payment flow
+      }
+
 
       const prefillName = (reduxUser?.name ?? user?.name) || "Customer";
       const prefillEmail = (reduxUser?.email ?? user?.email) || "customer@example.com";
@@ -1265,12 +1275,7 @@ export default function Checkout() {
         });
       });
 
-      showNotification({
-        title: "Opening your UPI app",
-        message: "If Google Pay / PhonePe opens, complete the token payment and you'll be redirected back.",
-        color: "green",
-        icon: <IconCheck size={16} />,
-      });
+     
 
       rzp.open();
     } catch (err) {
