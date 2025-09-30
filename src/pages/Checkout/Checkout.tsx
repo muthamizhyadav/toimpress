@@ -14,6 +14,7 @@ import {
   SimpleGrid,
   SegmentedControl,
   Loader,
+  TextInput,
   Badge,
   Paper,
 } from "@mantine/core";
@@ -28,98 +29,35 @@ import { loadRazorpay } from "../../utils/loadRazorpay";
 import { showNotification } from "@mantine/notifications";
 import { IconCheck, IconX } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
-import { API_GET_UPDATE, API_CART } from "../../api/api";
+import { API_GET_UPDATE, API_CART, API_GET_STATUS } from "../../api/api";
 import { useSelector, useDispatch } from "react-redux";
 import { removeFromCart, clearCart } from "../../redux/features/cartSlice";
+import * as storeModule from "../../redux/store";
 
-// ✅ Vite/ESM-safe persistor loader
-let _persistorCache: any | undefined;
-export async function getPersistor(): Promise<any | null> {
-  if (_persistorCache !== undefined) return _persistorCache; // cached (can be null)
-  try {
-    const mod = await import("../../redux/store"); // adjust path if needed
-    _persistorCache = (mod as any)?.persistor ?? null;
-  } catch {
-    _persistorCache = null;
-  }
-  return _persistorCache;
+
+// ✅ Fallback to null if persistor isn't exported
+let persistor: any = null;
+
+if ("persistor" in storeModule) {
+  persistor = (storeModule as any).persistor;
 }
 
-// Razorpay config & constants
+
+// Razorpay config
 const RAZORPAY_KEY_ID = import.meta.env.VITE_RZP_KEY_ID as string;
 const CREATE_ORDER_URL = "/payments/razorpay/order";
 const VERIFY_URL = "/payments/razorpay/verify";
 const SERVER_CREATE_ORDER_URL = "/orders";
 const DELHIVERY_SHIPMENT_URL = "/delhivery/shipment";
-const BASE_URL = window.location.origin; // used in callback_url
 
 // GST percent (5%)
 const GST_PERCENT = 0.05;
 const COD_TOKEN = 100;
 const COD_SHIPPING = 50;
 
-// Colour tokens
+// Colour tokens requested
 const DARK_GREEN = "#133215";
 const LIGHT_GREEN = "#92B775";
-
-// Device detection utility
-const isMobile = () => {
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-};
-
-// Force reliable in-modal flow: UPI 'collect' (no redirect, no intent)
-const getEnhancedRazorpayOptions = (baseOptions: any) => {
-  return {
-    ...baseOptions,
-
-    // ✅ Stay inside modal, do not redirect to callback_url
-    redirect: false,
-
-    // ✅ Methods allowed
-    method: {
-      upi: true,
-      card: true,
-      wallet: true,
-      netbanking: true,
-    },
-
-    // ✅ Critical: force UPI 'collect' (NOT 'intent')
-    upi: {
-      flow: "collect",
-    },
-
-    // Optional UI blocks (show UPI first)
-    config: {
-      display: {
-        blocks: {
-          upi: {
-            name: "Pay using UPI (Enter UPI ID)",
-            instruments: [{ method: "upi", flows: ["collect"] }],
-          },
-          card: { name: "Pay using Cards", instruments: [{ method: "card" }] },
-          wallet: { name: "Pay using Wallets", instruments: [{ method: "wallet" }] },
-        },
-        hide: [],
-        sequence: ["block.upi", "block.card", "block.wallet"],
-        preferences: { show_default_blocks: true },
-      },
-    },
-
-    modal: {
-      ondismiss() {
-        console.log("Payment modal was closed by user");
-      },
-      escape: true,
-      backdrop_close: false,
-    },
-
-    retry: {
-      enabled: true,
-      max_count: 3,
-    },
-  };
-};
-
 
 type CartItem = {
   id: string;
@@ -172,7 +110,7 @@ function CheckoutItemBox({
         </Box>
 
         <Stack gap={6} style={{ flex: 1, minWidth: 0 }}>
-          <Group justify="space-between" align="flex-start">
+          <Group position="apart" align="flex-start">
             <Text fw={600} size="sm" lineClamp={2}>
               {item.title}
             </Text>
@@ -219,7 +157,7 @@ function CheckoutItemBox({
 
           {item.raw?.buy3For999 && (
             <Paper radius="sm" p="xs" style={{ backgroundColor: "#f3fbf4" }}>
-              <Group gap={6}>
+              <Group spacing="xs">
                 <Text size="sm" style={{ color: DARK_GREEN }}>✓</Text>
                 <Text size="sm" style={{ color: DARK_GREEN }}>Buy 3 For 999</Text>
                 <Text size="xs" c="dimmed">({item.qty} Qty)</Text>
@@ -229,7 +167,7 @@ function CheckoutItemBox({
         </Stack>
       </Group>
 
-      {/* Promo hint */}
+      {/* Promo hint full width, after product row */}
       {showPromoHint && promo && (
         <Paper
           radius="sm"
@@ -458,26 +396,11 @@ export default function Checkout() {
     updateLineQuantity(item, 0);
   };
 
-  const ensureAuthAndAddress = () => {
-    const flatUserAddress = reduxAddress ?? storedUserAddress ?? null;
-    if (!flatUserAddress) {
-      showNotification({
-        title: "Address required",
-        message: "Add your address in account before checkout",
-        color: "yellow",
-        icon: <IconInfoCircle size={16} />,
-      });
-      navigate("/account");
-      return false;
-    }
-    return true;
-  };
-
   const handleClearCart = async () => {
     if (!items?.length) return;
     const itemsToClear = [...items];
 
-    dispatch(clearCart());
+     dispatch(clearCart());
 
     try {
       setLoading(true);
@@ -496,21 +419,19 @@ export default function Checkout() {
 
       // 2) Redux: clear slice + purge persisted storage so it doesn't rehydrate
       try {
-        const p = await getPersistor();
-        if (p?.purge) {
-          await p.purge();
+        dispatch(clearCart());
+        if (persistor?.purge) {
+          await persistor.purge();
         }
       } catch (e) {
-        console.warn("Persistor purge failed:", e);
+        console.warn("Redux clearCart/purge failed:", e);
       }
 
       // Optional hard fallback if persistor import isn't available
       try {
         localStorage.removeItem("persist:root");
         localStorage.removeItem("persist:cart");
-      } catch {
-        /* ignore */
-      }
+      } catch { /* ignore */ }
 
       // 3) Refresh from server (authoritative)
       await fetchCart();
@@ -530,16 +451,13 @@ export default function Checkout() {
         icon: <IconX size={16} />,
       });
 
-      // still attempt to clear local redux state (✅ fix: use getPersistor here, not undefined persistor)
+      // still attempt to clear local redux state
       try {
         dispatch(clearCart());
-        const p = await getPersistor();
-        if (p?.purge) await p.purge();
+        if (persistor?.purge) await persistor.purge();
         localStorage.removeItem("persist:root");
         localStorage.removeItem("persist:cart");
-      } catch {
-        /* ignore */
-      }
+      } catch { /* ignore */ }
     } finally {
       setLoading(false);
     }
@@ -568,8 +486,8 @@ export default function Checkout() {
     const gstRaw = discountedBase * GST_PERCENT;
     const gstComputed = Math.round(gstRaw);
     const shipping = paymentMethod === "COD" && items?.length ? COD_SHIPPING : 0;
-    const grandTotalComputed = Math.round(discountedBase + gstComputed + shipping);
-    const savingsPercentComputed =
+    let grandTotalComputed = Math.round(discountedBase + gstComputed + shipping);
+    let savingsPercentComputed =
       localSubtotal > 0 ? Math.round((totalDiscounts / localSubtotal) * 100) : 0;
 
     if (savedScheme && savedScheme.isDiscountApplicable) {
@@ -577,7 +495,9 @@ export default function Checkout() {
       const sMinus = Number(savedScheme.minusValue ?? 0);
       const sFinal = Number(savedScheme.finalAmount ?? 0);
       const sGst = Math.round(Number(savedScheme.gst ?? 0));
-      const effectiveFinal = Math.round(sFinal + (paymentMethod === "COD" ? COD_SHIPPING : 0));
+      const effectiveFinal = Math.round(
+        sFinal + (paymentMethod === "COD" ? COD_SHIPPING : 0)
+      );
 
       return {
         subtotal: Math.round(sTotalSales),
@@ -605,8 +525,12 @@ export default function Checkout() {
 
   const promo = useMemo(() => {
     if (savedScheme && typeof savedScheme.isDiscountApplicable !== "undefined") {
-      const threshold = Number(savedScheme.couponAmount ?? savedScheme.totalSalesPrice ?? 0);
-      const discountPercent = Number(savedScheme.discountvalue ?? savedScheme.couponOfferDiscount ?? 0);
+      const threshold = Number(
+        savedScheme.couponAmount ?? savedScheme.totalSalesPrice ?? 0
+      );
+      const discountPercent = Number(
+        savedScheme.discountvalue ?? savedScheme.couponOfferDiscount ?? 0
+      );
       const applied = Boolean(savedScheme.isDiscountApplicable);
       if (threshold > 0 && discountPercent > 0) return { threshold, discountPercent, applied };
       return null;
@@ -614,8 +538,12 @@ export default function Checkout() {
 
     for (const it of items) {
       const raw = it.raw ?? {};
-      const threshold = Number(raw.couponDiscount ?? raw.couponAmount ?? raw.coupon_threshold ?? 0);
-      const discountPercent = Number(raw.couponOfferDiscount ?? raw.discountvalue ?? raw.couponPercent ?? 0);
+      const threshold = Number(
+        raw.couponDiscount ?? raw.couponAmount ?? raw.coupon_threshold ?? 0
+      );
+      const discountPercent = Number(
+        raw.couponOfferDiscount ?? raw.discountvalue ?? raw.couponPercent ?? 0
+      );
       const applied = Boolean(raw.isDiscountApplicable ?? false);
       if (threshold > 0 && discountPercent > 0) {
         return { threshold, discountPercent, applied };
@@ -626,6 +554,22 @@ export default function Checkout() {
   }, [savedScheme, items]);
 
   const flatUserAddress = reduxAddress ?? storedUserAddress ?? null;
+
+  const ensureAuthAndAddress = () => {
+    if (!flatUserAddress) {
+      showNotification({
+        title: "Address required",
+        message: "Add your address in account before checkout",
+        color: "yellow",
+        icon: <IconInfoCircle size={16} />,
+      });
+      // Navigate and scroll into view to make it obvious
+      navigate("/account");
+      return false;
+    }
+    return true;
+  };
+
 
   const applyCoupon = () => {
     const code = (couponCode || "").trim().toUpperCase();
@@ -716,6 +660,7 @@ export default function Checkout() {
     if (token) headers.authorization = `Bearer ${token}`;
 
     const resp = await axiosInstance.post(SERVER_CREATE_ORDER_URL, payload, { headers });
+    await loadRazorpay();
     return resp.data ?? resp;
   }
 
@@ -797,517 +742,460 @@ export default function Checkout() {
   }
 
   const onPayNow = async () => {
-    if (!ensureAuthAndAddress()) return;
-    try {
-      if (!items?.length) {
-        showNotification({
-          title: "Cart empty",
-          message: "Add items to proceed",
-          color: "yellow",
-          icon: <IconX size={16} />,
-        });
-        return;
-      }
+  if (!ensureAuthAndAddress()) return;
 
-      const baseFinal =
-        savedScheme && savedScheme.isDiscountApplicable
-          ? Number(savedScheme.finalAmount ?? totals.grandTotal)
-          : totals.grandTotal;
-      const amountToCollect = Math.round(baseFinal);
-
-      const amountPaise = Math.round(amountToCollect * 100);
-      if (amountPaise <= 0) return;
-
-      setPayLoading(true);
-
-      const { data: order } = await axiosInstance.post(CREATE_ORDER_URL, {
-        amount: amountPaise,
-        currency: "INR",
-        receipt: "rcpt_" + Date.now(),
-        notes: { itemCount: String(items.length), paymentType: "FULL" },
+  setPayLoading(true);
+  try {
+    if (!items?.length) {
+      showNotification({
+        title: "Cart empty",
+        message: "Add items to proceed",
+        color: "yellow",
+        icon: <IconX size={16} />,
       });
-
-     try {
-      await loadRazorpay();
-      console.log("✅ Razorpay script is ready, window.Razorpay:", (window as any).Razorpay);
-    } catch (err) {
-      console.error("❌ Failed to load Razorpay script", err);
-      setPayLoading(false);
-      return; // stop payment flow
+      return;
     }
 
-      const prefillName = (reduxUser?.name ?? user?.name) || "Customer";
-      const prefillEmail = (reduxUser?.email ?? user?.email) || "customer@example.com";
-      const prefillContact =
-        (reduxUser?.mobile ?? reduxUser?.phone ?? user?.mobile ?? user?.phone) ||
-        "9000000000";
+    // Compute amount
+    const baseFinal =
+      savedScheme && savedScheme.isDiscountApplicable
+        ? Number(savedScheme.finalAmount ?? totals.grandTotal)
+        : totals.grandTotal;
 
-      const rzpOptions = getEnhancedRazorpayOptions({
-        key: RAZORPAY_KEY_ID,
-        amount: order.amount,
-        currency: order.currency,
-        name: "TO IMPRESS",
-        description: "Order Payment",
-        order_id: order.id,
-        prefill: { name: prefillName, email: prefillEmail, contact: prefillContact },
-        notes: { cartItems: String(items.length), source: "web_checkout_full" },
-        theme: { color: DARK_GREEN },
+    const amountToCollect = Math.max(0, Math.round(baseFinal));
+    const amountPaise = amountToCollect * 100;
+    if (amountPaise <= 0) {
+      showNotification({
+        title: "Invalid amount",
+        message: "Amount must be greater than 0.",
+        color: "red",
+        icon: <IconX size={16} />,
       });
+      return;
+    }
 
+    // Create RZP order on server
+    const { data: order } = await axiosInstance.post(CREATE_ORDER_URL, {
+      amount: amountPaise,
+      currency: "INR",
+      receipt: "rcpt_" + Date.now(),
+      notes: { itemCount: String(items.length), paymentType: "FULL" },
+    });
 
-      const rzp = new (window as any).Razorpay({
-        ...rzpOptions,
+    if (!order?.id || !order?.amount) {
+      console.error("Invalid Razorpay order:", order);
+      showNotification({
+        title: "Payment error",
+        message: "Couldn't initialize payment. Please try again.",
+        color: "red",
+        icon: <IconX size={16} />,
+      });
+      return;
+    }
 
-        // Note: for UPI intent, Razorpay will redirect via callback_url (handler won't run).
-        // For card/netbanking or collect flow, handler still works.
-        handler: async (resp: any) => {
+    // (Optional) check receipt status
+    try {
+      const { data: receiptCheck } = await axiosInstance.get(`${API_GET_STATUS}${order.receipt}`);
+      console.log("Receipt status:", receiptCheck);
+    } catch (e) {
+      console.warn("Receipt status check failed (non-blocking):", e);
+    }
+
+    // Ensure SDK is ready, then open checkout
+    await loadRazorpay();
+
+    const prefillName = (reduxUser?.name ?? user?.name) || "Customer";
+    const prefillEmail = (reduxUser?.email ?? user?.email) || "customer@example.com";
+    const prefillContact =
+      (reduxUser?.mobile ?? reduxUser?.phone ?? user?.mobile ?? user?.phone) || "9000000000";
+
+    const rzp = new (window as any).Razorpay({
+      key: RAZORPAY_KEY_ID,
+      amount: order.amount,
+      currency: order.currency,
+      name: "TO IMPRESS",
+      description: "Order Payment",
+      order_id: order.id,
+      prefill: { name: prefillName, email: prefillEmail, contact: prefillContact },
+      notes: { cartItems: String(items.length), source: "web_checkout_full" },
+      theme: { color: DARK_GREEN },
+      handler: async (resp: any) => {
+        // 👉 Log the Razorpay PAYMENT RESPONSE (not the script)
+        console.log("Razorpay payment success:", resp);
+
+        try {
+          const { data: verify } = await axiosInstance.post(VERIFY_URL, resp);
+          if (!verify?.valid) {
+            alert("Payment verification failed.");
+            return;
+          }
+
+          let createdOrder: any = null;
           try {
-            const { data: verify } = await axiosInstance.post(VERIFY_URL, resp);
-            if (verify?.valid) {
-              let createdOrder: any = null;
-              try {
-                createdOrder = await createOrderHistory({
-                  items,
-                  shippingAddress: flatUserAddress,
-                  billingAddress: flatUserAddress,
-                  paymentMethod: "online",
-                  notes: "",
-                  shippingCost: totals.shipping,
-                  tax: totals.gst,
-                  discount: totals.totalDiscounts,
-                  meta: {
-                    razorpay: resp,
-                    savedScheme:
-                      savedScheme && savedScheme.isDiscountApplicable ? savedScheme : null,
-                  },
-                });
-              } catch (orderErr) {
-                console.error("Order history creation failed:", orderErr);
-                showNotification({
-                  title: "Order saved partially",
-                  message:
-                    "Payment succeeded but we couldn't save order history. Contact support if needed.",
-                  color: "yellow",
-                  icon: <IconInfoCircle size={16} />,
-                });
-              }
-
-              try {
-                const serverOrderId =
-                  createdOrder?.data?.id ||
-                  createdOrder?.id ||
-                  createdOrder?.orderNumber ||
-                  createdOrder?.orderId ||
-                  (createdOrder &&
-                    (createdOrder.data?.orderNumber || createdOrder.data?.orderId)) ||
-                  `ORDER${Date.now()}`;
-
-                if (serverOrderId) {
-                  await createDelhiveryShipment({
-                    orderNumber: String(serverOrderId),
-                    items,
-                    address: flatUserAddress,
-                    paymentMethod: "online",
-                    totalsLocal: totals,
-                    meta: { createdOrder },
-                  });
-                  showNotification({
-                    title: "Shipment created",
-                    message: "Shipment created successfully with Delhivery.",
-                    color: "green",
-                    icon: <IconCheck size={16} />,
-                  });
-                }
-              } catch (shipErr) {
-                console.error("Delhivery shipment creation failed:", shipErr);
-                showNotification({
-                  title: "Shipment creation failed",
-                  message:
-                    "Order was created but shipment creation failed. Support will assist.",
-                  color: "yellow",
-                  icon: <IconInfoCircle size={16} />,
-                });
-              }
-
-              await handleClearCart();
-              setTimeout(() => {
-                navigate("/order-success", { state: { order: createdOrder } });
-              }, 2000);
-            } else {
-              alert("Payment verification failed.");
-            }
-          } catch (e) {
-            console.error("Verification/create shipment error:", e);
-            alert(
-              "Payment succeeded but verification or shipment creation failed. Please contact support."
-            );
-          }
-        },
-      });
-
-      rzp.on("payment.failed", (e: any) => {
-        console.error("Payment failed:", e?.error);
-        const errorCode = e?.error?.code;
-        const errorDescription = e?.error?.description;
-        const errorReason = e?.error?.reason;
-
-        let userFriendlyMessage = "Payment failed. Please try again.";
-
-        if (errorCode === "BAD_REQUEST_ERROR") {
-          if (errorDescription?.toLowerCase().includes("upi")) {
-            userFriendlyMessage =
-              "UPI payment failed. Please try with a different UPI app or use Card/Wallet payment.";
-          }
-        } else if (errorCode === "GATEWAY_ERROR") {
-          userFriendlyMessage = "Payment gateway error. Please try again or use a different payment method.";
-        } else if (errorCode === "NETWORK_ERROR") {
-          userFriendlyMessage = "Network error. Please check your connection and try again.";
-        } else if (errorReason === "payment_cancelled") {
-          userFriendlyMessage = "Payment was cancelled. You can try again when ready.";
-        } else if (errorDescription?.toLowerCase().includes("timeout")) {
-          userFriendlyMessage = "Payment timed out. Please check your UPI app and try again.";
-        } else if (errorDescription?.toLowerCase().includes("insufficient")) {
-          userFriendlyMessage = "Insufficient balance. Please check your account balance and try again.";
-        }
-
-        showNotification({
-          title: "Payment Failed",
-          message: userFriendlyMessage,
-          color: "red",
-          icon: <IconX size={16} />,
-        });
-
-        console.error("Detailed payment error:", {
-          code: errorCode,
-          description: errorDescription,
-          reason: errorReason,
-          fullError: e,
-        });
-      });
-
-     
-
-      rzp.open();
-    } catch (err) {
-      console.error(err);
-      alert("Unable to start payment. Please try again.");
-    } finally {
-      setPayLoading(false);
-    }
-  };
-
-  const onPlaceCOD = async () => {
-    if (!ensureAuthAndAddress()) return;
-    try {
-      if (!items?.length) {
-        showNotification({
-          title: "Cart empty",
-          message: "Add items to proceed",
-          color: "yellow",
-          icon: <IconX size={16} />,
-        });
-        return;
-      }
-
-      const baseFinal =
-        savedScheme && savedScheme.isDiscountApplicable
-          ? Number(savedScheme.finalAmount ?? totals.grandTotal)
-          : totals.grandTotal;
-      const orderTotal = Math.round(baseFinal + COD_SHIPPING);
-
-      const tokenToCollect = COD_TOKEN;
-      const remainingAmount = Math.max(0, orderTotal - tokenToCollect);
-
-      if (tokenToCollect <= 0) {
-        let createdOrder: any = null;
-        try {
-          createdOrder = await createOrderHistory({
-            items,
-            shippingAddress: flatUserAddress,
-            billingAddress: flatUserAddress,
-            paymentMethod: "cod",
-            notes: "",
-            shippingCost: COD_SHIPPING,
-            tax: totals.gst,
-            discount: totals.totalDiscounts,
-            meta: {
-              immediateCOD: true,
-              savedScheme:
-                savedScheme && savedScheme.isDiscountApplicable ? savedScheme : null,
-            },
-            amountToChargeOnDelivery: orderTotal,
-          });
-        } catch (orderErr) {
-          console.error("Order history creation failed (COD immediate):", orderErr);
-          showNotification({
-            title: "Order saved partially",
-            message: "COD placed but could not save order history. Contact support.",
-            color: "yellow",
-            icon: <IconInfoCircle size={16} />,
-          });
-        }
-
-        try {
-          const serverOrderId =
-            createdOrder?.data?.id ||
-            createdOrder?.id ||
-            createdOrder?.orderNumber ||
-            createdOrder?.orderId ||
-            (createdOrder &&
-              (createdOrder.data?.orderNumber || createdOrder.data?.orderId)) ||
-            `ORDER${Date.now()}`;
-
-          if (serverOrderId) {
-            await createDelhiveryShipment({
-              orderNumber: String(serverOrderId),
+            createdOrder = await createOrderHistory({
               items,
-              address: flatUserAddress,
-              paymentMethod: "cod",
-              totalsLocal: {
-                ...totals,
-                grandTotal: orderTotal,
-                amountToChargeOnDelivery: orderTotal,
+              shippingAddress: flatUserAddress,
+              billingAddress: flatUserAddress,
+              paymentMethod: "online",
+              notes: "",
+              shippingCost: totals.shipping,
+              tax: totals.gst,
+              discount: totals.totalDiscounts,
+              meta: {
+                razorpay: resp,
+                savedScheme:
+                  savedScheme && savedScheme.isDiscountApplicable ? savedScheme : null,
               },
-              meta: { createdOrder },
             });
+          } catch (orderErr) {
+            console.error("Order history creation failed:", orderErr);
             showNotification({
-              title: "Shipment created",
-              message: "Shipment created successfully with Delhivery.",
-              color: "green",
-              icon: <IconCheck size={16} />,
+              title: "Order saved partially",
+              message:
+                "Payment succeeded but we couldn't save order history. Contact support if needed.",
+              color: "yellow",
+              icon: <IconInfoCircle size={16} />,
             });
           }
-        } catch (shipErr) {
-          console.error("Delhivery shipment creation failed (COD immediate):", shipErr);
-          showNotification({
-            title: "Shipment creation failed",
-            message: "COD placed but couldn't create shipment. Contact support.",
-            color: "yellow",
-            icon: <IconInfoCircle size={16} />,
-          });
-        }
 
-        await handleClearCart();
-        showNotification({
-          title: "COD placed",
-          message: `Delivery agent will collect ₹${orderTotal}`,
-          color: "green",
-          icon: <IconCheck size={16} />,
-        });
-        setTimeout(() => {
-          navigate("/order-success", { state: { order: createdOrder } });
-        }, 2000);
-        return;
-      }
-
-      setPayLoading(true);
-
-      const tokenPaise = Math.round(tokenToCollect * 100);
-      const { data: order } = await axiosInstance.post(CREATE_ORDER_URL, {
-        amount: tokenPaise,
-        currency: "INR",
-        receipt: "cod_token_rcpt_" + Date.now(),
-        notes: { itemCount: String(items.length), paymentType: "COD_TOKEN" },
-      });
-
-      try {
-        await loadRazorpay();
-        console.log("✅ Razorpay script is ready, window.Razorpay:", (window as any).Razorpay);
-      } catch (err) {
-        console.error("❌ Failed to load Razorpay script", err);
-        setPayLoading(false);
-        return; // stop payment flow
-      }
-
-
-      const prefillName = (reduxUser?.name ?? user?.name) || "Customer";
-      const prefillEmail = (reduxUser?.email ?? user?.email) || "customer@example.com";
-      const prefillContact =
-        (reduxUser?.mobile ?? reduxUser?.phone ?? user?.mobile ?? user?.phone) ||
-        "9000000000";
-
-      const rzpOptions = getEnhancedRazorpayOptions({
-          key: RAZORPAY_KEY_ID,
-          amount: order.amount,
-          currency: order.currency,
-          name: "TO IMPRESS",
-          description: `COD token - ₹${tokenToCollect}`,
-          order_id: order.id,
-          prefill: { name: prefillName, email: prefillEmail, contact: prefillContact },
-          notes: { cartItems: String(items.length), source: "web_cod_token" },
-          theme: { color: DARK_GREEN },
-        });
-
-
-      const rzp = new (window as any).Razorpay({
-        ...rzpOptions,
-
-        // For UPI intent this will be bypassed via callback_url.
-        handler: async (resp: any) => {
           try {
-            const { data: verify } = await axiosInstance.post(VERIFY_URL, resp);
-            if (verify?.valid) {
-              let createdOrder: any = null;
-              try {
-                createdOrder = await createOrderHistory({
-                  items,
-                  shippingAddress: flatUserAddress,
-                  billingAddress: flatUserAddress,
-                  paymentMethod: "cod_token",
-                  notes: "",
-                  shippingCost: COD_SHIPPING,
-                  tax: totals.gst,
-                  discount: totals.totalDiscounts,
-                  meta: {
-                    razorpay: resp,
-                    savedScheme:
-                      savedScheme && savedScheme.isDiscountApplicable ? savedScheme : null,
-                  },
-                  amountToChargeOnDelivery: remainingAmount,
-                });
-              } catch (orderErr) {
-                console.error("Order history creation failed (COD token):", orderErr);
-                showNotification({
-                  title: "Order saved partially",
-                  message: "Token paid but could not save order history. Contact support.",
-                  color: "yellow",
-                  icon: <IconInfoCircle size={16} />,
-                });
-              }
+            const serverOrderId =
+              createdOrder?.data?.id ||
+              createdOrder?.id ||
+              createdOrder?.orderNumber ||
+              createdOrder?.orderId ||
+              createdOrder?.data?.orderNumber ||
+              createdOrder?.data?.orderId ||
+              `ORDER${Date.now()}`;
 
-              try {
-                const serverOrderId =
-                  createdOrder?.data?.id ||
-                  createdOrder?.id ||
-                  createdOrder?.orderNumber ||
-                  createdOrder?.orderId ||
-                  (createdOrder &&
-                    (createdOrder.data?.orderNumber || createdOrder.data?.orderId)) ||
-                  `ORDER${Date.now()}`;
-
-                if (serverOrderId) {
-                  await createDelhiveryShipment({
-                    orderNumber: String(serverOrderId),
-                    items,
-                    address: flatUserAddress,
-                    paymentMethod: "cod_token",
-                    totalsLocal: {
-                      ...totals,
-                      grandTotal: orderTotal,
-                      amountToChargeOnDelivery: remainingAmount,
-                    },
-                    meta: { createdOrder },
-                  });
-                  showNotification({
-                    title: "Shipment created",
-                    message: "Shipment created successfully with Delhivery.",
-                    color: "green",
-                    icon: <IconCheck size={16} />,
-                  });
-                }
-              } catch (shipErr) {
-                console.error("Delhivery shipment creation failed (COD token):", shipErr);
-                showNotification({
-                  title: "Shipment creation failed",
-                  message: "Token paid but couldn't create shipment. Contact support.",
-                  color: "yellow",
-                  icon: <IconInfoCircle size={16} />,
-                });
-              }
-
-              await handleClearCart();
+            if (serverOrderId) {
+              await createDelhiveryShipment({
+                orderNumber: String(serverOrderId),
+                items,
+                address: flatUserAddress,
+                paymentMethod: "online",
+                totalsLocal: totals,
+                meta: { createdOrder },
+              });
               showNotification({
-                title: "COD placed",
-                message: `Token ₹${tokenToCollect} paid. Remaining ₹${remainingAmount} on delivery.`,
+                title: "Shipment created",
+                message: "Shipment created successfully with Delhivery.",
                 color: "green",
                 icon: <IconCheck size={16} />,
               });
-              navigate("/order-success", { state: { order: createdOrder } });
-            } else {
-              alert("Token payment verification failed. Please contact support.");
             }
-          } catch (e) {
-            console.error("Verification or shipment create failed:", e);
-            alert(
-              "Token payment succeeded but verification or shipment creation failed. Please contact support."
-            );
+          } catch (shipErr) {
+            console.error("Delhivery shipment creation failed:", shipErr);
+            showNotification({
+              title: "Shipment creation failed",
+              message:
+                "Order was created but shipment creation failed. Support will assist.",
+              color: "yellow",
+              icon: <IconInfoCircle size={16} />,
+            });
           }
-        },
-      });
 
-      rzp.on("payment.failed", (e: any) => {
-        console.error("Token payment failed:", e?.error);
-        const errorCode = e?.error?.code;
-        const errorDescription = e?.error?.description;
-        const errorReason = e?.error?.reason;
-
-        let userFriendlyMessage = "Token payment failed. Please try again.";
-
-        if (errorCode === "BAD_REQUEST_ERROR") {
-          if (errorDescription?.toLowerCase().includes("upi")) {
-            userFriendlyMessage =
-              "UPI payment failed. Please try with a different UPI app or use Card/Wallet payment.";
-          }
-        } else if (errorCode === "GATEWAY_ERROR") {
-          userFriendlyMessage = "Payment gateway error. Please try again or use a different payment method.";
-        } else if (errorCode === "NETWORK_ERROR") {
-          userFriendlyMessage = "Network error. Please check your connection and try again.";
-        } else if (errorReason === "payment_cancelled") {
-          userFriendlyMessage = "Token payment was cancelled. You can try again when ready.";
-        } else if (errorDescription?.toLowerCase().includes("timeout")) {
-          userFriendlyMessage = "Payment timed out. Please check your UPI app and try again.";
-        } else if (errorDescription?.toLowerCase().includes("insufficient")) {
-          userFriendlyMessage = "Insufficient balance. Please check your account balance and try again.";
+          await handleClearCart();
+          navigate("/order-success", { state: { order: createdOrder } });
+        } catch (e) {
+          console.error("Verification/create shipment error:", e);
+          alert(
+            "Payment succeeded but verification or shipment creation failed. Please contact support."
+          );
         }
+      },
+    });
 
-        showNotification({
-          title: "Token Payment Failed",
-          message: userFriendlyMessage,
-          color: "red",
-          icon: <IconX size={16} />,
-        });
+    rzp.on("payment.failed", (e: any) => {
+      // 👉 Log the Razorpay FAILURE RESPONSE
+      console.error("Razorpay payment failed:", e?.error);
+      alert(e?.error?.description || "Payment failed. Please try again.");
+    });
 
-        console.error("Detailed token payment error:", {
-          code: errorCode,
-          description: errorDescription,
-          reason: errorReason,
-          fullError: e,
-        });
+    rzp.open();
+  } catch (err) {
+    console.error("onPayNow error:", err);
+    alert("Unable to start payment. Please try again.");
+  } finally {
+    setPayLoading(false);
+  }
+};
+
+
+  const onPlaceCOD = async () => {
+  if (!ensureAuthAndAddress()) return;
+
+  setPayLoading(true);
+  try {
+    if (!items?.length) {
+      showNotification({
+        title: "Cart empty",
+        message: "Add items to proceed",
+        color: "yellow",
+        icon: <IconX size={16} />,
       });
-
-     
-
-      rzp.open();
-    } catch (err) {
-      console.error(err);
-      alert("Unable to place COD order. Please try again.");
-    } finally {
-      setPayLoading(false);
+      return;
     }
-  };
+
+    const baseFinal =
+      savedScheme && savedScheme.isDiscountApplicable
+        ? Number(savedScheme.finalAmount ?? totals.grandTotal)
+        : totals.grandTotal;
+
+    const orderTotal = Math.round(baseFinal + COD_SHIPPING);
+    const tokenToCollect = COD_TOKEN;
+    const remainingAmount = Math.max(0, orderTotal - tokenToCollect);
+
+    // If no token, create order directly
+    if (tokenToCollect <= 0) {
+      let createdOrder: any = null;
+      try {
+        createdOrder = await createOrderHistory({
+          items,
+          shippingAddress: flatUserAddress,
+          billingAddress: flatUserAddress,
+          paymentMethod: "cod",
+          notes: "",
+          shippingCost: COD_SHIPPING,
+          tax: totals.gst,
+          discount: totals.totalDiscounts,
+          meta: {
+            immediateCOD: true,
+            savedScheme:
+              savedScheme && savedScheme.isDiscountApplicable ? savedScheme : null,
+          },
+          amountToChargeOnDelivery: orderTotal,
+        });
+      } catch (orderErr) {
+        console.error("Order history creation failed (COD immediate):", orderErr);
+        showNotification({
+          title: "Order saved partially",
+          message: "COD placed but could not save order history. Contact support.",
+          color: "yellow",
+          icon: <IconInfoCircle size={16} />,
+        });
+      }
+
+      try {
+        const serverOrderId =
+          createdOrder?.data?.id ||
+          createdOrder?.id ||
+          createdOrder?.orderNumber ||
+          createdOrder?.orderId ||
+          createdOrder?.data?.orderNumber ||
+          createdOrder?.data?.orderId ||
+          `ORDER${Date.now()}`;
+
+        if (serverOrderId) {
+          await createDelhiveryShipment({
+            orderNumber: String(serverOrderId),
+            items,
+            address: flatUserAddress,
+            paymentMethod: "cod",
+            totalsLocal: {
+              ...totals,
+              grandTotal: orderTotal,
+              amountToChargeOnDelivery: orderTotal,
+            },
+            meta: { createdOrder },
+          });
+          showNotification({
+            title: "Shipment created",
+            message: "Shipment created successfully with Delhivery.",
+            color: "green",
+            icon: <IconCheck size={16} />,
+          });
+        }
+      } catch (shipErr) {
+        console.error("Delhivery shipment creation failed (COD immediate):", shipErr);
+        showNotification({
+          title: "Shipment creation failed",
+          message: "COD placed but couldn't create shipment. Contact support.",
+          color: "yellow",
+          icon: <IconInfoCircle size={16} />,
+        });
+      }
+
+      await handleClearCart();
+      showNotification({
+        title: "COD placed",
+        message: `Delivery agent will collect ₹${orderTotal}`,
+        color: "green",
+        icon: <IconCheck size={16} />,
+      });
+      navigate("/order-success", { state: { order: createdOrder } });
+      return;
+    }
+
+    // Collect COD token via Razorpay
+    const tokenPaise = tokenToCollect * 100;
+
+    const { data: order } = await axiosInstance.post(CREATE_ORDER_URL, {
+      amount: tokenPaise,
+      currency: "INR",
+      receipt: "cod_token_rcpt_" + Date.now(),
+      notes: { itemCount: String(items.length), paymentType: "COD_TOKEN" },
+    });
+
+    if (!order?.id || !order?.amount) {
+      console.error("Invalid Razorpay order (COD token):", order);
+      showNotification({
+        title: "Payment error",
+        message: "Couldn't initialize token payment. Please try again.",
+        color: "red",
+        icon: <IconX size={16} />,
+      });
+      return;
+    }
+
+    await loadRazorpay();
+
+    const prefillName = (reduxUser?.name ?? user?.name) || "Customer";
+    const prefillEmail = (reduxUser?.email ?? user?.email) || "customer@example.com";
+    const prefillContact =
+      (reduxUser?.mobile ?? reduxUser?.phone ?? user?.mobile ?? user?.phone) || "9000000000";
+
+    const rzp = new (window as any).Razorpay({
+      key: RAZORPAY_KEY_ID,
+      amount: order.amount,
+      currency: order.currency,
+      name: "TO IMPRESS",
+      description: `COD token - ₹${tokenToCollect}`,
+      order_id: order.id,
+      prefill: { name: prefillName, email: prefillEmail, contact: prefillContact },
+      notes: { cartItems: String(items.length), source: "web_cod_token" },
+      theme: { color: DARK_GREEN },
+      handler: async (resp: any) => {
+        // 👉 Log the Razorpay PAYMENT RESPONSE for COD token
+        console.log("Razorpay COD token success:", resp);
+
+        try {
+          const { data: verify } = await axiosInstance.post(VERIFY_URL, resp);
+          if (!verify?.valid) {
+            alert("Token payment verification failed. Please contact support.");
+            return;
+          }
+
+          let createdOrder: any = null;
+          try {
+            createdOrder = await createOrderHistory({
+              items,
+              shippingAddress: flatUserAddress,
+              billingAddress: flatUserAddress,
+              paymentMethod: "cod_token",
+              notes: "",
+              shippingCost: COD_SHIPPING,
+              tax: totals.gst,
+              discount: totals.totalDiscounts,
+              meta: {
+                razorpay: resp,
+                savedScheme:
+                  savedScheme && savedScheme.isDiscountApplicable ? savedScheme : null,
+              },
+              amountToChargeOnDelivery: remainingAmount,
+            });
+          } catch (orderErr) {
+            console.error("Order history creation failed (COD token):", orderErr);
+            showNotification({
+              title: "Order saved partially",
+              message: "Token paid but could not save order history. Contact support.",
+              color: "yellow",
+              icon: <IconInfoCircle size={16} />,
+            });
+          }
+
+          try {
+            const serverOrderId =
+              createdOrder?.data?.id ||
+              createdOrder?.id ||
+              createdOrder?.orderNumber ||
+              createdOrder?.orderId ||
+              createdOrder?.data?.orderNumber ||
+              createdOrder?.data?.orderId ||
+              `ORDER${Date.now()}`;
+
+            if (serverOrderId) {
+              await createDelhiveryShipment({
+                orderNumber: String(serverOrderId),
+                items,
+                address: flatUserAddress,
+                paymentMethod: "cod_token",
+                totalsLocal: {
+                  ...totals,
+                  grandTotal: orderTotal,
+                  amountToChargeOnDelivery: remainingAmount,
+                },
+                meta: { createdOrder },
+              });
+              showNotification({
+                title: "Shipment created",
+                message: "Shipment created successfully with Delhivery.",
+                color: "green",
+                icon: <IconCheck size={16} />,
+              });
+            }
+          } catch (shipErr) {
+            console.error("Delhivery shipment creation failed (COD token):", shipErr);
+            showNotification({
+              title: "Shipment creation failed",
+              message: "Token paid but couldn't create shipment. Contact support.",
+              color: "yellow",
+              icon: <IconInfoCircle size={16} />,
+            });
+          }
+
+          await handleClearCart();
+          showNotification({
+            title: "COD placed",
+            message: `Token ₹${tokenToCollect} paid. Remaining ₹${remainingAmount} on delivery.`,
+            color: "green",
+            icon: <IconCheck size={16} />,
+          });
+          navigate("/order-success", { state: { order: createdOrder } });
+        } catch (e) {
+          console.error("Verification or shipment create failed:", e);
+          alert(
+            "Token payment succeeded but verification or shipment creation failed. Please contact support."
+          );
+        }
+      },
+    });
+
+    rzp.on("payment.failed", (e: any) => {
+      // 👉 Log the failure response
+      console.error("Razorpay COD token failed:", e?.error);
+      alert(e?.error?.description || "Token payment failed. Please try again.");
+    });
+
+    rzp.open();
+  } catch (err) {
+    console.error("onPlaceCOD error:", err);
+    alert("Unable to place COD order. Please try again.");
+  } finally {
+    setPayLoading(false);
+  }
+};
+
 
   // Fallback to localStorage if Redux hasn't hydrated on mobile
-  useEffect(() => {
-    if (!reduxAddress && !storedUserAddress) {
-      try {
-        const raw = localStorage.getItem("userAddress");
-        if (raw) setStoredUserAddress(JSON.parse(raw));
-      } catch {
-        /* ignore */
-      }
-    }
-  }, [reduxAddress, storedUserAddress]);
+useEffect(() => {
+  if (!reduxAddress && !storedUserAddress) {
+    try {
+      const raw = localStorage.getItem("userAddress");
+      if (raw) setStoredUserAddress(JSON.parse(raw));
+    } catch {/* ignore */}
+  }
+}, [reduxAddress, storedUserAddress]);
 
-  useEffect(() => {
-    if (!reduxUser && !user) {
-      try {
-        const raw = localStorage.getItem("user");
-        if (raw) setUser(JSON.parse(raw));
-      } catch {
-        /* ignore */
-      }
-    }
-  }, [reduxUser, user]);
+useEffect(() => {
+  if (!reduxUser && !user) {
+    try {
+      const raw = localStorage.getItem("user");
+      if (raw) setUser(JSON.parse(raw));
+    } catch {/* ignore */}
+  }
+}, [reduxUser, user]);
+
 
   return (
     <div>
@@ -1367,24 +1255,24 @@ export default function Checkout() {
               </Grid.Col>
 
               <Grid.Col span={{ base: 12, md: 5 }} mb={120}>
-                <Card
-                  withBorder
-                  p="lg"
-                  radius="md"
-                  styles={{
-                    root: {
-                      ["@media (min-width: 1024px)"]: {
-                        position: "sticky",
-                        top: 16,
-                        maxHeight: "calc(100vh - 32px)",
-                        overflow: "auto",
+                  <Card
+                    withBorder
+                    p="lg"
+                    radius="md"
+                    styles={{
+                      root: {
+                        [`@media (min-width: 1024px)`]: {
+                          position: "sticky",
+                          top: 16,
+                          maxHeight: "calc(100vh - 32px)",
+                          overflow: "auto",
+                        },
                       },
-                    },
-                  }}
-                >
+                    }}
+                  >
                   <Text fw={700} mb="md">Order Summary</Text>
 
-                  <Stack gap="xs" mb="md">
+                   <Stack gap="xs" mb="md">
                     <Group justify="space-between" align="flex-start">
                       <Text size="sm" fw={600}>Shipping to</Text>
                       <Button
@@ -1397,52 +1285,52 @@ export default function Checkout() {
                       </Button>
                     </Group>
 
-                    {flatUserAddress ? (
-                      <Paper radius="md" p="sm" withBorder>
-                        <Stack gap={2}>
-                          <Text size="sm" fw={600}>{flatUserAddress.name || "Customer"}</Text>
-                          {flatUserAddress.email ? (
-                            <Text size="xs" c="dimmed">{flatUserAddress.email}</Text>
-                          ) : null}
-                          <Text size="xs" c="dimmed">
-                            {[
-                              flatUserAddress.line1,
-                              flatUserAddress.line2,
-                              flatUserAddress.city,
-                              flatUserAddress.state,
-                              flatUserAddress.country,
-                            ]
-                              .filter(Boolean)
-                              .join(", ")}
-                            {flatUserAddress.pincode ? ` - ${flatUserAddress.pincode}` : ""}
-                          </Text>
-                          {flatUserAddress.phone ? (
-                            <Text size="xs" c="dimmed">Phone: +91 {flatUserAddress.phone}</Text>
-                          ) : null}
-                          {flatUserAddress.landmark ? (
-                            <Text size="xs" c="dimmed">Landmark: {flatUserAddress.landmark}</Text>
-                          ) : null}
-                        </Stack>
-                      </Paper>
-                    ) : (
-                      <Paper radius="md" p="sm" withBorder>
-                        <Stack gap={6}>
-                          <Text size="sm" c="dimmed">No address found.</Text>
-                          <Button
-                            size="xs"
-                            onClick={() => navigate("/account")}
-                            sx={{
-                              backgroundColor: DARK_GREEN,
-                              color: "#fff",
-                              "&:hover": { backgroundColor: "#0f2a12" },
-                              alignSelf: "flex-start",
-                            }}
-                          >
-                            Add Address
-                          </Button>
-                        </Stack>
-                      </Paper>
-                    )}
+                      {flatUserAddress ? (
+                        <Paper radius="md" p="sm" withBorder>
+                          <Stack gap={2}>
+                            <Text size="sm" fw={600}>{flatUserAddress.name || "Customer"}</Text>
+                            {flatUserAddress.email ? (
+                              <Text size="xs" c="dimmed">{flatUserAddress.email}</Text>
+                            ) : null}
+                            <Text size="xs" c="dimmed">
+                              {[
+                                flatUserAddress.line1,
+                                flatUserAddress.line2,
+                                flatUserAddress.city,
+                                flatUserAddress.state,
+                                flatUserAddress.country,
+                              ]
+                                .filter(Boolean)
+                                .join(", ")}
+                              {flatUserAddress.pincode ? ` - ${flatUserAddress.pincode}` : ""}
+                            </Text>
+                            {flatUserAddress.phone ? (
+                              <Text size="xs" c="dimmed">Phone: +91 {flatUserAddress.phone}</Text>
+                            ) : null}
+                            {flatUserAddress.landmark ? (
+                              <Text size="xs" c="dimmed">Landmark: {flatUserAddress.landmark}</Text>
+                            ) : null}
+                          </Stack>
+                        </Paper>
+                      ) : (
+                        <Paper radius="md" p="sm" withBorder>
+                          <Stack gap={6}>
+                            <Text size="sm" c="dimmed">No address found.</Text>
+                            <Button
+                              size="xs"
+                              onClick={() => navigate("/account")}
+                              sx={{
+                                backgroundColor: DARK_GREEN,
+                                color: "#fff",
+                                "&:hover": { backgroundColor: "#0f2a12" },
+                                alignSelf: "flex-start",
+                              }}
+                            >
+                              Add Address
+                            </Button>
+                          </Stack>
+                        </Paper>
+                      )}
                   </Stack>
 
                   <Stack gap="xs" mb="sm">
@@ -1540,7 +1428,12 @@ export default function Checkout() {
 
                   {/* ✅ COD advance note */}
                   {paymentMethod === "COD" && (
-                    <Paper radius="sm" p="xs" mb="sm" style={{ backgroundColor: "#f3fbf4" }}>
+                    <Paper
+                      radius="sm"
+                      p="xs"
+                      mb="sm"
+                      style={{ backgroundColor: "#f3fbf4" }}
+                    >
                       <Text size="sm" fw={500} style={{ color: DARK_GREEN }}>
                         Note: For COD orders, ₹100 is collected in advance online. The remaining amount is paid on delivery.
                       </Text>
@@ -1548,7 +1441,7 @@ export default function Checkout() {
                   )}
 
                   <Paper radius="sm" p="md" style={{ backgroundColor: "#f7fff6" }}>
-                    <Group justify="space-between" align="center">
+                    <Group position="apart" align="center">
                       <div>
                         <Text size="sm" style={{ color: DARK_GREEN }}>
                           Your Savings ₹
@@ -1576,20 +1469,20 @@ export default function Checkout() {
             </Grid>
           </Container>
 
-          <Box
-            style={{
-              position: "fixed",
-              left: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: 2000,
-              pointerEvents: "auto",
-              borderTop: "1px solid #eee",
-              background: "#fff",
-              padding: "10px 0px",
-              boxShadow: "0 -2px 10px rgba(0,0,0,0.04)",
-            }}
-          >
+         <Box
+          style={{
+            position: "fixed",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 2000,              // was 999
+            pointerEvents: "auto",     // make sure it gets the tap
+            borderTop: "1px solid #eee",
+            background: "#fff",
+            padding: "10px 0px",
+            boxShadow: "0 -2px 10px rgba(0,0,0,0.04)",
+          }}
+        >
             <Container size="lg" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                 <div>
@@ -1604,7 +1497,7 @@ export default function Checkout() {
                   </Text>
                   <Text size="xs" c="dimmed">View Price Details</Text>
 
-                  {savedScheme && savedScheme.isDiscountApplicable ? (
+                  {(savedScheme && savedScheme.isDiscountApplicable) ? (
                     <Text size="xs" style={{ color: DARK_GREEN, marginTop: 4 }}>
                       Buy above ₹{Math.round(Number(savedScheme.couponAmount ?? 0))} — flat {savedScheme.discountvalue}% off applied
                     </Text>

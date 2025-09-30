@@ -28,4 +28,6 @@ export const API_GET_CATEGORIES_PRODUCTS_BYSIZE = "products/size/products/";
 export const API_GET_CART_DATA = API_URL + "products/"
 export const API_SEARCH_PRODUCTS = API_URL + "products/global/search?searchkey="
 
+export const API_GET_STATUS = API_URL + "payments/status/"
+
 export const LOGIN = API_URL + "auth/login";
