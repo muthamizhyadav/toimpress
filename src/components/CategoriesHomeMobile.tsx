@@ -8,11 +8,11 @@ import { showNotification } from "@mantine/notifications";
 import { IconX } from "@tabler/icons-react";
 
 // local icons
-import Bra_Logo from "../assets/images/Brassiere.jpg";
-import Combo_Logo from "../assets/images/Combo.jpg";
-import Offerzone_Logo from "../assets/images/Offers Zone.jpg";
-import New_Arrivals_Logo from "../assets/images/New Arrivals.jpg";
-import Panties_Logo from "../assets/images/Panty.jpg";
+import Bra_Logo from "../assets/images/Bra_thumbnail.jpeg";
+import Combo_Logo from "../assets/images/Combo_thumbnail.jpeg";
+import Offerzone_Logo from "../assets/images/Offerzone_thumbnail.jpeg";
+import New_Arrivals_Logo from "../assets/images/New_Arrivals_thumbnail.jpeg";
+import Panties_Logo from "../assets/images/Panties_thumbnail.jpeg";
 
 // default/fallback icon
 const Default_Logo = Bra_Logo;
