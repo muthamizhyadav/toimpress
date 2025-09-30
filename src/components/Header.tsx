@@ -136,7 +136,6 @@ export default function Header() {
       const computed = computeCountFromItems(items);
       const count = computed || apiTotal || 0;
 
-      console.log(count, "count")
 
       setCartCount(count);
     } catch (err: any) {

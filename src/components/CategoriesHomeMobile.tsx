@@ -8,14 +8,14 @@ import { showNotification } from "@mantine/notifications";
 import { IconX } from "@tabler/icons-react";
 
 // local icons
-import Bra_Logo from "../assets/images/Bra_Logo.jpg";
-import Elite_Logo from "../assets/images/Elite_Logo.jpg";
-import Lingerie_Logo from "../assets/images/Lingerie_Logo.jpg";
-import New_Arrivals_Logo from "../assets/images/New_Arrivals.jpg";
-import Panties_Logo from "../assets/images/Panties_Logo.jpg";
+import Bra_Logo from "../assets/images/Brassiere.jpg";
+import Combo_Logo from "../assets/images/Combo.jpg";
+import Offerzone_Logo from "../assets/images/Offers Zone.jpg";
+import New_Arrivals_Logo from "../assets/images/New Arrivals.jpg";
+import Panties_Logo from "../assets/images/Panty.jpg";
 
 // default/fallback icon
-const Default_Logo = Lingerie_Logo;
+const Default_Logo = Bra_Logo;
 
 type CategoryFromApi = {
   id?: string | number;
@@ -33,18 +33,17 @@ type Category = { id: string; label: string; icon: string; name: string };
 const ICON_MAP: Record<string, string> = {
   brassiere: Bra_Logo,
   panties: Panties_Logo,
-  combo: Lingerie_Logo,
-  elite: Elite_Logo,
+  combo: Combo_Logo,
   "new arrivals": New_Arrivals_Logo,
-  "offers zone": New_Arrivals_Logo,
+  "offers zone": Offerzone_Logo,
 };
 
 const hardcodedCategories: Category[] = [
   { id: "1", label: "bra", icon: Bra_Logo, name: "Bra" },
+  { id: "5", label: "combo", icon: Combo_Logo, name: "Combo" },
   { id: "2", label: "panties", icon: Panties_Logo, name: "Panties" },
-  { id: "5", label: "combo", icon: Lingerie_Logo, name: "Combo" },
-  { id: "3", label: "elite", icon: Elite_Logo, name: "Elite" },
   { id: "4", label: "new arrivals", icon: New_Arrivals_Logo, name: "New Arrivals" },
+  { id: "3", label: "offers zone", icon: Offerzone_Logo, name: "Offer Zone" },
 ];
 
 function normalizeLabel(raw?: string) {
@@ -53,6 +52,7 @@ function normalizeLabel(raw?: string) {
 }
 
 function pickIconForLabel(label?: string) {
+  console.log(label)
   const key = normalizeLabel(label);
   return ICON_MAP[key] ?? Default_Logo;
 }
@@ -168,11 +168,13 @@ export default function CategoriesHomeMobile() {
                 width={48}
                 height={48}
                 fit="contain"
+                loading="lazy"        // 👈 native lazy-load
+                decoding="async"      // 👈 decode off main thread when possible
                 styles={{
                   image: { objectFit: "contain" },
                 }}
               />
-            </Box>
+              </Box>
             <Text size="xs" mt="xs" fw={600}>
               {item.name}
             </Text>

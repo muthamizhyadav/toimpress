@@ -18,7 +18,7 @@ import {
   Badge,
   Paper,
 } from "@mantine/core";
-import { IconMinus, IconPlus, IconTrash, IconInfoCircle } from "@tabler/icons-react";
+import { IconMinus, IconPlus, IconTrash, IconInfoCircle, IconPencil } from "@tabler/icons-react";
 import { useMemo, useState, useEffect, useCallback } from "react";
 import axiosInstance from "../../api/axiosInstance";
 import SmallHeader from "../../components/SmallHeader";
@@ -562,11 +562,13 @@ export default function Checkout() {
         color: "yellow",
         icon: <IconInfoCircle size={16} />,
       });
+      // Navigate and scroll into view to make it obvious
       navigate("/account");
       return false;
     }
     return true;
   };
+
 
   const applyCoupon = () => {
     const code = (couponCode || "").trim().toUpperCase();
@@ -1117,6 +1119,26 @@ export default function Checkout() {
     }
   };
 
+  // Fallback to localStorage if Redux hasn't hydrated on mobile
+useEffect(() => {
+  if (!reduxAddress && !storedUserAddress) {
+    try {
+      const raw = localStorage.getItem("userAddress");
+      if (raw) setStoredUserAddress(JSON.parse(raw));
+    } catch {/* ignore */}
+  }
+}, [reduxAddress, storedUserAddress]);
+
+useEffect(() => {
+  if (!reduxUser && !user) {
+    try {
+      const raw = localStorage.getItem("user");
+      if (raw) setUser(JSON.parse(raw));
+    } catch {/* ignore */}
+  }
+}, [reduxUser, user]);
+
+
   return (
     <div>
       <SmallHeader />
@@ -1175,22 +1197,83 @@ export default function Checkout() {
               </Grid.Col>
 
               <Grid.Col span={{ base: 12, md: 5 }} mb={120}>
-                <Card
-                  withBorder
-                  p="lg"
-                  radius="md"
-                  styles={{
-                    root: {
-                      [`@media (min-width: 1024px)`]: {
-                        position: "sticky",
-                        top: 16,
-                        maxHeight: "calc(100vh - 32px)",
-                        overflow: "auto",
+                  <Card
+                    withBorder
+                    p="lg"
+                    radius="md"
+                    styles={{
+                      root: {
+                        [`@media (min-width: 1024px)`]: {
+                          position: "sticky",
+                          top: 16,
+                          maxHeight: "calc(100vh - 32px)",
+                          overflow: "auto",
+                        },
                       },
-                    },
-                  }}
-                >
+                    }}
+                  >
                   <Text fw={700} mb="md">Order Summary</Text>
+
+                   <Stack gap="xs" mb="md">
+                    <Group justify="space-between" align="flex-start">
+                      <Text size="sm" fw={600}>Shipping to</Text>
+                      <Button
+                        size="xs"
+                        variant="subtle"
+                        leftSection={<IconPencil size={14} />}
+                        onClick={() => navigate("/account")}
+                      >
+                        Change
+                      </Button>
+                    </Group>
+
+                      {flatUserAddress ? (
+                        <Paper radius="md" p="sm" withBorder>
+                          <Stack gap={2}>
+                            <Text size="sm" fw={600}>{flatUserAddress.name || "Customer"}</Text>
+                            {flatUserAddress.email ? (
+                              <Text size="xs" c="dimmed">{flatUserAddress.email}</Text>
+                            ) : null}
+                            <Text size="xs" c="dimmed">
+                              {[
+                                flatUserAddress.line1,
+                                flatUserAddress.line2,
+                                flatUserAddress.city,
+                                flatUserAddress.state,
+                                flatUserAddress.country,
+                              ]
+                                .filter(Boolean)
+                                .join(", ")}
+                              {flatUserAddress.pincode ? ` - ${flatUserAddress.pincode}` : ""}
+                            </Text>
+                            {flatUserAddress.phone ? (
+                              <Text size="xs" c="dimmed">Phone: +91 {flatUserAddress.phone}</Text>
+                            ) : null}
+                            {flatUserAddress.landmark ? (
+                              <Text size="xs" c="dimmed">Landmark: {flatUserAddress.landmark}</Text>
+                            ) : null}
+                          </Stack>
+                        </Paper>
+                      ) : (
+                        <Paper radius="md" p="sm" withBorder>
+                          <Stack gap={6}>
+                            <Text size="sm" c="dimmed">No address found.</Text>
+                            <Button
+                              size="xs"
+                              onClick={() => navigate("/account")}
+                              sx={{
+                                backgroundColor: DARK_GREEN,
+                                color: "#fff",
+                                "&:hover": { backgroundColor: "#0f2a12" },
+                                alignSelf: "flex-start",
+                              }}
+                            >
+                              Add Address
+                            </Button>
+                          </Stack>
+                        </Paper>
+                      )}
+                  </Stack>
 
                   <Stack gap="xs" mb="sm">
                     <Text fw={600} size="sm">Payment Method</Text>
@@ -1328,19 +1411,20 @@ export default function Checkout() {
             </Grid>
           </Container>
 
-          <Box
-            style={{
-              position: "fixed",
-              left: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: 999,
-              borderTop: "1px solid #eee",
-              background: "#fff",
-              padding: "10px 0px",
-              boxShadow: "0 -2px 10px rgba(0,0,0,0.04)",
-            }}
-          >
+         <Box
+          style={{
+            position: "fixed",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 2000,              // was 999
+            pointerEvents: "auto",     // make sure it gets the tap
+            borderTop: "1px solid #eee",
+            background: "#fff",
+            padding: "10px 0px",
+            boxShadow: "0 -2px 10px rgba(0,0,0,0.04)",
+          }}
+        >
             <Container size="lg" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                 <div>

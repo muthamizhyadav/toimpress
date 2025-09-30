@@ -26,7 +26,7 @@ const MobileBannerCard: React.FC<MobileBannerCardProps> = ({
   return (
     <div
       className={`relative rounded-md overflow-hidden w-full ${
-        isDesktop ? "h-60" : "h-[400px]"
+        isDesktop ? "h-60" : "h-[500px]"
       }`}
       onClick={() => handleNavigation("category?name=Combo")}
     >

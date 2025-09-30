@@ -4,24 +4,28 @@ import { Carousel } from "@mantine/carousel";
 import HomeBannerCard from "./HomeBannerCard";
 import MobileBannerCard from "./MobileBannerCard";
 import BraType from "../../assets/svg/BraType.svg";
+import Banner1 from "../../assets/images/To Impress - Website Banners-09.jpg"
+import Banner2 from "../../assets/images/To Impress - Website Banners-14.jpg"
+import Banner3 from "../../assets/images/To Impress - Website Banners-15.jpg"
+
 
 const bannerData = [
   {
-    imageUrl: BraType,
+    imageUrl: Banner1,
     title: "Everyday Basics",
     subtitle: "Designed for comfort!",
     offer: "BUY 3 @ RS.999",
     buttonText: "SHOP NOW",
   },
   {
-    imageUrl: BraType,
+    imageUrl: Banner2,
     title: "Nursing Bras",
     subtitle: "Perfect for New Moms",
     offer: "BUY 2 @ RS.1299",
     buttonText: "SHOP NOW",
   },
   {
-    imageUrl: BraType,
+    imageUrl: Banner3,
     title: "Luxe Comfort",
     subtitle: "Luxury for every day",
     offer: "BUY 2 @ RS.1499",
