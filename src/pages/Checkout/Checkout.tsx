@@ -29,18 +29,19 @@ import { loadRazorpay } from "../../utils/loadRazorpay";
 import { showNotification } from "@mantine/notifications";
 import { IconCheck, IconX } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
-import { API_GET_UPDATE, API_CART } from "../../api/api";
+import { API_GET_UPDATE, API_CART, API_GET_STATUS } from "../../api/api";
 import { useSelector, useDispatch } from "react-redux";
 import { removeFromCart, clearCart } from "../../redux/features/cartSlice";
+import * as storeModule from "../../redux/store";
 
-// ✅ If you use redux-persist, import the persistor (adjust path if different)
+
+// ✅ Fallback to null if persistor isn't exported
 let persistor: any = null;
-try {
-  // Make this import resilient even if persistor isn't exported in some envs
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const storeModule = require("../../redux/store");
-  persistor = storeModule?.persistor ?? null;
-} catch { /* ignore if not available */ }
+
+if ("persistor" in storeModule) {
+  persistor = (storeModule as any).persistor;
+}
+
 
 // Razorpay config
 const RAZORPAY_KEY_ID = import.meta.env.VITE_RZP_KEY_ID as string;
@@ -659,6 +660,7 @@ export default function Checkout() {
     if (token) headers.authorization = `Bearer ${token}`;
 
     const resp = await axiosInstance.post(SERVER_CREATE_ORDER_URL, payload, { headers });
+    await loadRazorpay();
     return resp.data ?? resp;
   }
 
@@ -740,384 +742,440 @@ export default function Checkout() {
   }
 
   const onPayNow = async () => {
-    if (!ensureAuthAndAddress()) return;
-    try {
-      if (!items?.length) {
-        showNotification({
-          title: "Cart empty",
-          message: "Add items to proceed",
-          color: "yellow",
-          icon: <IconX size={16} />,
-        });
-        return;
-      }
+  if (!ensureAuthAndAddress()) return;
 
-      const baseFinal =
-        savedScheme && savedScheme.isDiscountApplicable
-          ? Number(savedScheme.finalAmount ?? totals.grandTotal)
-          : totals.grandTotal;
-      const amountToCollect = Math.round(baseFinal);
-
-      const amountPaise = Math.round(amountToCollect * 100);
-      if (amountPaise <= 0) return;
-
-      setPayLoading(true);
-      await loadRazorpay();
-
-      const { data: order } = await axiosInstance.post(CREATE_ORDER_URL, {
-        amount: amountPaise,
-        currency: "INR",
-        receipt: "rcpt_" + Date.now(),
-        notes: { itemCount: String(items.length), paymentType: "FULL" },
+  setPayLoading(true);
+  try {
+    if (!items?.length) {
+      showNotification({
+        title: "Cart empty",
+        message: "Add items to proceed",
+        color: "yellow",
+        icon: <IconX size={16} />,
       });
-
-      const prefillName = (reduxUser?.name ?? user?.name) || "Customer";
-      const prefillEmail = (reduxUser?.email ?? user?.email) || "customer@example.com";
-      const prefillContact =
-        (reduxUser?.mobile ?? reduxUser?.phone ?? user?.mobile ?? user?.phone) ||
-        "9000000000";
-
-      const rzp = new (window as any).Razorpay({
-        key: RAZORPAY_KEY_ID,
-        amount: order.amount,
-        currency: order.currency,
-        name: "TO IMPRESS",
-        description: "Order Payment",
-        order_id: order.id,
-        prefill: { name: prefillName, email: prefillEmail, contact: prefillContact },
-        notes: { cartItems: String(items.length), source: "web_checkout_full" },
-        theme: { color: DARK_GREEN },
-        handler: async (resp: any) => {
-          try {
-            const { data: verify } = await axiosInstance.post(VERIFY_URL, resp);
-            if (verify?.valid) {
-              let createdOrder: any = null;
-              try {
-                createdOrder = await createOrderHistory({
-                  items,
-                  shippingAddress: flatUserAddress,
-                  billingAddress: flatUserAddress,
-                  paymentMethod: "online",
-                  notes: "",
-                  shippingCost: totals.shipping,
-                  tax: totals.gst,
-                  discount: totals.totalDiscounts,
-                  meta: {
-                    razorpay: resp,
-                    savedScheme:
-                      savedScheme && savedScheme.isDiscountApplicable ? savedScheme : null,
-                  },
-                });
-              } catch (orderErr) {
-                console.error("Order history creation failed:", orderErr);
-                showNotification({
-                  title: "Order saved partially",
-                  message:
-                    "Payment succeeded but we couldn't save order history. Contact support if needed.",
-                  color: "yellow",
-                  icon: <IconInfoCircle size={16} />,
-                });
-              }
-
-              try {
-                const serverOrderId =
-                  createdOrder?.data?.id ||
-                  createdOrder?.id ||
-                  createdOrder?.orderNumber ||
-                  createdOrder?.orderId ||
-                  (createdOrder &&
-                    (createdOrder.data?.orderNumber || createdOrder.data?.orderId)) ||
-                  `ORDER${Date.now()}`;
-
-                if (serverOrderId) {
-                  await createDelhiveryShipment({
-                    orderNumber: String(serverOrderId),
-                    items,
-                    address: flatUserAddress,
-                    paymentMethod: "online",
-                    totalsLocal: totals,
-                    meta: { createdOrder },
-                  });
-                  showNotification({
-                    title: "Shipment created",
-                    message: "Shipment created successfully with Delhivery.",
-                    color: "green",
-                    icon: <IconCheck size={16} />,
-                  });
-                }
-              } catch (shipErr) {
-                console.error("Delhivery shipment creation failed:", shipErr);
-                showNotification({
-                  title: "Shipment creation failed",
-                  message:
-                    "Order was created but shipment creation failed. Support will assist.",
-                  color: "yellow",
-                  icon: <IconInfoCircle size={16} />,
-                });
-              }
-
-              await handleClearCart();
-              navigate("/order-success", { state: { order: createdOrder } });
-            } else {
-              alert("Payment verification failed.");
-            }
-          } catch (e) {
-            console.error("Verification/create shipment error:", e);
-            alert(
-              "Payment succeeded but verification or shipment creation failed. Please contact support."
-            );
-          }
-        },
-      });
-
-      rzp.on("payment.failed", (e: any) => {
-        console.error("Payment failed:", e?.error);
-        alert(e?.error?.description || "Payment failed. Please try again.");
-      });
-
-      rzp.open();
-    } catch (err) {
-      console.error(err);
-      alert("Unable to start payment. Please try again.");
-    } finally {
-      setPayLoading(false);
+      return;
     }
-  };
 
-  const onPlaceCOD = async () => {
-    if (!ensureAuthAndAddress()) return;
+    // Compute amount
+    const baseFinal =
+      savedScheme && savedScheme.isDiscountApplicable
+        ? Number(savedScheme.finalAmount ?? totals.grandTotal)
+        : totals.grandTotal;
+
+    const amountToCollect = Math.max(0, Math.round(baseFinal));
+    const amountPaise = amountToCollect * 100;
+    if (amountPaise <= 0) {
+      showNotification({
+        title: "Invalid amount",
+        message: "Amount must be greater than 0.",
+        color: "red",
+        icon: <IconX size={16} />,
+      });
+      return;
+    }
+
+    // Create RZP order on server
+    const { data: order } = await axiosInstance.post(CREATE_ORDER_URL, {
+      amount: amountPaise,
+      currency: "INR",
+      receipt: "rcpt_" + Date.now(),
+      notes: { itemCount: String(items.length), paymentType: "FULL" },
+    });
+
+    if (!order?.id || !order?.amount) {
+      console.error("Invalid Razorpay order:", order);
+      showNotification({
+        title: "Payment error",
+        message: "Couldn't initialize payment. Please try again.",
+        color: "red",
+        icon: <IconX size={16} />,
+      });
+      return;
+    }
+
+    // (Optional) check receipt status
     try {
-      if (!items?.length) {
-        showNotification({
-          title: "Cart empty",
-          message: "Add items to proceed",
-          color: "yellow",
-          icon: <IconX size={16} />,
-        });
-        return;
-      }
+      const { data: receiptCheck } = await axiosInstance.get(`${API_GET_STATUS}${order.receipt}`);
+      console.log("Receipt status:", receiptCheck);
+    } catch (e) {
+      console.warn("Receipt status check failed (non-blocking):", e);
+    }
 
-      const baseFinal =
-        savedScheme && savedScheme.isDiscountApplicable
-          ? Number(savedScheme.finalAmount ?? totals.grandTotal)
-          : totals.grandTotal;
-      const orderTotal = Math.round(baseFinal + COD_SHIPPING);
+    // Ensure SDK is ready, then open checkout
+    await loadRazorpay();
 
-      const tokenToCollect = COD_TOKEN;
-      const remainingAmount = Math.max(0, orderTotal - tokenToCollect);
+    const prefillName = (reduxUser?.name ?? user?.name) || "Customer";
+    const prefillEmail = (reduxUser?.email ?? user?.email) || "customer@example.com";
+    const prefillContact =
+      (reduxUser?.mobile ?? reduxUser?.phone ?? user?.mobile ?? user?.phone) || "9000000000";
 
-      if (tokenToCollect <= 0) {
-        let createdOrder: any = null;
-        try {
-          createdOrder = await createOrderHistory({
-            items,
-            shippingAddress: flatUserAddress,
-            billingAddress: flatUserAddress,
-            paymentMethod: "cod",
-            notes: "",
-            shippingCost: COD_SHIPPING,
-            tax: totals.gst,
-            discount: totals.totalDiscounts,
-            meta: {
-              immediateCOD: true,
-              savedScheme:
-                savedScheme && savedScheme.isDiscountApplicable ? savedScheme : null,
-            },
-            amountToChargeOnDelivery: orderTotal,
-          });
-        } catch (orderErr) {
-          console.error("Order history creation failed (COD immediate):", orderErr);
-          showNotification({
-            title: "Order saved partially",
-            message: "COD placed but could not save order history. Contact support.",
-            color: "yellow",
-            icon: <IconInfoCircle size={16} />,
-          });
-        }
+    const rzp = new (window as any).Razorpay({
+      key: RAZORPAY_KEY_ID,
+      amount: order.amount,
+      currency: order.currency,
+      name: "TO IMPRESS",
+      description: "Order Payment",
+      order_id: order.id,
+      prefill: { name: prefillName, email: prefillEmail, contact: prefillContact },
+      notes: { cartItems: String(items.length), source: "web_checkout_full" },
+      theme: { color: DARK_GREEN },
+      handler: async (resp: any) => {
+        // 👉 Log the Razorpay PAYMENT RESPONSE (not the script)
+        console.log("Razorpay payment success:", resp);
 
         try {
-          const serverOrderId =
-            createdOrder?.data?.id ||
-            createdOrder?.id ||
-            createdOrder?.orderNumber ||
-            createdOrder?.orderId ||
-            (createdOrder &&
-              (createdOrder.data?.orderNumber || createdOrder.data?.orderId)) ||
-            `ORDER${Date.now()}`;
+          const { data: verify } = await axiosInstance.post(VERIFY_URL, resp);
+          if (!verify?.valid) {
+            alert("Payment verification failed.");
+            return;
+          }
 
-          if (serverOrderId) {
-            await createDelhiveryShipment({
-              orderNumber: String(serverOrderId),
+          let createdOrder: any = null;
+          try {
+            createdOrder = await createOrderHistory({
               items,
-              address: flatUserAddress,
-              paymentMethod: "cod",
-              totalsLocal: {
-                ...totals,
-                grandTotal: orderTotal,
-                amountToChargeOnDelivery: orderTotal,
+              shippingAddress: flatUserAddress,
+              billingAddress: flatUserAddress,
+              paymentMethod: "online",
+              notes: "",
+              shippingCost: totals.shipping,
+              tax: totals.gst,
+              discount: totals.totalDiscounts,
+              meta: {
+                razorpay: resp,
+                savedScheme:
+                  savedScheme && savedScheme.isDiscountApplicable ? savedScheme : null,
               },
-              meta: { createdOrder },
             });
+          } catch (orderErr) {
+            console.error("Order history creation failed:", orderErr);
             showNotification({
-              title: "Shipment created",
-              message: "Shipment created successfully with Delhivery.",
-              color: "green",
-              icon: <IconCheck size={16} />,
+              title: "Order saved partially",
+              message:
+                "Payment succeeded but we couldn't save order history. Contact support if needed.",
+              color: "yellow",
+              icon: <IconInfoCircle size={16} />,
             });
           }
-        } catch (shipErr) {
-          console.error("Delhivery shipment creation failed (COD immediate):", shipErr);
-          showNotification({
-            title: "Shipment creation failed",
-            message: "COD placed but couldn't create shipment. Contact support.",
-            color: "yellow",
-            icon: <IconInfoCircle size={16} />,
-          });
-        }
 
-        await handleClearCart();
-        showNotification({
-          title: "COD placed",
-          message: `Delivery agent will collect ₹${orderTotal}`,
-          color: "green",
-          icon: <IconCheck size={16} />,
-        });
-        navigate("/order-success", { state: { order: createdOrder } });
-        return;
-      }
-
-      setPayLoading(true);
-      await loadRazorpay();
-
-      const tokenPaise = Math.round(tokenToCollect * 100);
-      const { data: order } = await axiosInstance.post(CREATE_ORDER_URL, {
-        amount: tokenPaise,
-        currency: "INR",
-        receipt: "cod_token_rcpt_" + Date.now(),
-        notes: { itemCount: String(items.length), paymentType: "COD_TOKEN" },
-      });
-
-      const prefillName = (reduxUser?.name ?? user?.name) || "Customer";
-      const prefillEmail = (reduxUser?.email ?? user?.email) || "customer@example.com";
-      const prefillContact =
-        (reduxUser?.mobile ?? reduxUser?.phone ?? user?.mobile ?? user?.phone) ||
-        "9000000000";
-
-      const rzp = new (window as any).Razorpay({
-        key: RAZORPAY_KEY_ID,
-        amount: order.amount,
-        currency: order.currency,
-        name: "TO IMPRESS",
-        description: `COD token - ₹${tokenToCollect}`,
-        order_id: order.id,
-        prefill: { name: prefillName, email: prefillEmail, contact: prefillContact },
-        notes: { cartItems: String(items.length), source: "web_cod_token" },
-        theme: { color: DARK_GREEN },
-        handler: async (resp: any) => {
           try {
-            const { data: verify } = await axiosInstance.post(VERIFY_URL, resp);
-            if (verify?.valid) {
-              let createdOrder: any = null;
-              try {
-                createdOrder = await createOrderHistory({
-                  items,
-                  shippingAddress: flatUserAddress,
-                  billingAddress: flatUserAddress,
-                  paymentMethod: "cod_token",
-                  notes: "",
-                  shippingCost: COD_SHIPPING,
-                  tax: totals.gst,
-                  discount: totals.totalDiscounts,
-                  meta: {
-                    razorpay: resp,
-                    savedScheme:
-                      savedScheme && savedScheme.isDiscountApplicable ? savedScheme : null,
-                  },
-                  amountToChargeOnDelivery: remainingAmount,
-                });
-              } catch (orderErr) {
-                console.error("Order history creation failed (COD token):", orderErr);
-                showNotification({
-                  title: "Order saved partially",
-                  message: "Token paid but could not save order history. Contact support.",
-                  color: "yellow",
-                  icon: <IconInfoCircle size={16} />,
-                });
-              }
+            const serverOrderId =
+              createdOrder?.data?.id ||
+              createdOrder?.id ||
+              createdOrder?.orderNumber ||
+              createdOrder?.orderId ||
+              createdOrder?.data?.orderNumber ||
+              createdOrder?.data?.orderId ||
+              `ORDER${Date.now()}`;
 
-              try {
-                const serverOrderId =
-                  createdOrder?.data?.id ||
-                  createdOrder?.id ||
-                  createdOrder?.orderNumber ||
-                  createdOrder?.orderId ||
-                  (createdOrder &&
-                    (createdOrder.data?.orderNumber || createdOrder.data?.orderId)) ||
-                  `ORDER${Date.now()}`;
-
-                if (serverOrderId) {
-                  await createDelhiveryShipment({
-                    orderNumber: String(serverOrderId),
-                    items,
-                    address: flatUserAddress,
-                    paymentMethod: "cod_token",
-                    totalsLocal: {
-                      ...totals,
-                      grandTotal: orderTotal,
-                      amountToChargeOnDelivery: remainingAmount,
-                    },
-                    meta: { createdOrder },
-                  });
-                  showNotification({
-                    title: "Shipment created",
-                    message: "Shipment created successfully with Delhivery.",
-                    color: "green",
-                    icon: <IconCheck size={16} />,
-                  });
-                }
-              } catch (shipErr) {
-                console.error("Delhivery shipment creation failed (COD token):", shipErr);
-                showNotification({
-                  title: "Shipment creation failed",
-                  message: "Token paid but couldn't create shipment. Contact support.",
-                  color: "yellow",
-                  icon: <IconInfoCircle size={16} />,
-                });
-              }
-
-              await handleClearCart();
+            if (serverOrderId) {
+              await createDelhiveryShipment({
+                orderNumber: String(serverOrderId),
+                items,
+                address: flatUserAddress,
+                paymentMethod: "online",
+                totalsLocal: totals,
+                meta: { createdOrder },
+              });
               showNotification({
-                title: "COD placed",
-                message: `Token ₹${tokenToCollect} paid. Remaining ₹${remainingAmount} on delivery.`,
+                title: "Shipment created",
+                message: "Shipment created successfully with Delhivery.",
                 color: "green",
                 icon: <IconCheck size={16} />,
               });
-              navigate("/order-success", { state: { order: createdOrder } });
-            } else {
-              alert("Token payment verification failed. Please contact support.");
             }
-          } catch (e) {
-            console.error("Verification or shipment create failed:", e);
-            alert(
-              "Token payment succeeded but verification or shipment creation failed. Please contact support."
-            );
+          } catch (shipErr) {
+            console.error("Delhivery shipment creation failed:", shipErr);
+            showNotification({
+              title: "Shipment creation failed",
+              message:
+                "Order was created but shipment creation failed. Support will assist.",
+              color: "yellow",
+              icon: <IconInfoCircle size={16} />,
+            });
           }
-        },
-      });
 
-      rzp.on("payment.failed", (e: any) => {
-        console.error("Token payment failed:", e?.error);
-        alert(e?.error?.description || "Token payment failed. Please try again.");
-      });
+          await handleClearCart();
+          navigate("/order-success", { state: { order: createdOrder } });
+        } catch (e) {
+          console.error("Verification/create shipment error:", e);
+          alert(
+            "Payment succeeded but verification or shipment creation failed. Please contact support."
+          );
+        }
+      },
+    });
 
-      rzp.open();
-    } catch (err) {
-      console.error(err);
-      alert("Unable to place COD order. Please try again.");
-    } finally {
-      setPayLoading(false);
+    rzp.on("payment.failed", (e: any) => {
+      // 👉 Log the Razorpay FAILURE RESPONSE
+      console.error("Razorpay payment failed:", e?.error);
+      alert(e?.error?.description || "Payment failed. Please try again.");
+    });
+
+    rzp.open();
+  } catch (err) {
+    console.error("onPayNow error:", err);
+    alert("Unable to start payment. Please try again.");
+  } finally {
+    setPayLoading(false);
+  }
+};
+
+
+  const onPlaceCOD = async () => {
+  if (!ensureAuthAndAddress()) return;
+
+  setPayLoading(true);
+  try {
+    if (!items?.length) {
+      showNotification({
+        title: "Cart empty",
+        message: "Add items to proceed",
+        color: "yellow",
+        icon: <IconX size={16} />,
+      });
+      return;
     }
-  };
+
+    const baseFinal =
+      savedScheme && savedScheme.isDiscountApplicable
+        ? Number(savedScheme.finalAmount ?? totals.grandTotal)
+        : totals.grandTotal;
+
+    const orderTotal = Math.round(baseFinal + COD_SHIPPING);
+    const tokenToCollect = COD_TOKEN;
+    const remainingAmount = Math.max(0, orderTotal - tokenToCollect);
+
+    // If no token, create order directly
+    if (tokenToCollect <= 0) {
+      let createdOrder: any = null;
+      try {
+        createdOrder = await createOrderHistory({
+          items,
+          shippingAddress: flatUserAddress,
+          billingAddress: flatUserAddress,
+          paymentMethod: "cod",
+          notes: "",
+          shippingCost: COD_SHIPPING,
+          tax: totals.gst,
+          discount: totals.totalDiscounts,
+          meta: {
+            immediateCOD: true,
+            savedScheme:
+              savedScheme && savedScheme.isDiscountApplicable ? savedScheme : null,
+          },
+          amountToChargeOnDelivery: orderTotal,
+        });
+      } catch (orderErr) {
+        console.error("Order history creation failed (COD immediate):", orderErr);
+        showNotification({
+          title: "Order saved partially",
+          message: "COD placed but could not save order history. Contact support.",
+          color: "yellow",
+          icon: <IconInfoCircle size={16} />,
+        });
+      }
+
+      try {
+        const serverOrderId =
+          createdOrder?.data?.id ||
+          createdOrder?.id ||
+          createdOrder?.orderNumber ||
+          createdOrder?.orderId ||
+          createdOrder?.data?.orderNumber ||
+          createdOrder?.data?.orderId ||
+          `ORDER${Date.now()}`;
+
+        if (serverOrderId) {
+          await createDelhiveryShipment({
+            orderNumber: String(serverOrderId),
+            items,
+            address: flatUserAddress,
+            paymentMethod: "cod",
+            totalsLocal: {
+              ...totals,
+              grandTotal: orderTotal,
+              amountToChargeOnDelivery: orderTotal,
+            },
+            meta: { createdOrder },
+          });
+          showNotification({
+            title: "Shipment created",
+            message: "Shipment created successfully with Delhivery.",
+            color: "green",
+            icon: <IconCheck size={16} />,
+          });
+        }
+      } catch (shipErr) {
+        console.error("Delhivery shipment creation failed (COD immediate):", shipErr);
+        showNotification({
+          title: "Shipment creation failed",
+          message: "COD placed but couldn't create shipment. Contact support.",
+          color: "yellow",
+          icon: <IconInfoCircle size={16} />,
+        });
+      }
+
+      await handleClearCart();
+      showNotification({
+        title: "COD placed",
+        message: `Delivery agent will collect ₹${orderTotal}`,
+        color: "green",
+        icon: <IconCheck size={16} />,
+      });
+      navigate("/order-success", { state: { order: createdOrder } });
+      return;
+    }
+
+    // Collect COD token via Razorpay
+    const tokenPaise = tokenToCollect * 100;
+
+    const { data: order } = await axiosInstance.post(CREATE_ORDER_URL, {
+      amount: tokenPaise,
+      currency: "INR",
+      receipt: "cod_token_rcpt_" + Date.now(),
+      notes: { itemCount: String(items.length), paymentType: "COD_TOKEN" },
+    });
+
+    if (!order?.id || !order?.amount) {
+      console.error("Invalid Razorpay order (COD token):", order);
+      showNotification({
+        title: "Payment error",
+        message: "Couldn't initialize token payment. Please try again.",
+        color: "red",
+        icon: <IconX size={16} />,
+      });
+      return;
+    }
+
+    await loadRazorpay();
+
+    const prefillName = (reduxUser?.name ?? user?.name) || "Customer";
+    const prefillEmail = (reduxUser?.email ?? user?.email) || "customer@example.com";
+    const prefillContact =
+      (reduxUser?.mobile ?? reduxUser?.phone ?? user?.mobile ?? user?.phone) || "9000000000";
+
+    const rzp = new (window as any).Razorpay({
+      key: RAZORPAY_KEY_ID,
+      amount: order.amount,
+      currency: order.currency,
+      name: "TO IMPRESS",
+      description: `COD token - ₹${tokenToCollect}`,
+      order_id: order.id,
+      prefill: { name: prefillName, email: prefillEmail, contact: prefillContact },
+      notes: { cartItems: String(items.length), source: "web_cod_token" },
+      theme: { color: DARK_GREEN },
+      handler: async (resp: any) => {
+        // 👉 Log the Razorpay PAYMENT RESPONSE for COD token
+        console.log("Razorpay COD token success:", resp);
+
+        try {
+          const { data: verify } = await axiosInstance.post(VERIFY_URL, resp);
+          if (!verify?.valid) {
+            alert("Token payment verification failed. Please contact support.");
+            return;
+          }
+
+          let createdOrder: any = null;
+          try {
+            createdOrder = await createOrderHistory({
+              items,
+              shippingAddress: flatUserAddress,
+              billingAddress: flatUserAddress,
+              paymentMethod: "cod_token",
+              notes: "",
+              shippingCost: COD_SHIPPING,
+              tax: totals.gst,
+              discount: totals.totalDiscounts,
+              meta: {
+                razorpay: resp,
+                savedScheme:
+                  savedScheme && savedScheme.isDiscountApplicable ? savedScheme : null,
+              },
+              amountToChargeOnDelivery: remainingAmount,
+            });
+          } catch (orderErr) {
+            console.error("Order history creation failed (COD token):", orderErr);
+            showNotification({
+              title: "Order saved partially",
+              message: "Token paid but could not save order history. Contact support.",
+              color: "yellow",
+              icon: <IconInfoCircle size={16} />,
+            });
+          }
+
+          try {
+            const serverOrderId =
+              createdOrder?.data?.id ||
+              createdOrder?.id ||
+              createdOrder?.orderNumber ||
+              createdOrder?.orderId ||
+              createdOrder?.data?.orderNumber ||
+              createdOrder?.data?.orderId ||
+              `ORDER${Date.now()}`;
+
+            if (serverOrderId) {
+              await createDelhiveryShipment({
+                orderNumber: String(serverOrderId),
+                items,
+                address: flatUserAddress,
+                paymentMethod: "cod_token",
+                totalsLocal: {
+                  ...totals,
+                  grandTotal: orderTotal,
+                  amountToChargeOnDelivery: remainingAmount,
+                },
+                meta: { createdOrder },
+              });
+              showNotification({
+                title: "Shipment created",
+                message: "Shipment created successfully with Delhivery.",
+                color: "green",
+                icon: <IconCheck size={16} />,
+              });
+            }
+          } catch (shipErr) {
+            console.error("Delhivery shipment creation failed (COD token):", shipErr);
+            showNotification({
+              title: "Shipment creation failed",
+              message: "Token paid but couldn't create shipment. Contact support.",
+              color: "yellow",
+              icon: <IconInfoCircle size={16} />,
+            });
+          }
+
+          await handleClearCart();
+          showNotification({
+            title: "COD placed",
+            message: `Token ₹${tokenToCollect} paid. Remaining ₹${remainingAmount} on delivery.`,
+            color: "green",
+            icon: <IconCheck size={16} />,
+          });
+          navigate("/order-success", { state: { order: createdOrder } });
+        } catch (e) {
+          console.error("Verification or shipment create failed:", e);
+          alert(
+            "Token payment succeeded but verification or shipment creation failed. Please contact support."
+          );
+        }
+      },
+    });
+
+    rzp.on("payment.failed", (e: any) => {
+      // 👉 Log the failure response
+      console.error("Razorpay COD token failed:", e?.error);
+      alert(e?.error?.description || "Token payment failed. Please try again.");
+    });
+
+    rzp.open();
+  } catch (err) {
+    console.error("onPlaceCOD error:", err);
+    alert("Unable to place COD order. Please try again.");
+  } finally {
+    setPayLoading(false);
+  }
+};
+
 
   // Fallback to localStorage if Redux hasn't hydrated on mobile
 useEffect(() => {
