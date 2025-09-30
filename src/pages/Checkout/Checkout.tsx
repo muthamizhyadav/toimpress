@@ -865,7 +865,9 @@ export default function Checkout() {
               }
 
               await handleClearCart();
-              navigate("/order-success", { state: { order: createdOrder } });
+              setTimeout(() => {
+                navigate("/order-success", { state: { order: createdOrder } });
+              }, 2000);
             } else {
               alert("Payment verification failed.");
             }
@@ -990,7 +992,9 @@ export default function Checkout() {
           color: "green",
           icon: <IconCheck size={16} />,
         });
-        navigate("/order-success", { state: { order: createdOrder } });
+         setTimeout(() => {
+                navigate("/order-success", { state: { order: createdOrder } });
+              }, 2000);
         return;
       }
 
