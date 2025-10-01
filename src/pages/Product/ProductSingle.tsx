@@ -633,7 +633,7 @@ export default function ProductPage() {
     }
   };
 
-  function findColorByImageUrl(data:any, imageUrl:string) {
+  function findColorByImageUrl(data: any, imageUrl: string) {
     for (const [colorCode, colorData] of Object.entries(data)) {
       // @ts-ignore
       if (colorData.images.includes(imageUrl)) {
@@ -660,69 +660,70 @@ export default function ProductPage() {
   const onSizeSelect = (sizeLabel: string) => {
     setSelectedSize(sizeLabel);
 
-    const sizeIndex = sizesInput.findIndex(
-      (s) => String(s).toUpperCase() === String(sizeLabel).toUpperCase()
-    );
-    if (sizeIndex >= 0 && galleryImages && galleryImages[sizeIndex]) {
-      const newGallery = [...galleryImages];
-      if (sizeIndex !== 0) {
-        const [selImg] = newGallery.splice(sizeIndex, 1);
-        newGallery.unshift(selImg);
-      }
-      setGalleryImages(newGallery);
-      setMainImage(newGallery[0] || "");
-      return;
-    }
 
-    // Try to lookup size-specific images in common shapes: imagesBySize, sizeImages, variants with size
-    const key = String(sizeLabel).toLowerCase();
-    let foundImgs: string[] | undefined = undefined;
+    // const sizeIndex = sizesInput.findIndex(
+    //   (s) => String(s).toUpperCase() === String(sizeLabel).toUpperCase()
+    // );
+    // if (sizeIndex >= 0 && galleryImages && galleryImages[sizeIndex]) {
+    //   const newGallery = [...galleryImages];
+    //   if (sizeIndex !== 0) {
+    //     const [selImg] = newGallery.splice(sizeIndex, 1);
+    //     newGallery.unshift(selImg);
+    //   }
+    //   setGalleryImages(newGallery);
+    //   setMainImage(newGallery[0] || "");
+    //   return;
+    // }
 
-    const tryMap = (map: any) => {
-      if (!map) return undefined;
-      if (typeof map === "object" && !Array.isArray(map)) {
-        const v = map[sizeLabel] ?? map[key] ?? map[sizeLabel?.toUpperCase?.()];
-        if (v) return Array.isArray(v) ? v : [v];
-      }
-      return undefined;
-    };
+    // // Try to lookup size-specific images in common shapes: imagesBySize, sizeImages, variants with size
+    // const key = String(sizeLabel).toLowerCase();
+    // let foundImgs: string[] | undefined = undefined;
 
-    foundImgs =
-      tryMap(productDetails?.imagesBySize) ??
-      tryMap(productDetails?.sizeImages) ??
-      tryMap(productDetails?.imageBySize);
+    // const tryMap = (map: any) => {
+    //   if (!map) return undefined;
+    //   if (typeof map === "object" && !Array.isArray(map)) {
+    //     const v = map[sizeLabel] ?? map[key] ?? map[sizeLabel?.toUpperCase?.()];
+    //     if (v) return Array.isArray(v) ? v : [v];
+    //   }
+    //   return undefined;
+    // };
 
-    if (!foundImgs && Array.isArray(productDetails?.variants)) {
-      const entry = productDetails.variants.find((vv: any) => {
-        // consider variant.size or variant.selectedSize
-        return String(vv.size ?? vv.selectedSize ?? "").toLowerCase() === key;
-      });
-      if (entry)
-        foundImgs = entry.images ?? (entry.image ? [entry.image] : undefined);
-    }
+    // foundImgs =
+    //   tryMap(productDetails?.imagesBySize) ??
+    //   tryMap(productDetails?.sizeImages) ??
+    //   tryMap(productDetails?.imageBySize);
 
-    if (!foundImgs && Array.isArray(productDetails?.colors)) {
-      // sometimes colors array contains sizes mapping with images
-      const entry = productDetails.colors.find(
-        (c: any) => Array.isArray(c.sizes) && c.sizes.includes(sizeLabel)
-      );
-      if (entry)
-        foundImgs = entry.images ?? (entry.image ? [entry.image] : undefined);
-    }
+    // if (!foundImgs && Array.isArray(productDetails?.variants)) {
+    //   const entry = productDetails.variants.find((vv: any) => {
+    //     // consider variant.size or variant.selectedSize
+    //     return String(vv.size ?? vv.selectedSize ?? "").toLowerCase() === key;
+    //   });
+    //   if (entry)
+    //     foundImgs = entry.images ?? (entry.image ? [entry.image] : undefined);
+    // }
 
-    if (!foundImgs) foundImgs = productDetails?.images ?? [];
+    // if (!foundImgs && Array.isArray(productDetails?.colors)) {
+    //   // sometimes colors array contains sizes mapping with images
+    //   const entry = productDetails.colors.find(
+    //     (c: any) => Array.isArray(c.sizes) && c.sizes.includes(sizeLabel)
+    //   );
+    //   if (entry)
+    //     foundImgs = entry.images ?? (entry.image ? [entry.image] : undefined);
+    // }
 
-    const imgsArr = Array.isArray(foundImgs)
-      ? foundImgs
-      : foundImgs
-      ? [String(foundImgs)]
-      : [];
-    if (imgsArr.length) {
-      setGalleryImages(imgsArr);
-      setMainImage(imgsArr[0] || "");
-    } else {
-      setMainImage(galleryImages[0] || imagesInput[0] || "");
-    }
+    // if (!foundImgs) foundImgs = productDetails?.images ?? [];
+
+    // const imgsArr = Array.isArray(foundImgs)
+    //   ? foundImgs
+    //   : foundImgs
+    //   ? [String(foundImgs)]
+    //   : [];
+    // if (imgsArr.length) {
+    //   setGalleryImages(imgsArr);
+    //   setMainImage(imgsArr[0] || "");
+    // } else {
+    //   setMainImage(galleryImages[0] || imagesInput[0] || "");
+    // }
   };
 
   // helper: build grouped SizeOption[] from a product's selectedSizes array
@@ -732,6 +733,7 @@ export default function ProductPage() {
     const map = new Map<number, Set<string>>();
 
     for (const s of sizesArr) {
+      // @ts-ignore
       if (!s && s !== 0) continue;
       const raw = String(s).toUpperCase().trim();
 
