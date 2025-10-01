@@ -3490,7 +3490,7 @@ export default function Checkout() {
       } catch (shipmentError: any) {
         showApiError(
           "Shipment Creation Failed",
-          shipmentError.message || "Unable to create shipment. Please try again."
+          "Something went wrong while creating your shipment. Don’t worry, please try again in a moment."
         );
         return { success: false };
       }
