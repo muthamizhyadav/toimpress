@@ -1254,7 +1254,6 @@ export default function Checkout() {
       return;
     }
 
-    // Store payment intent IMMEDIATELY before opening Razorpay
     const paymentSession = {
       orderId: order.id,
       amount: amountToCollect,
@@ -1263,7 +1262,7 @@ export default function Checkout() {
       flatUserAddress: flatUserAddress,
       savedScheme: savedScheme,
       timestamp: Date.now(),
-      status: 'initiated' // Track different stages
+      status: 'initiated'
     };
     localStorage.setItem('pendingRazorpayPayment', JSON.stringify(paymentSession));
 
@@ -1308,16 +1307,13 @@ export default function Checkout() {
         escape: true,
         backdropclose: true
       },
-      handler: function (response: any) {
-        console.log("Razorpay handler triggered:", response);
-        
+      handler: function (response: any) {        
         paymentSession.paymentId = response.razorpay_payment_id;
         paymentSession.signature = response.razorpay_signature;
         paymentSession.status = 'payment_made';
         localStorage.setItem('pendingRazorpayPayment', JSON.stringify(paymentSession));
         localStorage.setItem('paymentProcessing', 'true');
         
-        // Close modal immediately
         rzp.close();
         
         // Process in background - don't wait for it
@@ -1459,60 +1455,53 @@ useEffect(() => {
 
   
 
-  // Enhanced recovery useEffect
   useEffect(() => {
-    const checkPendingPayment = async () => {
-      // Don't recover if we're already processing
-      if (localStorage.getItem("paymentProcessing") === "true") {
-        return;
-      }
+  const checkPendingPayment = async () => {
+    try {
+      // You're using different keys in different places - standardize them
+      const pendingPayment = localStorage.getItem('pendingRazorpayPayment');
+      const paymentProcessing = localStorage.getItem('paymentProcessing');
 
-      try {
-        const pending = localStorage.getItem("pendingPayment");
-        if (pending) {
-          const paymentSession = JSON.parse(pending);
+      if (pendingPayment && !paymentProcessing) {
+        const paymentData = JSON.parse(pendingPayment);
+        
+        console.log("🔍 Checking pending payment:", paymentData.status);
+        
+        if (paymentData.status === 'payment_made' && paymentData.paymentId) {
+          console.log("🔄 Recovering interrupted payment...");
+          
+          showNotification({
+            title: "Completing your order...",
+            message: "Please wait while we finalize your payment",
+            color: "blue",
+            loading: true,
+          });
 
-          // If payment was completed but page reloaded
-          if (
-            paymentSession.status === "completed" &&
-            paymentSession.paymentId
-          ) {
-            console.log("Recovering interrupted payment...");
-
-            showNotification({
-              title: "Completing your order...",
-              message: "Please wait while we finalize your payment",
-              color: "blue",
-              loading: true,
-            });
-
-            // Mark as processing to prevent duplicate recovery
-            localStorage.setItem("paymentProcessing", "true");
-
-            // Re-process with minimal operations
-            await processPaymentRecovery(paymentSession);
-          }
-
-          // Clean up old pending payments (older than 10 minutes)
-          if (Date.now() - paymentSession.timestamp > 10 * 60 * 1000) {
-            localStorage.removeItem("pendingPayment");
-            localStorage.removeItem("paymentProcessing");
-          }
+          localStorage.setItem('paymentProcessing', 'true');
+          await processPaymentBackground(
+            {
+              razorpay_payment_id: paymentData.paymentId,
+              razorpay_order_id: paymentData.orderId,
+              razorpay_signature: paymentData.signature
+            },
+            paymentData
+          );
         }
-      } catch (error) {
-        console.error("Payment recovery error:", error);
-        localStorage.removeItem("pendingPayment");
-        localStorage.removeItem("paymentProcessing");
       }
-    };
+    } catch (error) {
+      console.error("Payment recovery error:", error);
+      localStorage.removeItem('pendingRazorpayPayment');
+      localStorage.removeItem('paymentProcessing');
+    }
+  };
 
-    // Check for pending payments after a short delay
-    const timer = setTimeout(() => {
-      checkPendingPayment();
-    }, 1000);
+  const timer = setTimeout(() => {
+    checkPendingPayment();
+  }, 2000);
 
-    return () => clearTimeout(timer);
-  }, [navigate]);
+  return () => clearTimeout(timer);
+}, [navigate]);
+
 
   // Fast recovery processing
   const processPaymentRecovery = async (paymentSession: any) => {
