@@ -355,80 +355,105 @@ export default function Checkout() {
     checkForPendingPayments();
   }, []);
 
-  const verifyAndCompletePayment = async (paymentData: any) => {
-    try {
-      // Verify the payment with your server
-      const { data: verify } = await axiosInstance.post(VERIFY_URL, {
-        razorpay_payment_id: paymentData.paymentId,
-        razorpay_order_id: paymentData.orderId,
-        razorpay_signature: paymentData.signature,
-      });
+const verifyAndCompletePayment = async (paymentData: any) => {
+  try {
+    // Verify the payment with your server
+    const { data: verify } = await axiosInstance.post(VERIFY_URL, {
+      razorpay_payment_id: paymentData.paymentId,
+      razorpay_order_id: paymentData.orderId,
+      razorpay_signature: paymentData.signature,
+    });
 
-      if (!verify?.valid) {
-        showNotification({
-          title: "Payment verification failed",
-          message: "Please contact support with your payment ID",
-          color: "red",
-          icon: <IconX size={16} />,
-        });
-        return;
-      }
-
-      // Create order in database
-      let createdOrder: any = null;
-      try {
-        createdOrder = await createOrderHistory({
-          items: paymentData.items,
-          shippingAddress: paymentData.flatUserAddress,
-          billingAddress: paymentData.flatUserAddress,
-          paymentMethod: "online",
-          notes: "",
-          shippingCost: paymentData.totals.shipping,
-          tax: paymentData.totals.gst,
-          discount: paymentData.totals.totalDiscounts,
-          localOrderId: paymentData.orderId,
-          meta: {
-            razorpay: {
-              razorpay_payment_id: paymentData.paymentId,
-              razorpay_order_id: paymentData.orderId,
-              razorpay_signature: paymentData.signature,
-            },
-            savedScheme: paymentData.savedScheme?.isDiscountApplicable
-              ? paymentData.savedScheme
-              : null,
-            recovered: true,
-          },
-        });
-      } catch (orderErr) {
-        console.error("Order creation during recovery failed:", orderErr);
-      }
-
-      // Clear cart
-      await handleClearCart();
-
-      // Clean up storage
-      localStorage.removeItem("pendingRazorpayPayment");
-      localStorage.removeItem("paymentProcessing");
-      setRecoveringPayment(false);
-
-      // Navigate to success page
-      navigate("/order-success", {
-        state: {
-          order: createdOrder,
-          recovered: true,
-        },
-      });
-    } catch (error) {
-      console.error("Payment recovery failed:", error);
+    if (!verify?.valid) {
       showNotification({
-        title: "Recovery failed",
-        message: "Please contact support with your payment details",
+        title: "Payment verification failed",
+        message: "Please contact support with your payment ID",
         color: "red",
         icon: <IconX size={16} />,
       });
-      setRecoveringPayment(false);
+      return;
     }
-  };
+
+    // Create order in database
+    let createdOrder: any = null;
+    try {
+      createdOrder = await createOrderHistory({
+        items: paymentData.items,
+        shippingAddress: paymentData.flatUserAddress,
+        billingAddress: paymentData.flatUserAddress,
+        paymentMethod: "online",
+        notes: "",
+        shippingCost: paymentData.totals.shipping,
+        tax: paymentData.totals.gst,
+        discount: paymentData.totals.totalDiscounts,
+        localOrderId: paymentData.orderId,
+        meta: {
+          razorpay: {
+            razorpay_payment_id: paymentData.paymentId,
+            razorpay_order_id: paymentData.orderId,
+            razorpay_signature: paymentData.signature,
+          },
+          savedScheme: paymentData.savedScheme?.isDiscountApplicable
+            ? paymentData.savedScheme
+            : null,
+          recovered: true,
+        },
+      });
+    } catch (orderErr) {
+      console.error("Order creation during recovery failed:", orderErr);
+    }
+
+    // ✅ ADD THIS: Create Delhivery shipment for recovered payment
+    if (createdOrder) {
+      try {
+        const serverOrderId =
+          createdOrder?.data?.id ||
+          createdOrder?.id ||
+          createdOrder?.orderNumber ||
+          createdOrder?.orderId ||
+          `ORDER${Date.now()}`;
+
+        await createDelhiveryShipment({
+          orderNumber: String(serverOrderId),
+          items: paymentData.items,
+          address: paymentData.flatUserAddress,
+          paymentMethod: "online",
+          totalsLocal: paymentData.totals,
+          meta: { createdOrder, recovered: true },
+        });
+        
+        console.log("✅ Delhivery shipment created for recovered payment");
+      } catch (shipErr) {
+        console.error("❌ Delhivery shipment failed for recovery:", shipErr);
+      }
+    }
+
+    // Clear cart
+    await handleClearCart();
+
+    // Clean up storage
+    localStorage.removeItem("pendingRazorpayPayment");
+    localStorage.removeItem("paymentProcessing");
+    setRecoveringPayment(false);
+
+    // Navigate to success page
+    navigate("/order-success", {
+      state: {
+        order: createdOrder,
+        recovered: true,
+      },
+    });
+  } catch (error) {
+    console.error("Payment recovery failed:", error);
+    showNotification({
+      title: "Recovery failed",
+      message: "Please contact support with your payment details",
+      color: "red",
+      icon: <IconX size={16} />,
+    });
+    setRecoveringPayment(false);
+  }
+};
 
   // Redux selectors (adapt to your store shape if needed)
   const reduxUser = useSelector(
@@ -1362,7 +1387,6 @@ export default function Checkout() {
   }
 };
 
-// Background payment processing - doesn't block the handler
 const processPaymentBackground = async (response: any, paymentSession: any) => {
   try {
     console.log("Processing payment in background...");
@@ -1400,7 +1424,34 @@ const processPaymentBackground = async (response: any, paymentSession: any) => {
       });
     } catch (orderErr) {
       console.error("Order creation failed:", orderErr);
-      // Continue anyway - we'll show a warning
+    }
+
+    // ✅ ADD THIS: Create Delhivery shipment
+    if (createdOrder) {
+      try {
+        const serverOrderId =
+          createdOrder?.data?.id ||
+          createdOrder?.id ||
+          createdOrder?.orderNumber ||
+          createdOrder?.orderId ||
+          createdOrder?.data?.orderNumber ||
+          createdOrder?.data?.orderId ||
+          `ORDER${Date.now()}`;
+
+        await createDelhiveryShipment({
+          orderNumber: String(serverOrderId),
+          items: paymentSession.items,
+          address: paymentSession.flatUserAddress,
+          paymentMethod: "online",
+          totalsLocal: paymentSession.totals,
+          meta: { createdOrder },
+        });
+        
+        console.log("✅ Delhivery shipment created successfully");
+      } catch (shipErr) {
+        console.error("❌ Delhivery shipment creation failed:", shipErr);
+        // Don't block the flow - log for manual intervention
+      }
     }
 
     // Clear cart
@@ -1422,15 +1473,12 @@ const processPaymentBackground = async (response: any, paymentSession: any) => {
   } catch (error) {
     console.error("Background payment processing failed:", error);
     
-    // Keep the payment session for recovery
     showNotification({
       title: "Payment processing delayed",
       message: "Your payment was successful but processing is taking longer. Please wait...",
       color: "yellow",
       icon: <IconInfoCircle size={16} />,
     });
-    
-    // The recovery mechanism will handle this on page reload
   }
 };
 
