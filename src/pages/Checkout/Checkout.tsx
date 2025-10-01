@@ -18,7 +18,13 @@ import {
   Badge,
   Paper,
 } from "@mantine/core";
-import { IconMinus, IconPlus, IconTrash, IconInfoCircle, IconPencil } from "@tabler/icons-react";
+import {
+  IconMinus,
+  IconPlus,
+  IconTrash,
+  IconInfoCircle,
+  IconPencil,
+} from "@tabler/icons-react";
 import { useMemo, useState, useEffect, useCallback } from "react";
 import axiosInstance from "../../api/axiosInstance";
 import SmallHeader from "../../components/SmallHeader";
@@ -34,9 +40,8 @@ import { useSelector, useDispatch } from "react-redux";
 import { removeFromCart, clearCart } from "../../redux/features/cartSlice";
 import * as storeModule from "../../redux/store";
 
-const normalizeColor = (c?: string) => (c ?? "").toString().trim().toLowerCase();
-
-
+const normalizeColor = (c?: string) =>
+  (c ?? "").toString().trim().toLowerCase();
 
 // ✅ Fallback to null if persistor isn't exported
 let persistor: any = null;
@@ -44,7 +49,6 @@ let persistor: any = null;
 if ("persistor" in storeModule) {
   persistor = (storeModule as any).persistor;
 }
-
 
 // Razorpay config
 const RAZORPAY_KEY_ID = import.meta.env.VITE_RZP_KEY_ID as string;
@@ -88,7 +92,11 @@ function CheckoutItemBox({
   onMinus: () => void;
   onPlus: () => void;
   onRemove: () => void;
-  promo?: { threshold: number; discountPercent: number; applied: boolean } | null;
+  promo?: {
+    threshold: number;
+    discountPercent: number;
+    applied: boolean;
+  } | null;
   prodId?: any;
   subtotal: number;
 }) {
@@ -106,10 +114,22 @@ function CheckoutItemBox({
         <Box
           w={100}
           h={100}
-          style={{ borderRadius: 8, overflow: "hidden", flexShrink: 0, cursor: "pointer" }}
+          style={{
+            borderRadius: 8,
+            overflow: "hidden",
+            flexShrink: 0,
+            cursor: "pointer",
+          }}
           onClick={() => navigate(`/product?id=${prodId}`)}
         >
-          <Image src={img} alt={item.title} width={100} height={100} fit="cover" withPlaceholder />
+          <Image
+            src={img}
+            alt={item.title}
+            width={100}
+            height={100}
+            fit="cover"
+            withPlaceholder
+          />
         </Box>
 
         <Stack gap={6} style={{ flex: 1, minWidth: 0 }}>
@@ -118,15 +138,25 @@ function CheckoutItemBox({
               {item.title}
             </Text>
             {item.raw?.isOfferAvailable ? (
-              <Badge style={{ backgroundColor: LIGHT_GREEN, color: DARK_GREEN }}>OFFER APPLIED</Badge>
+              <Badge
+                style={{ backgroundColor: LIGHT_GREEN, color: DARK_GREEN }}
+              >
+                OFFER APPLIED
+              </Badge>
             ) : null}
           </Group>
 
           <Group gap="xs" wrap="wrap">
-            {item.size && <Text size="xs" c="dimmed">Size: {item.size}</Text>}
+            {item.size && (
+              <Text size="xs" c="dimmed">
+                Size: {item.size}
+              </Text>
+            )}
             {item.color && (
               <Group gap={6} align="center">
-                <Text size="xs" c="dimmed">Color:</Text>
+                <Text size="xs" c="dimmed">
+                  Color:
+                </Text>
                 <Box
                   w={14}
                   h={14}
@@ -142,28 +172,51 @@ function CheckoutItemBox({
           </Group>
 
           <Group gap="xs" align="center">
-            <Text fw={700} size="sm">₹{unitPrice}</Text>
+            <Text fw={700} size="sm">
+              ₹{unitPrice}
+            </Text>
             {item.salePrice && item.price && (
-              <Text size="xs" c="dimmed" td="line-through">₹{item.price}</Text>
+              <Text size="xs" c="dimmed" td="line-through">
+                ₹{item.price}
+              </Text>
             )}
           </Group>
 
           <Group gap="xs" mt={2} wrap="nowrap">
-            <ActionIcon variant="light" size="sm" onClick={onMinus}><IconMinus size={14} /></ActionIcon>
+            <ActionIcon variant="light" size="sm" onClick={onMinus}>
+              <IconMinus size={14} />
+            </ActionIcon>
             <Text size="sm">{item.qty}</Text>
-            <ActionIcon variant="light" size="sm" onClick={onPlus}><IconPlus size={14} /></ActionIcon>
-            <ActionIcon variant="subtle" color="red" size="sm" onClick={onRemove}><IconTrash size={16} /></ActionIcon>
+            <ActionIcon variant="light" size="sm" onClick={onPlus}>
+              <IconPlus size={14} />
+            </ActionIcon>
+            <ActionIcon
+              variant="subtle"
+              color="red"
+              size="sm"
+              onClick={onRemove}
+            >
+              <IconTrash size={16} />
+            </ActionIcon>
             <Box style={{ marginLeft: "auto" }}>
-              <Text fw={600} size="sm">₹{lineTotal}</Text>
+              <Text fw={600} size="sm">
+                ₹{lineTotal}
+              </Text>
             </Box>
           </Group>
 
           {item.raw?.buy3For999 && (
             <Paper radius="sm" p="xs" style={{ backgroundColor: "#f3fbf4" }}>
               <Group spacing="xs">
-                <Text size="sm" style={{ color: DARK_GREEN }}>✓</Text>
-                <Text size="sm" style={{ color: DARK_GREEN }}>Buy 3 For 999</Text>
-                <Text size="xs" c="dimmed">({item.qty} Qty)</Text>
+                <Text size="sm" style={{ color: DARK_GREEN }}>
+                  ✓
+                </Text>
+                <Text size="sm" style={{ color: DARK_GREEN }}>
+                  Buy 3 For 999
+                </Text>
+                <Text size="xs" c="dimmed">
+                  ({item.qty} Qty)
+                </Text>
               </Group>
             </Paper>
           )}
@@ -176,7 +229,11 @@ function CheckoutItemBox({
           radius="sm"
           p="xs"
           mt="6px"
-          style={{ backgroundColor: "#f3fbf4", borderLeft: `4px solid ${LIGHT_GREEN}`, width: "100%" }}
+          style={{
+            backgroundColor: "#f3fbf4",
+            borderLeft: `4px solid ${LIGHT_GREEN}`,
+            width: "100%",
+          }}
         >
           <Text size="xs" style={{ color: DARK_GREEN, fontWeight: 700 }}>
             Buy above ₹{promo.threshold} — flat {promo.discountPercent}% off
@@ -224,7 +281,11 @@ function mapServerCartToItems(respData: any): CartItem[] {
     }));
   }
 
-  if (payload && typeof payload.product !== "undefined" && typeof payload.itemqty !== "undefined") {
+  if (
+    payload &&
+    typeof payload.product !== "undefined" &&
+    typeof payload.itemqty !== "undefined"
+  ) {
     return [
       {
         id: payload.id ?? payload._id ?? payload.product,
@@ -248,21 +309,33 @@ export default function Checkout() {
   const [items, setItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [payLoading, setPayLoading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"RAZORPAY" | "COD">("RAZORPAY");
+  const [paymentMethod, setPaymentMethod] = useState<"RAZORPAY" | "COD">(
+    "RAZORPAY"
+  );
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
   // Redux selectors (adapt to your store shape if needed)
-  const reduxUser = useSelector((state: any) => state.auth?.user ?? state.user?.user ?? null);
-  const reduxAddress = useSelector((state: any) => state.auth?.userAddress ?? state.user?.user?.address ?? state.address ?? null);
-
+  const reduxUser = useSelector(
+    (state: any) => state.auth?.user ?? state.user?.user ?? null
+  );
+  const reduxAddress = useSelector(
+    (state: any) =>
+      state.auth?.userAddress ??
+      state.user?.user?.address ??
+      state.address ??
+      null
+  );
 
   const [user, setUser] = useState<any>(null);
   const [storedUserAddress, setStoredUserAddress] = useState<any>(null);
 
   // coupon state
   const [couponCode, setCouponCode] = useState<string>("");
-  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    code: string;
+    discount: number;
+  } | null>(null);
 
   // saved scheme (driven from server response)
   const [savedScheme, setSavedScheme] = useState<any>(null);
@@ -280,27 +353,47 @@ export default function Checkout() {
       if (root && typeof root.isDiscountApplicable !== "undefined") {
         const parsed = {
           ...root,
-          totalSalesPrice: Number(root.totalSalesPrice ?? root.total_sales_price ?? 0),
-          minusValue: Number(root.minusValue ?? root.minus_value ?? root.discountAmount ?? 0),
+          totalSalesPrice: Number(
+            root.totalSalesPrice ?? root.total_sales_price ?? 0
+          ),
+          minusValue: Number(
+            root.minusValue ?? root.minus_value ?? root.discountAmount ?? 0
+          ),
           finalAmount: Number(root.finalAmount ?? root.final_amount ?? 0),
           gst: Math.round(Number(root.gst ?? 0)),
           couponAmount: Number(root.couponAmount ?? root.coupon_amount ?? 0),
           discountvalue:
-            root.discountvalue ?? root.discount_value ?? root.couponOfferDiscount ?? root.discountvalue ?? 0,
+            root.discountvalue ??
+            root.discount_value ??
+            root.couponOfferDiscount ??
+            root.discountvalue ??
+            0,
           isDiscountApplicable: Boolean(root.isDiscountApplicable),
         };
         setSavedScheme(parsed);
-      } else if (root && root.scheme && typeof root.scheme.isDiscountApplicable !== "undefined") {
+      } else if (
+        root &&
+        root.scheme &&
+        typeof root.scheme.isDiscountApplicable !== "undefined"
+      ) {
         const s = root.scheme;
         const parsed = {
           ...s,
-          totalSalesPrice: Number(s.totalSalesPrice ?? s.total_sales_price ?? 0),
-          minusValue: Number(s.minusValue ?? s.minus_value ?? s.discountAmount ?? 0),
+          totalSalesPrice: Number(
+            s.totalSalesPrice ?? s.total_sales_price ?? 0
+          ),
+          minusValue: Number(
+            s.minusValue ?? s.minus_value ?? s.discountAmount ?? 0
+          ),
           finalAmount: Number(s.finalAmount ?? s.final_amount ?? 0),
           gst: Math.round(Number(s.gst ?? 0)),
           couponAmount: Number(s.couponAmount ?? s.coupon_amount ?? 0),
           discountvalue:
-            s.discountvalue ?? s.discount_value ?? s.couponOfferDiscount ?? s.discountvalue ?? 0,
+            s.discountvalue ??
+            s.discount_value ??
+            s.couponOfferDiscount ??
+            s.discountvalue ??
+            0,
           isDiscountApplicable: Boolean(s.isDiscountApplicable),
         };
         setSavedScheme(parsed);
@@ -332,62 +425,67 @@ export default function Checkout() {
   }, [reduxUser, reduxAddress]);
 
   const updateLineQuantity = async (line: CartItem, newQuantity: number) => {
-  try {
-    const body = {
-      productId: String(line.productId ?? line.id),
-      quantity: newQuantity,
-      selectedSize: line.size,
-      selectedColor: line.color,
-    };
+    try {
+      const body = {
+        productId: String(line.productId ?? line.id),
+        quantity: newQuantity,
+        selectedSize: line.size,
+        selectedColor: line.color,
+      };
 
-    const resp = await axiosInstance.post(API_CART, body, {
-      headers: { "Content-Type": "application/json" },
-    });
-
-    if (resp?.status === 200 && resp?.data) {
-      showNotification({
-        title: newQuantity === 0 ? "Removed" : "Quantity updated",
-        message:
-          resp.data?.message ??
-          (newQuantity === 0 ? "Item removed" : `Quantity updated to ${newQuantity}`),
-        color: "green",
-        icon: <IconCheck size={16} />,
+      const resp = await axiosInstance.post(API_CART, body, {
+        headers: { "Content-Type": "application/json" },
       });
 
-      // ✅ Only remove from Redux when qty becomes 0
-      //    and use EXACT keys the slice matches on:
-      //    id (as string) + size + *normalized* color.
-      if (newQuantity === 0) {
-        dispatch(
-          removeFromCart({
-            id: String(line.productId ?? line.id),
-            size: line.size ?? "",
-            selectedColor: normalizeColor(line.color ?? ""),
-            silent: true,
-          } as any)
-        );
-      }
+      if (resp?.status === 200 && resp?.data) {
+        showNotification({
+          title: newQuantity === 0 ? "Removed" : "Quantity updated",
+          message:
+            resp.data?.message ??
+            (newQuantity === 0
+              ? "Item removed"
+              : `Quantity updated to ${newQuantity}`),
+          color: "green",
+          icon: <IconCheck size={16} />,
+        });
 
-      // Server is source of truth — refresh UI
-      await fetchCart();
-    } else {
+        // ✅ Only remove from Redux when qty becomes 0
+        //    and use EXACT keys the slice matches on:
+        //    id (as string) + size + *normalized* color.
+        if (newQuantity === 0) {
+          dispatch(
+            removeFromCart({
+              id: String(line.productId ?? line.id),
+              size: line.size ?? "",
+              selectedColor: normalizeColor(line.color ?? ""),
+              silent: true,
+            } as any)
+          );
+        }
+
+        // Server is source of truth — refresh UI
+        await fetchCart();
+      } else {
+        showNotification({
+          title: "Update failed",
+          message: "Unable to update cart. Try again.",
+          color: "red",
+          icon: <IconX size={16} />,
+        });
+      }
+    } catch (err: any) {
+      console.error("Update line failed", err);
       showNotification({
         title: "Update failed",
-        message: "Unable to update cart. Try again.",
+        message:
+          err?.response?.data?.message ??
+          err?.message ??
+          "Unable to update cart",
         color: "red",
         icon: <IconX size={16} />,
       });
     }
-  } catch (err: any) {
-    console.error("Update line failed", err);
-    showNotification({
-      title: "Update failed",
-      message: err?.response?.data?.message ?? err?.message ?? "Unable to update cart",
-      color: "red",
-      icon: <IconX size={16} />,
-    });
-  }
-};
+  };
 
   const handleMinus = (item: CartItem) => {
     const nextQty = Math.max(0, item.qty - 1);
@@ -405,7 +503,7 @@ export default function Checkout() {
     if (!items?.length) return;
     const itemsToClear = [...items];
 
-     dispatch(clearCart());
+    dispatch(clearCart());
 
     try {
       setLoading(true);
@@ -436,7 +534,9 @@ export default function Checkout() {
       try {
         localStorage.removeItem("persist:root");
         localStorage.removeItem("persist:cart");
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
 
       // 3) Refresh from server (authoritative)
       await fetchCart();
@@ -451,7 +551,10 @@ export default function Checkout() {
       console.error("Clear cart failed", err);
       showNotification({
         title: "Clear failed",
-        message: err?.response?.data?.message ?? err?.message ?? "Unable to clear cart",
+        message:
+          err?.response?.data?.message ??
+          err?.message ??
+          "Unable to clear cart",
         color: "red",
         icon: <IconX size={16} />,
       });
@@ -462,7 +565,9 @@ export default function Checkout() {
         if (persistor?.purge) await persistor.purge();
         localStorage.removeItem("persist:root");
         localStorage.removeItem("persist:cart");
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     } finally {
       setLoading(false);
     }
@@ -490,10 +595,15 @@ export default function Checkout() {
     const discountedBase = localSubtotal - totalDiscounts;
     const gstRaw = discountedBase * GST_PERCENT;
     const gstComputed = Math.round(gstRaw);
-    const shipping = paymentMethod === "COD" && items?.length ? COD_SHIPPING : 0;
-    let grandTotalComputed = Math.round(discountedBase + gstComputed + shipping);
+    const shipping =
+      paymentMethod === "COD" && items?.length ? COD_SHIPPING : 0;
+    let grandTotalComputed = Math.round(
+      discountedBase + gstComputed + shipping
+    );
     let savingsPercentComputed =
-      localSubtotal > 0 ? Math.round((totalDiscounts / localSubtotal) * 100) : 0;
+      localSubtotal > 0
+        ? Math.round((totalDiscounts / localSubtotal) * 100)
+        : 0;
 
     if (savedScheme && savedScheme.isDiscountApplicable) {
       const sTotalSales = Number(savedScheme.totalSalesPrice ?? 0);
@@ -512,7 +622,8 @@ export default function Checkout() {
         gst: Math.round(sGst),
         shipping: paymentMethod === "COD" ? COD_SHIPPING : 0,
         grandTotal: effectiveFinal,
-        savingsPercent: sTotalSales > 0 ? Math.round((sMinus / sTotalSales) * 100) : 0,
+        savingsPercent:
+          sTotalSales > 0 ? Math.round((sMinus / sTotalSales) * 100) : 0,
       };
     }
 
@@ -529,7 +640,10 @@ export default function Checkout() {
   }, [items, paymentMethod, appliedCoupon, savedScheme]);
 
   const promo = useMemo(() => {
-    if (savedScheme && typeof savedScheme.isDiscountApplicable !== "undefined") {
+    if (
+      savedScheme &&
+      typeof savedScheme.isDiscountApplicable !== "undefined"
+    ) {
       const threshold = Number(
         savedScheme.couponAmount ?? savedScheme.totalSalesPrice ?? 0
       );
@@ -537,7 +651,8 @@ export default function Checkout() {
         savedScheme.discountvalue ?? savedScheme.couponOfferDiscount ?? 0
       );
       const applied = Boolean(savedScheme.isDiscountApplicable);
-      if (threshold > 0 && discountPercent > 0) return { threshold, discountPercent, applied };
+      if (threshold > 0 && discountPercent > 0)
+        return { threshold, discountPercent, applied };
       return null;
     }
 
@@ -561,8 +676,6 @@ export default function Checkout() {
   const flatUserAddress = reduxAddress ?? storedUserAddress ?? null;
 
 
-  console.log(flatUserAddress, "flatUserAddress")
-
   const ensureAuthAndAddress = () => {
     if (!flatUserAddress) {
       showNotification({
@@ -577,7 +690,6 @@ export default function Checkout() {
     }
     return true;
   };
-
 
   const applyCoupon = () => {
     const code = (couponCode || "").trim().toUpperCase();
@@ -639,7 +751,7 @@ export default function Checkout() {
     paymentMethod: string;
     notes?: string;
     shippingCost?: number;
-    localOrderId?:any;
+    localOrderId?: any;
     tax?: number;
     discount?: number;
     meta?: any;
@@ -664,12 +776,16 @@ export default function Checkout() {
     };
 
     const token =
-      (reduxUser && (reduxUser.token ?? reduxUser.accessToken ?? reduxUser.authToken)) ?? null;
+      (reduxUser &&
+        (reduxUser.token ?? reduxUser.accessToken ?? reduxUser.authToken)) ??
+      null;
 
     const headers: any = { "Content-Type": "application/json" };
     if (token) headers.authorization = `Bearer ${token}`;
 
-    const resp = await axiosInstance.post(SERVER_CREATE_ORDER_URL, payload, { headers });
+    const resp = await axiosInstance.post(SERVER_CREATE_ORDER_URL, payload, {
+      headers,
+    });
     await loadRazorpay();
     return resp.data ?? resp;
   }
@@ -699,7 +815,11 @@ export default function Checkout() {
     if (reduxUserData?.state) streetParts.push(reduxUserData.state);
     const add = streetParts.join(", ") || (reduxUserData?.street ?? "");
     const pin =
-      reduxUserData?.zip ?? address?.pin ?? address?.zipCode ?? address?.zipcode ?? "";
+      reduxUserData?.zip ??
+      address?.pin ??
+      address?.zipCode ??
+      address?.zipcode ??
+      "";
     const city = reduxUserData?.city ?? "";
     const state = reduxUserData?.state ?? "";
     const country = reduxUserData?.country ?? "India";
@@ -710,9 +830,13 @@ export default function Checkout() {
       reduxUser?.phone ??
       "0000000000";
 
-    const products_desc = items.map((it) => `${it.title} x${it.qty}`).join(", ");
+    const products_desc = items
+      .map((it) => `${it.title} x${it.qty}`)
+      .join(", ");
     const quantity = items.reduce((s, it) => s + (it.qty ?? 0), 0).toString();
-    const total_amount = String(totalsLocal?.grandTotal ?? totalsLocal?.subtotal ?? 0);
+    const total_amount = String(
+      totalsLocal?.grandTotal ?? totalsLocal?.subtotal ?? 0
+    );
     const cod_amount =
       paymentMethod === "COD" || paymentMethod === "cod_token"
         ? String(
@@ -742,14 +866,220 @@ export default function Checkout() {
     ];
 
     const token =
-      (reduxUser && (reduxUser.token ?? reduxUser.accessToken ?? reduxUser.authToken)) ?? null;
+      (reduxUser &&
+        (reduxUser.token ?? reduxUser.accessToken ?? reduxUser.authToken)) ??
+      null;
 
     const headers: any = { "Content-Type": "application/json" };
     if (token) headers.Authorization = `Bearer ${token}`;
 
-    const resp = await axiosInstance.post(DELHIVERY_SHIPMENT_URL, { shipments }, { headers });
+    const resp = await axiosInstance.post(
+      DELHIVERY_SHIPMENT_URL,
+      { shipments },
+      { headers }
+    );
     return resp.data ?? resp;
   }
+
+  // const onPayNow = async () => {
+  //   if (!ensureAuthAndAddress()) return;
+
+  //   setPayLoading(true);
+  //   try {
+  //     if (!items?.length) {
+  //       showNotification({
+  //         title: "Cart empty",
+  //         message: "Add items to proceed",
+  //         color: "yellow",
+  //         icon: <IconX size={16} />,
+  //       });
+  //       return;
+  //     }
+
+  //     // Compute amount
+  //     const baseFinal =
+  //       savedScheme && savedScheme.isDiscountApplicable
+  //         ? Number(savedScheme.finalAmount ?? totals.grandTotal)
+  //         : totals.grandTotal;
+
+  //     const amountToCollect = Math.max(0, Math.round(baseFinal));
+  //     const amountPaise = amountToCollect * 100;
+  //     if (amountPaise <= 0) {
+  //       showNotification({
+  //         title: "Invalid amount",
+  //         message: "Amount must be greater than 0.",
+  //         color: "red",
+  //         icon: <IconX size={16} />,
+  //       });
+  //       return;
+  //     }
+
+  //     // Create RZP order on server
+  //     const { data: order } = await axiosInstance.post(CREATE_ORDER_URL, {
+  //       amount: amountPaise,
+  //       currency: "INR",
+  //       receipt: "rcpt_" + Date.now(),
+  //       notes: { itemCount: String(items.length), paymentType: "FULL" },
+  //     });
+
+  //     if (!order?.id || !order?.amount) {
+  //       console.error("Invalid Razorpay order:", order);
+  //       showNotification({
+  //         title: "Payment error",
+  //         message: "Couldn't initialize payment. Please try again.",
+  //         color: "red",
+  //         icon: <IconX size={16} />,
+  //       });
+  //       return;
+  //     }
+
+  //     // (Optional) check receipt status
+  //     try {
+  //       const { data: receiptCheck } = await axiosInstance.get(
+  //         `${API_GET_STATUS}${order.receipt}`
+  //       );
+  //       console.log("Receipt status:", receiptCheck);
+  //     } catch (e) {
+  //       console.warn("Receipt status check failed (non-blocking):", e);
+  //     }
+
+  //     // Ensure SDK is ready, then open checkout
+  //     await loadRazorpay();
+
+  //     const prefillName = (reduxUser?.name ?? user?.name) || "Customer";
+  //     const prefillEmail =
+  //       (reduxUser?.email ?? user?.email) || "customer@example.com";
+  //     const prefillContact =
+  //       (reduxUser?.mobile ??
+  //         reduxUser?.phone ??
+  //         user?.mobile ??
+  //         user?.phone) ||
+  //       "9000000000";
+
+  //     const rzp = new (window as any).Razorpay({
+  //       key: RAZORPAY_KEY_ID,
+  //       amount: order.amount,
+  //       currency: order.currency,
+  //       name: "TO IMPRESS",
+  //       description: "Order Payment",
+  //       order_id: order.id,
+  //       prefill: {
+  //         name: prefillName,
+  //         email: prefillEmail,
+  //         contact: prefillContact,
+  //       },
+  //       notes: { cartItems: String(items.length), source: "web_checkout_full" },
+  //       theme: { color: DARK_GREEN },
+  //       async: false,
+  //       handler: async (resp: any) => {
+  //         // 👉 Log the Razorpay PAYMENT RESPONSE (not the script)
+  //         console.log("Razorpay payment success:", resp);
+
+  //         try {
+  //           const { data: verify } = await axiosInstance.post(VERIFY_URL, resp);
+  //           if (!verify?.valid) {
+  //             alert("Payment verification failed.");
+  //             return;
+  //           }
+  //           showNotification({
+  //             title: "Processing...",
+  //             message: "Please don't close the window",
+  //             color: "blue",
+  //             loading: true,
+  //           });
+  //           let createdOrder: any = null;
+  //           try {
+  //             createdOrder = await createOrderHistory({
+  //               items,
+  //               shippingAddress: flatUserAddress,
+  //               billingAddress: flatUserAddress,
+  //               paymentMethod: "online",
+  //               notes: "",
+  //               shippingCost: totals.shipping,
+  //               tax: totals.gst,
+  //               discount: totals.totalDiscounts,
+  //               localOrderId: order.id,
+  //               meta: {
+  //                 razorpay: resp,
+  //                 savedScheme:
+  //                   savedScheme && savedScheme.isDiscountApplicable
+  //                     ? savedScheme
+  //                     : null,
+  //               },
+  //             });
+  //           } catch (orderErr) {
+  //             console.error("Order history creation failed:", orderErr);
+  //             showNotification({
+  //               title: "Order saved partially",
+  //               message:
+  //                 "Payment succeeded but we couldn't save order history. Contact support if needed.",
+  //               color: "yellow",
+  //               icon: <IconInfoCircle size={16} />,
+  //             });
+  //           }
+
+  //           try {
+  //             const serverOrderId =
+  //               createdOrder?.data?.id ||
+  //               createdOrder?.id ||
+  //               createdOrder?.orderNumber ||
+  //               createdOrder?.orderId ||
+  //               createdOrder?.data?.orderNumber ||
+  //               createdOrder?.data?.orderId ||
+  //               `ORDER${Date.now()}`;
+
+  //             if (serverOrderId) {
+  //               await createDelhiveryShipment({
+  //                 orderNumber: String(serverOrderId),
+  //                 items,
+  //                 address: flatUserAddress,
+  //                 paymentMethod: "online",
+  //                 totalsLocal: totals,
+  //                 meta: { createdOrder },
+  //               });
+  //               showNotification({
+  //                 title: "Shipment created",
+  //                 message: "Shipment created successfully with Delhivery.",
+  //                 color: "green",
+  //                 icon: <IconCheck size={16} />,
+  //               });
+  //             }
+  //           } catch (shipErr) {
+  //             console.error("Delhivery shipment creation failed:", shipErr);
+  //             showNotification({
+  //               title: "Shipment creation failed",
+  //               message:
+  //                 "Order was created but shipment creation failed. Support will assist.",
+  //               color: "yellow",
+  //               icon: <IconInfoCircle size={16} />,
+  //             });
+  //           }
+
+  //           await handleClearCart();
+  //           navigate("/order-success", { state: { order: createdOrder } });
+  //         } catch (e) {
+  //           console.error("Verification/create shipment error:", e);
+  //           alert(
+  //             "Payment succeeded but verification or shipment creation failed. Please contact support."
+  //           );
+  //         }
+  //         rzp.close();
+  //       },
+  //     });
+
+  //     rzp.on("payment.failed", (e: any) => {
+  //       console.error("Razorpay payment failed:", e?.error);
+  //       alert(e?.error?.description || "Payment failed. Please try again.");
+  //     });
+
+  //     rzp.close();
+  //   } catch (err) {
+  //     console.error("onPayNow error:", err);
+  //     alert("Unable to start payment. Please try again.");
+  //   } finally {
+  //     setPayLoading(false);
+  //   }
+  // };
 
   const onPayNow = async () => {
   if (!ensureAuthAndAddress()) return;
@@ -784,6 +1114,20 @@ export default function Checkout() {
       return;
     }
 
+    // Store payment details in localStorage before opening Razorpay
+    const paymentSession = {
+      razorpayOrderId: null,
+      paymentId: null,
+      signature: null,
+      items: items,
+      totals: totals,
+      flatUserAddress: flatUserAddress,
+      savedScheme: savedScheme,
+      timestamp: Date.now(),
+      status: 'pending'
+    };
+    localStorage.setItem('pendingPayment', JSON.stringify(paymentSession));
+
     // Create RZP order on server
     const { data: order } = await axiosInstance.post(CREATE_ORDER_URL, {
       amount: amountPaise,
@@ -794,6 +1138,7 @@ export default function Checkout() {
 
     if (!order?.id || !order?.amount) {
       console.error("Invalid Razorpay order:", order);
+      localStorage.removeItem('pendingPayment');
       showNotification({
         title: "Payment error",
         message: "Couldn't initialize payment. Please try again.",
@@ -803,9 +1148,15 @@ export default function Checkout() {
       return;
     }
 
+    // Update localStorage with order ID
+    paymentSession.razorpayOrderId = order.id;
+    localStorage.setItem('pendingPayment', JSON.stringify(paymentSession));
+
     // (Optional) check receipt status
     try {
-      const { data: receiptCheck } = await axiosInstance.get(`${API_GET_STATUS}${order.receipt}`);
+      const { data: receiptCheck } = await axiosInstance.get(
+        `${API_GET_STATUS}${order.receipt}`
+      );
       console.log("Receipt status:", receiptCheck);
     } catch (e) {
       console.warn("Receipt status check failed (non-blocking):", e);
@@ -815,9 +1166,14 @@ export default function Checkout() {
     await loadRazorpay();
 
     const prefillName = (reduxUser?.name ?? user?.name) || "Customer";
-    const prefillEmail = (reduxUser?.email ?? user?.email) || "customer@example.com";
+    const prefillEmail =
+      (reduxUser?.email ?? user?.email) || "customer@example.com";
     const prefillContact =
-      (reduxUser?.mobile ?? reduxUser?.phone ?? user?.mobile ?? user?.phone) || "9000000000";
+      (reduxUser?.mobile ??
+        reduxUser?.phone ??
+        user?.mobile ??
+        user?.phone) ||
+      "9000000000";
 
     const rzp = new (window as any).Razorpay({
       key: RAZORPAY_KEY_ID,
@@ -826,21 +1182,37 @@ export default function Checkout() {
       name: "TO IMPRESS",
       description: "Order Payment",
       order_id: order.id,
-      prefill: { name: prefillName, email: prefillEmail, contact: prefillContact },
+      prefill: {
+        name: prefillName,
+        email: prefillEmail,
+        contact: prefillContact,
+      },
       notes: { cartItems: String(items.length), source: "web_checkout_full" },
       theme: { color: DARK_GREEN },
-      async:false,
+      async: false,
       handler: async (resp: any) => {
         // 👉 Log the Razorpay PAYMENT RESPONSE (not the script)
         console.log("Razorpay payment success:", resp);
+
+        // Store payment response immediately
+        paymentSession.paymentId = resp.razorpay_payment_id;
+        paymentSession.signature = resp.razorpay_signature;
+        paymentSession.status = 'completed';
+        localStorage.setItem('pendingPayment', JSON.stringify(paymentSession));
 
         try {
           const { data: verify } = await axiosInstance.post(VERIFY_URL, resp);
           if (!verify?.valid) {
             alert("Payment verification failed.");
+            localStorage.removeItem('pendingPayment');
             return;
           }
-
+          showNotification({
+            title: "Processing...",
+            message: "Please don't close the window",
+            color: "blue",
+            loading: true,
+          });
           let createdOrder: any = null;
           try {
             createdOrder = await createOrderHistory({
@@ -856,7 +1228,9 @@ export default function Checkout() {
               meta: {
                 razorpay: resp,
                 savedScheme:
-                  savedScheme && savedScheme.isDiscountApplicable ? savedScheme : null,
+                  savedScheme && savedScheme.isDiscountApplicable
+                    ? savedScheme
+                    : null,
               },
             });
           } catch (orderErr) {
@@ -908,6 +1282,7 @@ export default function Checkout() {
           }
 
           await handleClearCart();
+          localStorage.removeItem('pendingPayment'); // Clear after success
           navigate("/order-success", { state: { order: createdOrder } });
         } catch (e) {
           console.error("Verification/create shipment error:", e);
@@ -920,296 +1295,466 @@ export default function Checkout() {
     });
 
     rzp.on("payment.failed", (e: any) => {
-      // 👉 Log the Razorpay FAILURE RESPONSE
       console.error("Razorpay payment failed:", e?.error);
+      localStorage.removeItem('pendingPayment');
       alert(e?.error?.description || "Payment failed. Please try again.");
     });
 
-    rzp.open();
+    rzp.open(); // Changed from rzp.close() to rzp.open()
   } catch (err) {
     console.error("onPayNow error:", err);
+    localStorage.removeItem('pendingPayment');
     alert("Unable to start payment. Please try again.");
   } finally {
     setPayLoading(false);
   }
 };
 
-
-  const onPlaceCOD = async () => {
-  if (!ensureAuthAndAddress()) return;
-
-  setPayLoading(true);
-  try {
-    if (!items?.length) {
-      showNotification({
-        title: "Cart empty",
-        message: "Add items to proceed",
-        color: "yellow",
-        icon: <IconX size={16} />,
-      });
-      return;
-    }
-
-    const baseFinal =
-      savedScheme && savedScheme.isDiscountApplicable
-        ? Number(savedScheme.finalAmount ?? totals.grandTotal)
-        : totals.grandTotal;
-
-    const orderTotal = Math.round(baseFinal + COD_SHIPPING);
-    const tokenToCollect = COD_TOKEN;
-    const remainingAmount = Math.max(0, orderTotal - tokenToCollect);
-
-    // If no token, create order directly
-    if (tokenToCollect <= 0) {
-      let createdOrder: any = null;
-      try {
-        createdOrder = await createOrderHistory({
-          items,
-          shippingAddress: flatUserAddress,
-          billingAddress: flatUserAddress,
-          paymentMethod: "cod",
-          notes: "",
-          shippingCost: COD_SHIPPING,
-          tax: totals.gst,
-          discount: totals.totalDiscounts,
-          meta: {
-            immediateCOD: true,
-            savedScheme:
-              savedScheme && savedScheme.isDiscountApplicable ? savedScheme : null,
-          },
-          amountToChargeOnDelivery: orderTotal,
-        });
-      } catch (orderErr) {
-        console.error("Order history creation failed (COD immediate):", orderErr);
-        showNotification({
-          title: "Order saved partially",
-          message: "COD placed but could not save order history. Contact support.",
-          color: "yellow",
-          icon: <IconInfoCircle size={16} />,
-        });
-      }
-
-      try {
-        const serverOrderId =
-          createdOrder?.data?.id ||
-          createdOrder?.id ||
-          createdOrder?.orderNumber ||
-          createdOrder?.orderId ||
-          createdOrder?.data?.orderNumber ||
-          createdOrder?.data?.orderId ||
-          `ORDER${Date.now()}`;
-
-        if (serverOrderId) {
-          await createDelhiveryShipment({
-            orderNumber: String(serverOrderId),
-            items,
-            address: flatUserAddress,
-            paymentMethod: "cod",
-            totalsLocal: {
-              ...totals,
-              grandTotal: orderTotal,
-              amountToChargeOnDelivery: orderTotal,
-            },
-            meta: { createdOrder },
-          });
+// Add this useEffect to handle page reloads from PhonePe/Google Pay
+useEffect(() => {
+  const checkPendingPayment = async () => {
+    try {
+      const pending = localStorage.getItem('pendingPayment');
+      if (pending) {
+        const paymentSession = JSON.parse(pending);
+        
+        // If payment was completed but page reloaded
+        if (paymentSession.status === 'completed' && paymentSession.paymentId) {
           showNotification({
-            title: "Shipment created",
-            message: "Shipment created successfully with Delhivery.",
-            color: "green",
-            icon: <IconCheck size={16} />,
+            title: "Completing your order...",
+            message: "Please wait while we process your payment",
+            color: "blue",
+            loading: true,
           });
-        }
-      } catch (shipErr) {
-        console.error("Delhivery shipment creation failed (COD immediate):", shipErr);
-        showNotification({
-          title: "Shipment creation failed",
-          message: "COD placed but couldn't create shipment. Contact support.",
-          color: "yellow",
-          icon: <IconInfoCircle size={16} />,
-        });
-      }
-
-      await handleClearCart();
-      showNotification({
-        title: "COD placed",
-        message: `Delivery agent will collect ₹${orderTotal}`,
-        color: "green",
-        icon: <IconCheck size={16} />,
-      });
-      navigate("/order-success", { state: { order: createdOrder } });
-      return;
-    }
-
-    // Collect COD token via Razorpay
-    const tokenPaise = tokenToCollect * 100;
-
-    const { data: order } = await axiosInstance.post(CREATE_ORDER_URL, {
-      amount: tokenPaise,
-      currency: "INR",
-      receipt: "cod_token_rcpt_" + Date.now(),
-      notes: { itemCount: String(items.length), paymentType: "COD_TOKEN" },
-    });
-
-    if (!order?.id || !order?.amount) {
-      console.error("Invalid Razorpay order (COD token):", order);
-      showNotification({
-        title: "Payment error",
-        message: "Couldn't initialize token payment. Please try again.",
-        color: "red",
-        icon: <IconX size={16} />,
-      });
-      return;
-    }
-
-    await loadRazorpay();
-
-    const prefillName = (reduxUser?.name ?? user?.name) || "Customer";
-    const prefillEmail = (reduxUser?.email ?? user?.email) || "customer@example.com";
-    const prefillContact =
-      (reduxUser?.mobile ?? reduxUser?.phone ?? user?.mobile ?? user?.phone) || "9000000000";
-
-    const rzp = new (window as any).Razorpay({
-      key: RAZORPAY_KEY_ID,
-      amount: order.amount,
-      currency: order.currency,
-      name: "TO IMPRESS",
-      description: `COD token - ₹${tokenToCollect}`,
-      order_id: order.id,
-      prefill: { name: prefillName, email: prefillEmail, contact: prefillContact },
-      notes: { cartItems: String(items.length), source: "web_cod_token" },
-      theme: { color: DARK_GREEN },
-      handler: async (resp: any) => {
-        // 👉 Log the Razorpay PAYMENT RESPONSE for COD token
-        console.log("Razorpay COD token success:", resp);
-
-        try {
-          const { data: verify } = await axiosInstance.post(VERIFY_URL, resp);
-          if (!verify?.valid) {
-            alert("Token payment verification failed. Please contact support.");
-            return;
-          }
-
-          let createdOrder: any = null;
+          
+          // Re-process the payment
           try {
-            createdOrder = await createOrderHistory({
-              items,
-              shippingAddress: flatUserAddress,
-              billingAddress: flatUserAddress,
-              paymentMethod: "cod_token",
-              notes: "",
-              shippingCost: COD_SHIPPING,
-              tax: totals.gst,
-              discount: totals.totalDiscounts,
-              localOrderId: order.id,
-              meta: {
-                razorpay: resp,
-                savedScheme:
-                  savedScheme && savedScheme.isDiscountApplicable ? savedScheme : null,
-              },
-              amountToChargeOnDelivery: remainingAmount,
+            const { data: verify } = await axiosInstance.post(VERIFY_URL, {
+              razorpay_payment_id: paymentSession.paymentId,
+              razorpay_order_id: paymentSession.razorpayOrderId,
+              razorpay_signature: paymentSession.signature
             });
-          } catch (orderErr) {
-            console.error("Order history creation failed (COD token):", orderErr);
-            showNotification({
-              title: "Order saved partially",
-              message: "Token paid but could not save order history. Contact support.",
-              color: "yellow",
-              icon: <IconInfoCircle size={16} />,
-            });
-          }
-
-          try {
-            const serverOrderId =
-              createdOrder?.data?.id ||
-              createdOrder?.id ||
-              createdOrder?.orderNumber ||
-              createdOrder?.orderId ||
-              createdOrder?.data?.orderNumber ||
-              createdOrder?.data?.orderId ||
-              `ORDER${Date.now()}`;
-
-            if (serverOrderId) {
-              await createDelhiveryShipment({
-                orderNumber: String(serverOrderId),
-                items,
-                address: flatUserAddress,
-                paymentMethod: "cod_token",
-                totalsLocal: {
-                  ...totals,
-                  grandTotal: orderTotal,
-                  amountToChargeOnDelivery: remainingAmount,
-                },
-                meta: { createdOrder },
-              });
+            
+            if (!verify?.valid) {
               showNotification({
-                title: "Shipment created",
-                message: "Shipment created successfully with Delhivery.",
-                color: "green",
-                icon: <IconCheck size={16} />,
+                title: "Payment verification failed",
+                message: "Please contact support with your payment ID",
+                color: "red",
+                icon: <IconX size={16} />,
+              });
+              localStorage.removeItem('pendingPayment');
+              return;
+            }
+
+            let createdOrder: any = null;
+            try {
+              createdOrder = await createOrderHistory({
+                items: paymentSession.items,
+                shippingAddress: paymentSession.flatUserAddress,
+                billingAddress: paymentSession.flatUserAddress,
+                paymentMethod: "online",
+                notes: "",
+                shippingCost: paymentSession.totals.shipping,
+                tax: paymentSession.totals.gst,
+                discount: paymentSession.totals.totalDiscounts,
+                localOrderId: paymentSession.razorpayOrderId,
+                meta: {
+                  razorpay: {
+                    razorpay_payment_id: paymentSession.paymentId,
+                    razorpay_order_id: paymentSession.razorpayOrderId,
+                    razorpay_signature: paymentSession.signature
+                  },
+                  savedScheme: paymentSession.savedScheme?.isDiscountApplicable
+                    ? paymentSession.savedScheme
+                    : null,
+                },
+              });
+            } catch (orderErr) {
+              console.error("Order history creation failed:", orderErr);
+              showNotification({
+                title: "Order saved partially",
+                message: "Payment succeeded but order history creation failed.",
+                color: "yellow",
+                icon: <IconInfoCircle size={16} />,
               });
             }
-          } catch (shipErr) {
-            console.error("Delhivery shipment creation failed (COD token):", shipErr);
+
+            try {
+              const serverOrderId =
+                createdOrder?.data?.id ||
+                createdOrder?.id ||
+                createdOrder?.orderNumber ||
+                createdOrder?.orderId ||
+                createdOrder?.data?.orderNumber ||
+                createdOrder?.data?.orderId ||
+                `ORDER${Date.now()}`;
+
+              if (serverOrderId) {
+                await createDelhiveryShipment({
+                  orderNumber: String(serverOrderId),
+                  items: paymentSession.items,
+                  address: paymentSession.flatUserAddress,
+                  paymentMethod: "online",
+                  totalsLocal: paymentSession.totals,
+                  meta: { createdOrder },
+                });
+                showNotification({
+                  title: "Shipment created",
+                  message: "Shipment created successfully with Delhivery.",
+                  color: "green",
+                  icon: <IconCheck size={16} />,
+                });
+              }
+            } catch (shipErr) {
+              console.error("Delhivery shipment creation failed:", shipErr);
+              showNotification({
+                title: "Shipment creation failed",
+                message: "Order was created but shipment creation failed.",
+                color: "yellow",
+                icon: <IconInfoCircle size={16} />,
+              });
+            }
+
+            await handleClearCart();
+            localStorage.removeItem('pendingPayment');
+            navigate("/order-success", { state: { order: createdOrder } });
+            
+          } catch (error) {
+            console.error("Payment recovery failed:", error);
             showNotification({
-              title: "Shipment creation failed",
-              message: "Token paid but couldn't create shipment. Contact support.",
-              color: "yellow",
-              icon: <IconInfoCircle size={16} />,
+              title: "Recovery failed",
+              message: "Please contact support with your payment details",
+              color: "red",
+              icon: <IconX size={16} />,
+            });
+            localStorage.removeItem('pendingPayment');
+          }
+        }
+        
+        // Clean up old pending payments (older than 30 minutes)
+        if (Date.now() - paymentSession.timestamp > 30 * 60 * 1000) {
+          localStorage.removeItem('pendingPayment');
+        }
+      }
+    } catch (error) {
+      console.error("Error checking pending payment:", error);
+      localStorage.removeItem('pendingPayment');
+    }
+  };
+
+  checkPendingPayment();
+}, [navigate]);
+
+  const onPlaceCOD = async () => {
+    if (!ensureAuthAndAddress()) return;
+
+    setPayLoading(true);
+    try {
+      if (!items?.length) {
+        showNotification({
+          title: "Cart empty",
+          message: "Add items to proceed",
+          color: "yellow",
+          icon: <IconX size={16} />,
+        });
+        return;
+      }
+
+      const baseFinal =
+        savedScheme && savedScheme.isDiscountApplicable
+          ? Number(savedScheme.finalAmount ?? totals.grandTotal)
+          : totals.grandTotal;
+
+      const orderTotal = Math.round(baseFinal + COD_SHIPPING);
+      const tokenToCollect = COD_TOKEN;
+      const remainingAmount = Math.max(0, orderTotal - tokenToCollect);
+
+      // If no token, create order directly
+      if (tokenToCollect <= 0) {
+        let createdOrder: any = null;
+        try {
+          createdOrder = await createOrderHistory({
+            items,
+            shippingAddress: flatUserAddress,
+            billingAddress: flatUserAddress,
+            paymentMethod: "cod",
+            notes: "",
+            shippingCost: COD_SHIPPING,
+            tax: totals.gst,
+            discount: totals.totalDiscounts,
+            meta: {
+              immediateCOD: true,
+              savedScheme:
+                savedScheme && savedScheme.isDiscountApplicable
+                  ? savedScheme
+                  : null,
+            },
+            amountToChargeOnDelivery: orderTotal,
+          });
+        } catch (orderErr) {
+          console.error(
+            "Order history creation failed (COD immediate):",
+            orderErr
+          );
+          showNotification({
+            title: "Order saved partially",
+            message:
+              "COD placed but could not save order history. Contact support.",
+            color: "yellow",
+            icon: <IconInfoCircle size={16} />,
+          });
+        }
+
+        try {
+          const serverOrderId =
+            createdOrder?.data?.id ||
+            createdOrder?.id ||
+            createdOrder?.orderNumber ||
+            createdOrder?.orderId ||
+            createdOrder?.data?.orderNumber ||
+            createdOrder?.data?.orderId ||
+            `ORDER${Date.now()}`;
+
+          if (serverOrderId) {
+            await createDelhiveryShipment({
+              orderNumber: String(serverOrderId),
+              items,
+              address: flatUserAddress,
+              paymentMethod: "cod",
+              totalsLocal: {
+                ...totals,
+                grandTotal: orderTotal,
+                amountToChargeOnDelivery: orderTotal,
+              },
+              meta: { createdOrder },
+            });
+            showNotification({
+              title: "Shipment created",
+              message: "Shipment created successfully with Delhivery.",
+              color: "green",
+              icon: <IconCheck size={16} />,
             });
           }
-
-          await handleClearCart();
-          showNotification({
-            title: "COD placed",
-            message: `Token ₹${tokenToCollect} paid. Remaining ₹${remainingAmount} on delivery.`,
-            color: "green",
-            icon: <IconCheck size={16} />,
-          });
-          navigate("/order-success", { state: { order: createdOrder } });
-        } catch (e) {
-          console.error("Verification or shipment create failed:", e);
-          alert(
-            "Token payment succeeded but verification or shipment creation failed. Please contact support."
+        } catch (shipErr) {
+          console.error(
+            "Delhivery shipment creation failed (COD immediate):",
+            shipErr
           );
+          showNotification({
+            title: "Shipment creation failed",
+            message:
+              "COD placed but couldn't create shipment. Contact support.",
+            color: "yellow",
+            icon: <IconInfoCircle size={16} />,
+          });
         }
-      },
-    });
 
-    rzp.on("payment.failed", (e: any) => {
-      // 👉 Log the failure response
-      console.error("Razorpay COD token failed:", e?.error);
-      alert(e?.error?.description || "Token payment failed. Please try again.");
-    });
+        await handleClearCart();
+        showNotification({
+          title: "COD placed",
+          message: `Delivery agent will collect ₹${orderTotal}`,
+          color: "green",
+          icon: <IconCheck size={16} />,
+        });
+        navigate("/order-success", { state: { order: createdOrder } });
+        return;
+      }
 
-    rzp.open();
-  } catch (err) {
-    console.error("onPlaceCOD error:", err);
-    alert("Unable to place COD order. Please try again.");
-  } finally {
-    setPayLoading(false);
-  }
-};
+      // Collect COD token via Razorpay
+      const tokenPaise = tokenToCollect * 100;
 
+      const { data: order } = await axiosInstance.post(CREATE_ORDER_URL, {
+        amount: tokenPaise,
+        currency: "INR",
+        receipt: "cod_token_rcpt_" + Date.now(),
+        notes: { itemCount: String(items.length), paymentType: "COD_TOKEN" },
+      });
+
+      if (!order?.id || !order?.amount) {
+        console.error("Invalid Razorpay order (COD token):", order);
+        showNotification({
+          title: "Payment error",
+          message: "Couldn't initialize token payment. Please try again.",
+          color: "red",
+          icon: <IconX size={16} />,
+        });
+        return;
+      }
+
+      await loadRazorpay();
+
+      const prefillName = (reduxUser?.name ?? user?.name) || "Customer";
+      const prefillEmail =
+        (reduxUser?.email ?? user?.email) || "customer@example.com";
+      const prefillContact =
+        (reduxUser?.mobile ??
+          reduxUser?.phone ??
+          user?.mobile ??
+          user?.phone) ||
+        "9000000000";
+
+      const rzp = new (window as any).Razorpay({
+        key: RAZORPAY_KEY_ID,
+        amount: order.amount,
+        currency: order.currency,
+        name: "TO IMPRESS",
+        description: `COD token - ₹${tokenToCollect}`,
+        order_id: order.id,
+        prefill: {
+          name: prefillName,
+          email: prefillEmail,
+          contact: prefillContact,
+        },
+        notes: { cartItems: String(items.length), source: "web_cod_token" },
+        theme: { color: DARK_GREEN },
+        handler: async (resp: any) => {
+          // 👉 Log the Razorpay PAYMENT RESPONSE for COD token
+          console.log("Razorpay COD token success:", resp);
+
+          try {
+            const { data: verify } = await axiosInstance.post(VERIFY_URL, resp);
+            if (!verify?.valid) {
+              alert(
+                "Token payment verification failed. Please contact support."
+              );
+              return;
+            }
+
+            let createdOrder: any = null;
+            try {
+              createdOrder = await createOrderHistory({
+                items,
+                shippingAddress: flatUserAddress,
+                billingAddress: flatUserAddress,
+                paymentMethod: "cod_token",
+                notes: "",
+                shippingCost: COD_SHIPPING,
+                tax: totals.gst,
+                discount: totals.totalDiscounts,
+                localOrderId: order.id,
+                meta: {
+                  razorpay: resp,
+                  savedScheme:
+                    savedScheme && savedScheme.isDiscountApplicable
+                      ? savedScheme
+                      : null,
+                },
+                amountToChargeOnDelivery: remainingAmount,
+              });
+            } catch (orderErr) {
+              console.error(
+                "Order history creation failed (COD token):",
+                orderErr
+              );
+              showNotification({
+                title: "Order saved partially",
+                message:
+                  "Token paid but could not save order history. Contact support.",
+                color: "yellow",
+                icon: <IconInfoCircle size={16} />,
+              });
+            }
+
+            try {
+              const serverOrderId =
+                createdOrder?.data?.id ||
+                createdOrder?.id ||
+                createdOrder?.orderNumber ||
+                createdOrder?.orderId ||
+                createdOrder?.data?.orderNumber ||
+                createdOrder?.data?.orderId ||
+                `ORDER${Date.now()}`;
+
+              if (serverOrderId) {
+                await createDelhiveryShipment({
+                  orderNumber: String(serverOrderId),
+                  items,
+                  address: flatUserAddress,
+                  paymentMethod: "cod_token",
+                  totalsLocal: {
+                    ...totals,
+                    grandTotal: orderTotal,
+                    amountToChargeOnDelivery: remainingAmount,
+                  },
+                  meta: { createdOrder },
+                });
+                showNotification({
+                  title: "Shipment created",
+                  message: "Shipment created successfully with Delhivery.",
+                  color: "green",
+                  icon: <IconCheck size={16} />,
+                });
+              }
+            } catch (shipErr) {
+              console.error(
+                "Delhivery shipment creation failed (COD token):",
+                shipErr
+              );
+              showNotification({
+                title: "Shipment creation failed",
+                message:
+                  "Token paid but couldn't create shipment. Contact support.",
+                color: "yellow",
+                icon: <IconInfoCircle size={16} />,
+              });
+            }
+
+            await handleClearCart();
+            showNotification({
+              title: "COD placed",
+              message: `Token ₹${tokenToCollect} paid. Remaining ₹${remainingAmount} on delivery.`,
+              color: "green",
+              icon: <IconCheck size={16} />,
+            });
+            navigate("/order-success", { state: { order: createdOrder } });
+          } catch (e) {
+            console.error("Verification or shipment create failed:", e);
+            alert(
+              "Token payment succeeded but verification or shipment creation failed. Please contact support."
+            );
+          }
+        },
+      });
+
+      rzp.on("payment.failed", (e: any) => {
+        // 👉 Log the failure response
+        console.error("Razorpay COD token failed:", e?.error);
+        alert(
+          e?.error?.description || "Token payment failed. Please try again."
+        );
+      });
+
+      rzp.open();
+    } catch (err) {
+      console.error("onPlaceCOD error:", err);
+      alert("Unable to place COD order. Please try again.");
+    } finally {
+      setPayLoading(false);
+    }
+  };
 
   // Fallback to localStorage if Redux hasn't hydrated on mobile
-useEffect(() => {
-  if (!reduxAddress && !storedUserAddress) {
-    try {
-      const raw = localStorage.getItem("userAddress");
-      if (raw) setStoredUserAddress(JSON.parse(raw));
-    } catch {/* ignore */}
-  }
-}, [reduxAddress, storedUserAddress]);
+  useEffect(() => {
+    if (!reduxAddress && !storedUserAddress) {
+      try {
+        const raw = localStorage.getItem("userAddress");
+        if (raw) setStoredUserAddress(JSON.parse(raw));
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [reduxAddress, storedUserAddress]);
 
-useEffect(() => {
-  if (!reduxUser && !user) {
-    try {
-      const raw = localStorage.getItem("user");
-      if (raw) setUser(JSON.parse(raw));
-    } catch {/* ignore */}
-  }
-}, [reduxUser, user]);
-
+  useEffect(() => {
+    if (!reduxUser && !user) {
+      try {
+        const raw = localStorage.getItem("user");
+        if (raw) setUser(JSON.parse(raw));
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [reduxUser, user]);
 
   return (
     <div>
@@ -1225,9 +1770,19 @@ useEffect(() => {
       ) : !items?.length ? (
         <Container size="lg" py="xl">
           <Card p="lg" withBorder>
-            <Text fw={600} size="lg">Your cart is empty</Text>
-            <Text c="dimmed" size="sm" mt="xs">Add some products to proceed to checkout.</Text>
-            <Button mt="md" onClick={async () => { await handleClearCart(); navigate("/"); }}>
+            <Text fw={600} size="lg">
+              Your cart is empty
+            </Text>
+            <Text c="dimmed" size="sm" mt="xs">
+              Add some products to proceed to checkout.
+            </Text>
+            <Button
+              mt="md"
+              onClick={async () => {
+                await handleClearCart();
+                navigate("/");
+              }}
+            >
               Continue shopping
             </Button>
           </Card>
@@ -1243,7 +1798,9 @@ useEffect(() => {
                       if ((item.qty ?? 0) > 0) {
                         return (
                           <CheckoutItemBox
-                            key={`${item.id}-${item.size ?? ""}-${item.color ?? ""}-${idx}`}
+                            key={`${item.id}-${item.size ?? ""}-${
+                              item.color ?? ""
+                            }-${idx}`}
                             prodId={item.productId}
                             item={item}
                             onMinus={() => handleMinus(item)}
@@ -1269,26 +1826,30 @@ useEffect(() => {
               </Grid.Col>
 
               <Grid.Col span={{ base: 12, md: 5 }} mb={120}>
-                  <Card
-                    withBorder
-                    p="lg"
-                    radius="md"
-                    styles={{
-                      root: {
-                        [`@media (min-width: 1024px)`]: {
-                          position: "sticky",
-                          top: 16,
-                          maxHeight: "calc(100vh - 32px)",
-                          overflow: "auto",
-                        },
+                <Card
+                  withBorder
+                  p="lg"
+                  radius="md"
+                  styles={{
+                    root: {
+                      [`@media (min-width: 1024px)`]: {
+                        position: "sticky",
+                        top: 16,
+                        maxHeight: "calc(100vh - 32px)",
+                        overflow: "auto",
                       },
-                    }}
-                  >
-                  <Text fw={700} mb="md">Order Summary</Text>
+                    },
+                  }}
+                >
+                  <Text fw={700} mb="md">
+                    Order Summary
+                  </Text>
 
-                   <Stack gap="xs" mb="md">
+                  <Stack gap="xs" mb="md">
                     <Group justify="space-between" align="flex-start">
-                      <Text size="sm" fw={600}>Shipping to</Text>
+                      <Text size="sm" fw={600}>
+                        Shipping to
+                      </Text>
                       <Button
                         size="xs"
                         variant="subtle"
@@ -1299,56 +1860,70 @@ useEffect(() => {
                       </Button>
                     </Group>
 
-                      {flatUserAddress ? (
-                        <Paper radius="md" p="sm" withBorder>
-                          <Stack gap={2}>
-                            <Text size="sm" fw={600}>{flatUserAddress.name || "Customer"}</Text>
-                            {flatUserAddress.email ? (
-                              <Text size="xs" c="dimmed">{flatUserAddress.email}</Text>
-                            ) : null}
+                    {flatUserAddress ? (
+                      <Paper radius="md" p="sm" withBorder>
+                        <Stack gap={2}>
+                          <Text size="sm" fw={600}>
+                            {flatUserAddress.name || "Customer"}
+                          </Text>
+                          {flatUserAddress.email ? (
                             <Text size="xs" c="dimmed">
-                              {[
-                                flatUserAddress.line1,
-                                flatUserAddress.line2,
-                                flatUserAddress.city,
-                                flatUserAddress.state,
-                                flatUserAddress.country,
-                              ]
-                                .filter(Boolean)
-                                .join(", ")}
-                              {flatUserAddress.pincode ? ` - ${flatUserAddress.pincode}` : ""}
+                              {flatUserAddress.email}
                             </Text>
-                            {flatUserAddress.phone ? (
-                              <Text size="xs" c="dimmed">Phone: +91 {flatUserAddress.phone}</Text>
-                            ) : null}
-                            {flatUserAddress.landmark ? (
-                              <Text size="xs" c="dimmed">Landmark: {flatUserAddress.landmark}</Text>
-                            ) : null}
-                          </Stack>
-                        </Paper>
-                      ) : (
-                        <Paper radius="md" p="sm" withBorder>
-                          <Stack gap={6}>
-                            <Text size="sm" c="dimmed">No address found.</Text>
-                            <Button
-                              size="xs"
-                              onClick={() => navigate("/account")}
-                              sx={{
-                                backgroundColor: DARK_GREEN,
-                                color: "#fff",
-                                "&:hover": { backgroundColor: "#0f2a12" },
-                                alignSelf: "flex-start",
-                              }}
-                            >
-                              Add Address
-                            </Button>
-                          </Stack>
-                        </Paper>
-                      )}
+                          ) : null}
+                          <Text size="xs" c="dimmed">
+                            {[
+                              flatUserAddress.line1,
+                              flatUserAddress.line2,
+                              flatUserAddress.city,
+                              flatUserAddress.state,
+                              flatUserAddress.country,
+                            ]
+                              .filter(Boolean)
+                              .join(", ")}
+                            {flatUserAddress.pincode
+                              ? ` - ${flatUserAddress.pincode}`
+                              : ""}
+                          </Text>
+                          {flatUserAddress.phone ? (
+                            <Text size="xs" c="dimmed">
+                              Phone: +91 {flatUserAddress.phone}
+                            </Text>
+                          ) : null}
+                          {flatUserAddress.landmark ? (
+                            <Text size="xs" c="dimmed">
+                              Landmark: {flatUserAddress.landmark}
+                            </Text>
+                          ) : null}
+                        </Stack>
+                      </Paper>
+                    ) : (
+                      <Paper radius="md" p="sm" withBorder>
+                        <Stack gap={6}>
+                          <Text size="sm" c="dimmed">
+                            No address found.
+                          </Text>
+                          <Button
+                            size="xs"
+                            onClick={() => navigate("/account")}
+                            sx={{
+                              backgroundColor: DARK_GREEN,
+                              color: "#fff",
+                              "&:hover": { backgroundColor: "#0f2a12" },
+                              alignSelf: "flex-start",
+                            }}
+                          >
+                            Add Address
+                          </Button>
+                        </Stack>
+                      </Paper>
+                    )}
                   </Stack>
 
                   <Stack gap="xs" mb="sm">
-                    <Text fw={600} size="sm">Payment Method</Text>
+                    <Text fw={600} size="sm">
+                      Payment Method
+                    </Text>
                     <SegmentedControl
                       value={paymentMethod}
                       onChange={(v) => setPaymentMethod(v as any)}
@@ -1360,23 +1935,46 @@ useEffect(() => {
                   </Stack>
 
                   {savedScheme && savedScheme.isDiscountApplicable && (
-                    <Paper radius="md" p="12px" mb="12px" style={{ backgroundColor: "#f3fbf4", border: `1px solid ${LIGHT_GREEN}` }}>
+                    <Paper
+                      radius="md"
+                      p="12px"
+                      mb="12px"
+                      style={{
+                        backgroundColor: "#f3fbf4",
+                        border: `1px solid ${LIGHT_GREEN}`,
+                      }}
+                    >
                       <Text size="sm" fw={700} style={{ color: DARK_GREEN }}>
-                        Buy above ₹{Math.round(Number(savedScheme.couponAmount ?? 0))} and get flat {savedScheme.discountvalue}% off
+                        Buy above ₹
+                        {Math.round(Number(savedScheme.couponAmount ?? 0))} and
+                        get flat {savedScheme.discountvalue}% off
                       </Text>
                       <Text size="xs" c="dimmed" mt={6}>
-                        Scheme applied: <span style={{ color: DARK_GREEN, fontWeight: 700 }}>Yes</span>
+                        Scheme applied:{" "}
+                        <span style={{ color: DARK_GREEN, fontWeight: 700 }}>
+                          Yes
+                        </span>
                       </Text>
                     </Paper>
                   )}
 
                   {!savedScheme && promo && !promo.applied && (
-                    <Paper radius="md" p="12px" mb="12px" style={{ backgroundColor: "#f3fbf4", border: `1px solid ${LIGHT_GREEN}` }}>
+                    <Paper
+                      radius="md"
+                      p="12px"
+                      mb="12px"
+                      style={{
+                        backgroundColor: "#f3fbf4",
+                        border: `1px solid ${LIGHT_GREEN}`,
+                      }}
+                    >
                       <Text size="sm" fw={700} style={{ color: DARK_GREEN }}>
-                        Buy above ₹{Math.round(Number(promo.threshold))} and get flat {promo.discountPercent}% off
+                        Buy above ₹{Math.round(Number(promo.threshold))} and get
+                        flat {promo.discountPercent}% off
                       </Text>
                       <Text size="xs" c="dimmed" mt={6}>
-                        Add ₹{Math.max(0, promo.threshold - totals.subtotal)} more to get the offer
+                        Add ₹{Math.max(0, promo.threshold - totals.subtotal)}{" "}
+                        more to get the offer
                       </Text>
                     </Paper>
                   )}
@@ -1388,7 +1986,9 @@ useEffect(() => {
 
                   {savedScheme && savedScheme.isDiscountApplicable ? (
                     <Group justify="space-between" mb="xs">
-                      <Text c="dimmed">Scheme Discount ({savedScheme.discountvalue}% off)</Text>
+                      <Text c="dimmed">
+                        Scheme Discount ({savedScheme.discountvalue}% off)
+                      </Text>
                       <Text style={{ color: LIGHT_GREEN, fontWeight: 700 }}>
                         -₹{Math.round(Number(savedScheme.minusValue ?? 0))}
                       </Text>
@@ -1418,7 +2018,9 @@ useEffect(() => {
 
                   <Group justify="space-between" mb="xs">
                     <Text c="dimmed">Shipping Fee</Text>
-                    <Text>{totals.shipping === 0 ? "Free" : `₹${totals.shipping}`}</Text>
+                    <Text>
+                      {totals.shipping === 0 ? "Free" : `₹${totals.shipping}`}
+                    </Text>
                   </Group>
 
                   <Group justify="space-between" mb="xs">
@@ -1449,12 +2051,17 @@ useEffect(() => {
                       style={{ backgroundColor: "#f3fbf4" }}
                     >
                       <Text size="sm" fw={500} style={{ color: DARK_GREEN }}>
-                        Note: For COD orders, ₹100 is collected in advance online. The remaining amount is paid on delivery.
+                        Note: For COD orders, ₹100 is collected in advance
+                        online. The remaining amount is paid on delivery.
                       </Text>
                     </Paper>
                   )}
 
-                  <Paper radius="sm" p="md" style={{ backgroundColor: "#f7fff6" }}>
+                  <Paper
+                    radius="sm"
+                    p="md"
+                    style={{ backgroundColor: "#f7fff6" }}
+                  >
                     <Group position="apart" align="center">
                       <div>
                         <Text size="sm" style={{ color: DARK_GREEN }}>
@@ -1483,22 +2090,32 @@ useEffect(() => {
             </Grid>
           </Container>
 
-         <Box
-          style={{
-            position: "fixed",
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 2000,              // was 999
-            pointerEvents: "auto",     // make sure it gets the tap
-            borderTop: "1px solid #eee",
-            background: "#fff",
-            padding: "10px 0px",
-            boxShadow: "0 -2px 10px rgba(0,0,0,0.04)",
-          }}
-        >
-            <Container size="lg" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <Box
+            style={{
+              position: "fixed",
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 2000, // was 999
+              pointerEvents: "auto", // make sure it gets the tap
+              borderTop: "1px solid #eee",
+              background: "#fff",
+              padding: "10px 0px",
+              boxShadow: "0 -2px 10px rgba(0,0,0,0.04)",
+            }}
+          >
+            <Container
+              size="lg"
+              style={{ display: "flex", flexDirection: "column", gap: 8 }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                }}
+              >
                 <div>
                   <Text fw={700} size="lg" style={{ lineHeight: 1 }}>
                     ₹
@@ -1509,15 +2126,20 @@ useEffect(() => {
                         )
                       : totals.grandTotal}
                   </Text>
-                  <Text size="xs" c="dimmed">View Price Details</Text>
+                  <Text size="xs" c="dimmed">
+                    View Price Details
+                  </Text>
 
-                  {(savedScheme && savedScheme.isDiscountApplicable) ? (
+                  {savedScheme && savedScheme.isDiscountApplicable ? (
                     <Text size="xs" style={{ color: DARK_GREEN, marginTop: 4 }}>
-                      Buy above ₹{Math.round(Number(savedScheme.couponAmount ?? 0))} — flat {savedScheme.discountvalue}% off applied
+                      Buy above ₹
+                      {Math.round(Number(savedScheme.couponAmount ?? 0))} — flat{" "}
+                      {savedScheme.discountvalue}% off applied
                     </Text>
                   ) : promo && !promo.applied ? (
                     <Text size="xs" style={{ color: DARK_GREEN, marginTop: 4 }}>
-                      Buy above ₹{Math.round(Number(promo.threshold))} — flat {promo.discountPercent}% off available
+                      Buy above ₹{Math.round(Number(promo.threshold))} — flat{" "}
+                      {promo.discountPercent}% off available
                     </Text>
                   ) : null}
                 </div>
@@ -1534,27 +2156,27 @@ useEffect(() => {
               </div>
 
               <div style={{ display: "flex", gap: 8 }}>
-                 <Button
-                    radius="md"
-                    size="md"
-                    fullWidth
-                    onClick={() => {
-                      if (flatUserAddress.length == 0) {
-                        navigate("/account");
-                        return;
-                      }
-                      if (paymentMethod === "RAZORPAY") onPayNow();
-                      else onPlaceCOD();
-                    }}
-                    loading={payLoading}
-                    sx={{
-                      backgroundColor: DARK_GREEN,
-                      color: "#fff",
-                      "&:hover": { backgroundColor: "#0f2a12" },
-                    }}
-                  >
-                    PLACE ORDER
-                  </Button>
+                <Button
+                  radius="md"
+                  size="md"
+                  fullWidth
+                  onClick={() => {
+                    if (flatUserAddress.length == 0) {
+                      navigate("/account");
+                      return;
+                    }
+                    if (paymentMethod === "RAZORPAY") onPayNow();
+                    else onPlaceCOD();
+                  }}
+                  loading={payLoading}
+                  sx={{
+                    backgroundColor: DARK_GREEN,
+                    color: "#fff",
+                    "&:hover": { backgroundColor: "#0f2a12" },
+                  }}
+                >
+                  PLACE ORDER
+                </Button>
               </div>
             </Container>
           </Box>
