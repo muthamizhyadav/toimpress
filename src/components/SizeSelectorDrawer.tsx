@@ -10,6 +10,7 @@ import axiosInstance from "../api/axiosInstance";
 import { API_GET_CART_DATA } from "../api/api";
 
 const DARK_GREEN = "#133215";
+const LIGHT_GREEN = "#4c7533";
 
 const normalizeColor = (c?: string) => (c ?? "").toString().trim().toLowerCase();
 
@@ -594,7 +595,7 @@ export default function SizeSelectorDrawer(props: Props) {
             resetState();
             onClose();
           }}
-          style={{ flex: 1, borderRadius: 999 }}
+          style={{ flex: 1, borderRadius: 999,color: LIGHT_GREEN,borderColor:LIGHT_GREEN }}
         >
           Continue shopping
         </Button>

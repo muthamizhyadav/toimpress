@@ -911,7 +911,7 @@ export default function ProductPage() {
                   cursor: "pointer",
                   border:
                     mainImage === img
-                      ? `3px solid ${DARK_GREEN}`
+                      ? `3px solid ${LIGHT_GREEN}`
                       : "2px solid #e0e0e0",
                   borderRadius: 8,
                   width: 80,
@@ -988,7 +988,7 @@ export default function ProductPage() {
                       cursor: "pointer",
                       border:
                         selectedColor === clr
-                          ? `2px solid ${DARK_GREEN}`
+                          ? `3px solid ${LIGHT_GREEN}`
                           : "1px solid #ccc",
                       borderRadius: "50%",
                       width: 28,

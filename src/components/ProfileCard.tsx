@@ -386,9 +386,9 @@ export default function ProfileCard() {
               </Text>
 
               <Group spacing="xs">
-                <Button size="xs" color="gray" leftSection={<IconRefresh size={14} />} onClick={fetchAddress} loading={loadingAddress}>
+                {/* <Button size="xs" color="gray" leftSection={<IconRefresh size={14} />} onClick={fetchAddress} loading={loadingAddress}>
                   Refresh
-                </Button>
+                </Button> */}
 
                 <Button size="xs" color="red" leftSection={<IconLogout size={14} />} onClick={handleLogout}>
                   Logout

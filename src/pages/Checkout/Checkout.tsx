@@ -4163,6 +4163,7 @@ export default function Checkout() {
                 await handleClearCart();
                 navigate("/");
               }}
+              style={{backgroundColor: DARK_GREEN, color: '#fff'}}
             >
               Continue shopping
             </Button>
@@ -4538,6 +4539,7 @@ export default function Checkout() {
 
               <div style={{ display: "flex", gap: 8 }}>
                 <Button
+                  style={{backgroundColor: DARK_GREEN}}
                   radius="md"
                   size="md"
                   fullWidth
@@ -4551,7 +4553,7 @@ export default function Checkout() {
                   }}
                   loading={payLoading}
                   sx={{
-                    backgroundColor: DARK_GREEN,
+                    backgroundColor: 'red',
                     color: "#fff",
                     "&:hover": { backgroundColor: "#0f2a12" },
                   }}
