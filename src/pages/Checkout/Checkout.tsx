@@ -958,6 +958,7 @@ export default function Checkout() {
       address?.pin ??
       address?.zipCode ??
       address?.zipcode ??
+      address?.pincode ??
       "";
     const city = reduxUserData?.city ?? "";
     const state = reduxUserData?.state ?? "";
