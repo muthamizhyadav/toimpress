@@ -829,6 +829,7 @@ export default function Checkout() {
       prefill: { name: prefillName, email: prefillEmail, contact: prefillContact },
       notes: { cartItems: String(items.length), source: "web_checkout_full" },
       theme: { color: DARK_GREEN },
+      async:false,
       handler: async (resp: any) => {
         // 👉 Log the Razorpay PAYMENT RESPONSE (not the script)
         console.log("Razorpay payment success:", resp);
@@ -914,6 +915,7 @@ export default function Checkout() {
             "Payment succeeded but verification or shipment creation failed. Please contact support."
           );
         }
+        rzp.close();
       },
     });
 
