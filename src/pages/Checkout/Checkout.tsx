@@ -2408,6 +2408,7 @@ import { API_GET_UPDATE, API_CART, API_GET_STATUS } from "../../api/api";
 import { useSelector, useDispatch } from "react-redux";
 import { removeFromCart, clearCart } from "../../redux/features/cartSlice";
 import * as storeModule from "../../redux/store";
+import { notifications } from "@mantine/notifications";
 
 const normalizeColor = (c?: string) =>
   (c ?? "").toString().trim().toLowerCase();
@@ -3309,18 +3310,18 @@ export default function Checkout() {
       const resp = await axiosInstance.post(SERVER_CREATE_ORDER_URL, payload, {
         headers,
       });
-      
+
       if (resp.status !== 200 && resp.status !== 201) {
         throw new Error(`Order creation failed with status: ${resp.status}`);
       }
-      
+
       return resp.data ?? resp;
     } catch (error: any) {
       console.error("Order history creation failed:", error);
       throw new Error(
-        error?.response?.data?.message ?? 
-        error?.message ?? 
-        "Failed to create order. Please try again."
+        error?.response?.data?.message ??
+          error?.message ??
+          "Failed to create order. Please try again."
       );
     }
   }
@@ -3415,24 +3416,27 @@ export default function Checkout() {
         { shipments },
         { headers }
       );
-      
+
       if (resp.status !== 200 && resp.status !== 201) {
         throw new Error(`Shipment creation failed with status: ${resp.status}`);
       }
-      
+
       return resp.data ?? resp;
     } catch (error: any) {
       console.error("Delhivery shipment creation failed:", error);
       throw new Error(
         error?.response?.data?.message ??
-        error?.message ??
-        "Failed to create shipment. Please try again."
+          error?.message ??
+          "Failed to create shipment. Please try again."
       );
     }
   }
 
   // ✅ NEW: Validate APIs before proceeding to payment
-  const validateOrderApis = async (): Promise<{ success: boolean; orderData?: any }> => {
+  const validateOrderApis = async (): Promise<{
+    success: boolean;
+    orderData?: any;
+  }> => {
     try {
       // Step 1: Create order in database
       let createdOrder;
@@ -3453,7 +3457,7 @@ export default function Checkout() {
                 : null,
             prePayment: true, // Mark as pre-payment validation
           },
-          amountToChargeOnDelivery: 
+          amountToChargeOnDelivery:
             paymentMethod === "COD" ? totals.grandTotal - COD_TOKEN : undefined,
         });
       } catch (orderError: any) {
@@ -3482,8 +3486,10 @@ export default function Checkout() {
           paymentMethod: paymentMethod === "RAZORPAY" ? "online" : "cod_token",
           totalsLocal: {
             ...totals,
-            amountToChargeOnDelivery: 
-              paymentMethod === "COD" ? totals.grandTotal - COD_TOKEN : undefined,
+            amountToChargeOnDelivery:
+              paymentMethod === "COD"
+                ? totals.grandTotal - COD_TOKEN
+                : undefined,
           },
           meta: { createdOrder, prePayment: true },
         });
@@ -3683,7 +3689,7 @@ export default function Checkout() {
       setPaymentInProgress(false);
       localStorage.removeItem("pendingRazorpayPayment");
       localStorage.removeItem("paymentProcessing");
-      
+
       showApiError(
         "Payment Error",
         "Unable to start payment. Please try again."
@@ -3820,10 +3826,7 @@ export default function Checkout() {
             amountToChargeOnDelivery: orderTotal,
           });
         } catch (orderErr) {
-          console.error(
-            "Order confirmation failed (COD immediate):",
-            orderErr
-          );
+          console.error("Order confirmation failed (COD immediate):", orderErr);
         }
 
         await handleClearCart();
@@ -3833,8 +3836,8 @@ export default function Checkout() {
           color: "green",
           icon: <IconCheck size={16} />,
         });
-        navigate("/order-success", { 
-          state: { order: { paymentMethod: "cod" } } 
+        navigate("/order-success", {
+          state: { order: { paymentMethod: "cod" } },
         });
         return;
       }
@@ -3919,10 +3922,7 @@ export default function Checkout() {
                 amountToChargeOnDelivery: remainingAmount,
               });
             } catch (orderErr) {
-              console.error(
-                "Order confirmation failed (COD token):",
-                orderErr
-              );
+              console.error("Order confirmation failed (COD token):", orderErr);
             }
 
             await handleClearCart();
@@ -3932,8 +3932,8 @@ export default function Checkout() {
               color: "green",
               icon: <IconCheck size={16} />,
             });
-            navigate("/order-success", { 
-              state: { order: { paymentMethod: "cod_token" } } 
+            navigate("/order-success", {
+              state: { order: { paymentMethod: "cod_token" } },
             });
           } catch (e) {
             console.error("Verification failed:", e);
@@ -3954,10 +3954,7 @@ export default function Checkout() {
       rzp.open();
     } catch (err) {
       console.error("onPlaceCOD error:", err);
-      showApiError(
-        "COD Error",
-        "Unable to place COD order. Please try again."
-      );
+      showApiError("COD Error", "Unable to place COD order. Please try again.");
     } finally {
       setPayLoading(false);
     }
@@ -4124,14 +4121,18 @@ export default function Checkout() {
       {/* API Error Modal */}
       <Modal
         opened={apiErrorModal.opened}
-        onClose={() => setApiErrorModal({ opened: false, title: "", message: "" })}
+        onClose={() =>
+          setApiErrorModal({ opened: false, title: "", message: "" })
+        }
         title={apiErrorModal.title}
         centered
       >
         <Text>{apiErrorModal.message}</Text>
         <Group justify="flex-end" mt="md">
-          <Button 
-            onClick={() => setApiErrorModal({ opened: false, title: "", message: "" })}
+          <Button
+            onClick={() =>
+              setApiErrorModal({ opened: false, title: "", message: "" })
+            }
             sx={{
               backgroundColor: DARK_GREEN,
               "&:hover": { backgroundColor: "#0f2a12" },
@@ -4163,7 +4164,7 @@ export default function Checkout() {
                 await handleClearCart();
                 navigate("/");
               }}
-              style={{backgroundColor: DARK_GREEN, color: '#fff'}}
+              style={{ backgroundColor: DARK_GREEN, color: "#fff" }}
             >
               Continue shopping
             </Button>
@@ -4288,6 +4289,7 @@ export default function Checkout() {
                           <Button
                             size="xs"
                             onClick={() => navigate("/account")}
+                            style={{backgroundColor: DARK_GREEN, color: "#fff"}}
                             sx={{
                               backgroundColor: DARK_GREEN,
                               color: "#fff",
@@ -4539,12 +4541,17 @@ export default function Checkout() {
 
               <div style={{ display: "flex", gap: 8 }}>
                 <Button
-                  style={{backgroundColor: DARK_GREEN}}
+                  style={{ backgroundColor: DARK_GREEN }}
                   radius="md"
                   size="md"
                   fullWidth
                   onClick={() => {
-                    if (flatUserAddress.length == 0) {
+                    if (flatUserAddress === null) {
+                      notifications.show({
+                        title: "Address Missing",
+                        message: "Please add a shipping address to proceed",
+                        color: `${LIGHT_GREEN}`,
+                      });
                       navigate("/account");
                       return;
                     }
@@ -4553,7 +4560,7 @@ export default function Checkout() {
                   }}
                   loading={payLoading}
                   sx={{
-                    backgroundColor: 'red',
+                    backgroundColor: "red",
                     color: "#fff",
                     "&:hover": { backgroundColor: "#0f2a12" },
                   }}
