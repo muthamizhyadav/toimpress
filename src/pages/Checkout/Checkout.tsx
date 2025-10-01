@@ -422,7 +422,7 @@ export default function Checkout() {
             meta: { createdOrder, recovered: true },
           });
 
-          console.log("✅ Delhivery shipment created for recovered payment");
+          console.log("✅ Delhivery shipment created for recovered payment",flatUserAddress);
         } catch (shipErr) {
           console.error("❌ Delhivery shipment failed for recovery:", shipErr);
         }
@@ -1459,7 +1459,7 @@ export default function Checkout() {
             meta: { createdOrder },
           });
 
-          console.log("✅ Delhivery shipment created successfully");
+          console.log("✅ Delhivery shipment created successfully",flatUserAddress);
         } catch (shipErr) {
           console.error("❌ Delhivery shipment creation failed:", shipErr);
           // Don't block the flow - log for manual intervention
