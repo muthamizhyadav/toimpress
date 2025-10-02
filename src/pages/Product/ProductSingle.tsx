@@ -102,6 +102,7 @@ export default function ProductPage() {
   const [openSizeDrawer, setOpenSizeDrawer] = useState(false);
   const [dataWithColor, setDataWithColor] = useState<any[]>([null]);
   const [drawerProduct, setDrawerProduct] = useState<any | null>(null);
+  const [coupon, setCoupon] = useState<any | null>(null);
 
   const [addingMap, setAddingMap] = useState<Record<string, boolean>>({});
 
@@ -115,6 +116,8 @@ export default function ProductPage() {
         );
         const detail = resp?.data?.product;
         const sims = resp?.data?.similerProducts || resp?.data?.similarProducts;
+        const couponData = resp?.data?.coupon;
+        setCoupon(couponData || null);
 
         setProductDetails(detail);
         setSimilarProducts(sims || []);
@@ -164,6 +167,15 @@ export default function ProductPage() {
     };
     if (productId) fetchData();
   }, [productId]);
+
+  const isProductEligibleForCoupon = useMemo(() => {
+    if (!coupon?.isActive || !productId) return false;
+
+    return (
+      coupon.products?.includes(productId) ||
+      coupon.category === productDetails?.category
+    );
+  }, [coupon, productId, productDetails?.category]);
 
   const getAllColorImages = useMemo(() => {
     if (!productDetails?.colorData) return [];
@@ -660,7 +672,6 @@ export default function ProductPage() {
   const onSizeSelect = (sizeLabel: string) => {
     setSelectedSize(sizeLabel);
 
-
     // const sizeIndex = sizesInput.findIndex(
     //   (s) => String(s).toUpperCase() === String(sizeLabel).toUpperCase()
     // );
@@ -889,7 +900,35 @@ export default function ProductPage() {
   return (
     <Container size="xl" py="md">
       <Grid>
-        <Grid.Col span={{ base: 12, md: 6 }}>
+        <Grid.Col span={{ base: 12, md: 6 }} style={{ position: "relative" }}>
+          {isProductEligibleForCoupon && (
+            <Box
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 10,
+                zIndex: 10,
+              }}
+            >
+              <Badge
+                color="red"
+                size="lg"
+                radius="sm"
+                styles={{
+                  root: {
+                    backgroundColor: LIGHT_GREEN,
+                    color: "white",
+                    fontWeight: "bold",
+                    fontSize: "12px",
+                    padding: "8px 12px",
+                    textTransform: "none",
+                  },
+                }}
+              >
+                Buy ₹1499 Get {coupon.offerDiscount}% OFF
+              </Badge>
+            </Box>
+          )}
           <Image
             src={mainImage}
             alt="Main product"
