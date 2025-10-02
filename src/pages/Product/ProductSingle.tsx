@@ -925,7 +925,7 @@ export default function ProductPage() {
                   },
                 }}
               >
-                Buy ₹1499 Get {coupon.offerDiscount}% OFF
+                Buy ₹{coupon.discount} Get {coupon.offerDiscount}% OFF
               </Badge>
             </Box>
           )}
