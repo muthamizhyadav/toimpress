@@ -2684,6 +2684,7 @@ export default function Checkout() {
   const [paymentMethod, setPaymentMethod] = useState<"RAZORPAY" | "COD">(
     "RAZORPAY"
   );
+  const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
   const [apiErrorModal, setApiErrorModal] = useState({
     opened: false,
     title: "",
@@ -3460,6 +3461,8 @@ export default function Checkout() {
           amountToChargeOnDelivery:
             paymentMethod === "COD" ? totals.grandTotal - COD_TOKEN : undefined,
         });
+        console.log("✅ Order created successfully:", createdOrder);
+        setCreatedOrderId(createdOrder?.data?.id || createdOrder?.id || null);
       } catch (orderError: any) {
         showApiError(
           "Order Creation Failed",
@@ -3563,6 +3566,7 @@ export default function Checkout() {
           paymentType: "FULL",
           source: "checkout_page",
         },
+        localOrderId: createdOrderId || null,
       });
 
       if (!order?.id || !order?.amount) {
@@ -3773,7 +3777,8 @@ export default function Checkout() {
   // Similar validation for COD flow
   const onPlaceCOD = async () => {
     if (!ensureAuthAndAddress()) return;
-
+    console.log("COD selected");
+    
     setPayLoading(true);
     try {
       if (!items?.length) {
