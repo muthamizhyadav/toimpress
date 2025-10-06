@@ -2780,29 +2780,29 @@ export default function Checkout() {
       }
 
       // ✅ ADD THIS: Create Delhivery shipment for recovered payment
-      if (createdOrder) {
-        try {
-          const serverOrderId =
-            createdOrder?.data?.id ||
-            createdOrder?.id ||
-            createdOrder?.orderNumber ||
-            createdOrder?.orderId ||
-            `ORDER${Date.now()}`;
+      // if (createdOrder) {
+      //   try {
+      //     const serverOrderId =
+      //       createdOrder?.data?.id ||
+      //       createdOrder?.id ||
+      //       createdOrder?.orderNumber ||
+      //       createdOrder?.orderId ||
+      //       `ORDER${Date.now()}`;
 
-          await createDelhiveryShipment({
-            orderNumber: String(serverOrderId),
-            items: paymentData.items,
-            address: paymentData.flatUserAddress,
-            paymentMethod: "online",
-            totalsLocal: paymentData.totals,
-            meta: { createdOrder, recovered: true },
-          });
+      //     await createDelhiveryShipment({
+      //       orderNumber: String(serverOrderId),
+      //       items: paymentData.items,
+      //       address: paymentData.flatUserAddress,
+      //       paymentMethod: "online",
+      //       totalsLocal: paymentData.totals,
+      //       meta: { createdOrder, recovered: true },
+      //     });
 
-          console.log("✅ Delhivery shipment created for recovered payment");
-        } catch (shipErr) {
-          console.error("❌ Delhivery shipment failed for recovery:", shipErr);
-        }
-      }
+      //     console.log("✅ Delhivery shipment created for recovered payment");
+      //   } catch (shipErr) {
+      //     console.error("❌ Delhivery shipment failed for recovery:", shipErr);
+      //   }
+      // }
 
       // Clear cart
       await handleClearCart();
@@ -3494,20 +3494,20 @@ export default function Checkout() {
           createdOrder?.data?.orderId ||
           `ORDER${Date.now()}`;
 
-        await createDelhiveryShipment({
-          orderNumber: String(serverOrderId),
-          items,
-          address: flatUserAddress,
-          paymentMethod: paymentMethod === "RAZORPAY" ? "online" : "cod_token",
-          totalsLocal: {
-            ...totals,
-            amountToChargeOnDelivery:
-              paymentMethod === "COD"
-                ? totals.grandTotal - COD_TOKEN
-                : undefined,
-          },
-          meta: { createdOrder, prePayment: true },
-        });
+        // await createDelhiveryShipment({
+        //   orderNumber: String(serverOrderId),
+        //   items,
+        //   address: flatUserAddress,
+        //   paymentMethod: paymentMethod === "RAZORPAY" ? "online" : "cod_token",
+        //   totalsLocal: {
+        //     ...totals,
+        //     amountToChargeOnDelivery:
+        //       paymentMethod === "COD"
+        //         ? totals.grandTotal - COD_TOKEN
+        //         : undefined,
+        //   },
+        //   meta: { createdOrder, prePayment: true },
+        // });
       } catch (shipmentError: any) {
         showApiError(
           "Shipment Creation Failed",
