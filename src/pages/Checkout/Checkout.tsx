@@ -4455,9 +4455,9 @@ export default function Checkout() {
                     </Text>
                   </Group>
 
-                  <Group justify="space-between" mb="xs">
-                    <Text c="dimmed">GST (5%)</Text>
-                    <Text>₹{totals.gst}</Text>
+                  <Group justify="space-cen" mb="xs">
+                    {/* <Text c="dimmed">GST (5%)</Text> */}
+                    <Text style={{color:DARK_GREEN, fontWeight:'bold'}}>Total MRP is inclusive of 5% GST</Text>
                   </Group>
 
                   <Divider my="sm" />
