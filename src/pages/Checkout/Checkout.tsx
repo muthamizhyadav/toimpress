@@ -3541,278 +3541,278 @@ export default function Checkout() {
     }
   };
 
- const onPayNow = async () => {
-  if (!ensureAuthAndAddress() || recoveringPayment) return;
+  const onPayNow = async () => {
+    if (!ensureAuthAndAddress() || recoveringPayment) return;
 
-  setPayLoading(true);
-  
-  try {
-    if (!items?.length) {
-      showNotification({
-        title: "Cart empty",
-        message: "Add items to proceed",
-        color: "yellow",
-        icon: <IconX size={16} />,
-      });
-      return;
-    }
+    setPayLoading(true);
 
-    // ✅ STEP 1: Validate APIs before payment and get orderId
-    const apiValidation = await validateOrderApis();
-    if (!apiValidation.success) {
-      setPayLoading(false);
-      return; // Stop here if API validation fails
-    }
+    try {
+      if (!items?.length) {
+        showNotification({
+          title: "Cart empty",
+          message: "Add items to proceed",
+          color: "yellow",
+          icon: <IconX size={16} />,
+        });
+        return;
+      }
 
-    // ✅ Use the orderId returned from validation
-    const localOrderId = apiValidation.orderId;
-    console.log("Using orderId:", localOrderId);
+      // ✅ STEP 1: Validate APIs before payment and get orderId
+      const apiValidation = await validateOrderApis();
+      if (!apiValidation.success) {
+        setPayLoading(false);
+        return; // Stop here if API validation fails
+      }
 
-    // Compute amount
-    const baseFinal =
-      savedScheme && savedScheme.isDiscountApplicable
-        ? Number(savedScheme.finalAmount ?? totals.grandTotal)
-        : totals.grandTotal;
+      // ✅ Use the orderId returned from validation
+      const localOrderId = apiValidation.orderId;
+      console.log("Using orderId:", localOrderId);
 
-    const amountToCollect = Math.max(0, Math.round(baseFinal));
-    const amountPaise = amountToCollect * 100;
+      // Compute amount
+      const baseFinal =
+        savedScheme && savedScheme.isDiscountApplicable
+          ? Number(savedScheme.finalAmount ?? totals.grandTotal)
+          : totals.grandTotal;
 
-    if (amountPaise <= 0) {
-      showNotification({
-        title: "Invalid amount",
-        message: "Amount must be greater than 0.",
-        color: "red",
-        icon: <IconX size={16} />,
-      });
-      return;
-    }
+      const amountToCollect = Math.max(0, Math.round(baseFinal));
+      const amountPaise = amountToCollect * 100;
 
-    const { data: order } = await axiosInstance.post(CREATE_ORDER_URL, {
-      amount: amountPaise,
-      currency: "INR",
-      receipt: "rcpt_" + Date.now(),
-      notes: {
-        itemCount: String(items.length),
-        paymentType: "FULL",
-        source: "checkout_page",
-      },
-      // ✅ Pass the actual orderId instead of null
-      localOrderId: localOrderId,
-    });
+      if (amountPaise <= 0) {
+        showNotification({
+          title: "Invalid amount",
+          message: "Amount must be greater than 0.",
+          color: "red",
+          icon: <IconX size={16} />,
+        });
+        return;
+      }
 
-    if (!order?.id || !order?.amount) {
-      console.error("Invalid Razorpay order:", order);
-      showNotification({
-        title: "Payment error",
-        message: "Couldn't initialize payment. Please try again.",
-        color: "red",
-        icon: <IconX size={16} />,
-      });
-      return;
-    }
-
-    const paymentSession = {
-      orderId: order.id,
-      amount: amountToCollect,
-      items: items,
-      totals: totals,
-      flatUserAddress: flatUserAddress,
-      savedScheme: savedScheme,
-      timestamp: Date.now(),
-      status: "initiated",
-      // ✅ Store the local order ID for recovery
-      localOrderId: localOrderId,
-    };
-    localStorage.setItem(
-      "pendingRazorpayPayment",
-      JSON.stringify(paymentSession)
-    );
-
-    await loadRazorpay();
-
-    const prefillName = (reduxUser?.name ?? user?.name) || "Customer";
-    const prefillEmail =
-      (reduxUser?.email ?? user?.email) || "customer@example.com";
-    const prefillContact =
-      (reduxUser?.mobile ??
-        reduxUser?.phone ??
-        user?.mobile ??
-        user?.phone) ||
-      "9000000000";
-
-    // Create Razorpay instance with optimized settings
-    const rzp = new (window as any).Razorpay({
-      key: RAZORPAY_KEY_ID,
-      amount: order.amount,
-      currency: order.currency,
-      name: "TO IMPRESS",
-      description: "Order Payment",
-      order_id: order.id,
-      prefill: {
-        name: prefillName,
-        email: prefillEmail,
-        contact: prefillContact,
-      },
-      notes: {
-        cartItems: String(items.length),
-        source: "web_checkout_full",
-        orderId: order.id,
-        // ✅ Include local order ID in notes
-        localOrderId: localOrderId,
-      },
-      theme: { color: DARK_GREEN },
-      // Critical: These settings help with external app redirects
-      async: false,
-      modal: {
-        ondismiss: function () {
-          console.log("Razorpay modal dismissed");
-          setPaymentInProgress(false);
-          // Don't remove immediately - wait for potential redirect
-          setTimeout(() => {
-            if (!localStorage.getItem("paymentProcessing")) {
-              localStorage.removeItem("pendingRazorpayPayment");
-            }
-          }, 5000); // 5 second grace period
+      const { data: order } = await axiosInstance.post(CREATE_ORDER_URL, {
+        amount: amountPaise,
+        currency: "INR",
+        receipt: "rcpt_" + Date.now(),
+        notes: {
+          itemCount: String(items.length),
+          paymentType: "FULL",
+          source: "checkout_page",
         },
-        escape: true,
-        backdropclose: true,
-      },
-      handler: function (response: any) {
-        paymentSession.paymentId = response.razorpay_payment_id;
-        paymentSession.signature = response.razorpay_signature;
-        paymentSession.status = "payment_made";
-        // ✅ Ensure localOrderId is preserved
-        paymentSession.localOrderId = localOrderId;
-        localStorage.setItem(
-          "pendingRazorpayPayment",
-          JSON.stringify(paymentSession)
-        );
-        localStorage.setItem("paymentProcessing", "true");
+        // ✅ Pass the actual orderId instead of null
+        localOrderId: localOrderId,
+      });
 
-        rzp.close();
-        processPaymentBackground(response, paymentSession);
-      },
-    });
+      if (!order?.id || !order?.amount) {
+        console.error("Invalid Razorpay order:", order);
+        showNotification({
+          title: "Payment error",
+          message: "Couldn't initialize payment. Please try again.",
+          color: "red",
+          icon: <IconX size={16} />,
+        });
+        return;
+      }
 
-    // Handle payment failures
-    rzp.on("payment.failed", function (response: any) {
-      console.error("Razorpay payment failed:", response.error);
+      const paymentSession = {
+        orderId: order.id,
+        amount: amountToCollect,
+        items: items,
+        totals: totals,
+        flatUserAddress: flatUserAddress,
+        savedScheme: savedScheme,
+        timestamp: Date.now(),
+        status: "initiated",
+        // ✅ Store the local order ID for recovery
+        localOrderId: localOrderId,
+      };
+      localStorage.setItem(
+        "pendingRazorpayPayment",
+        JSON.stringify(paymentSession)
+      );
+
+      await loadRazorpay();
+
+      const prefillName = (reduxUser?.name ?? user?.name) || "Customer";
+      const prefillEmail =
+        (reduxUser?.email ?? user?.email) || "customer@example.com";
+      const prefillContact =
+        (reduxUser?.mobile ??
+          reduxUser?.phone ??
+          user?.mobile ??
+          user?.phone) ||
+        "9000000000";
+
+      // Create Razorpay instance with optimized settings
+      const rzp = new (window as any).Razorpay({
+        key: RAZORPAY_KEY_ID,
+        amount: order.amount,
+        currency: order.currency,
+        name: "TO IMPRESS",
+        description: "Order Payment",
+        order_id: order.id,
+        prefill: {
+          name: prefillName,
+          email: prefillEmail,
+          contact: prefillContact,
+        },
+        notes: {
+          cartItems: String(items.length),
+          source: "web_checkout_full",
+          orderId: order.id,
+          // ✅ Include local order ID in notes
+          localOrderId: localOrderId,
+        },
+        theme: { color: DARK_GREEN },
+        // Critical: These settings help with external app redirects
+        async: false,
+        modal: {
+          ondismiss: function () {
+            console.log("Razorpay modal dismissed");
+            setPaymentInProgress(false);
+            // Don't remove immediately - wait for potential redirect
+            setTimeout(() => {
+              if (!localStorage.getItem("paymentProcessing")) {
+                localStorage.removeItem("pendingRazorpayPayment");
+              }
+            }, 5000); // 5 second grace period
+          },
+          escape: true,
+          backdropclose: true,
+        },
+        handler: function (response: any) {
+          paymentSession.paymentId = response.razorpay_payment_id;
+          paymentSession.signature = response.razorpay_signature;
+          paymentSession.status = "payment_made";
+          // ✅ Ensure localOrderId is preserved
+          paymentSession.localOrderId = localOrderId;
+          localStorage.setItem(
+            "pendingRazorpayPayment",
+            JSON.stringify(paymentSession)
+          );
+          localStorage.setItem("paymentProcessing", "true");
+
+          rzp.close();
+          processPaymentBackground(response, paymentSession);
+        },
+      });
+
+      // Handle payment failures
+      rzp.on("payment.failed", function (response: any) {
+        console.error("Razorpay payment failed:", response.error);
+        setPaymentInProgress(false);
+        localStorage.removeItem("pendingRazorpayPayment");
+        localStorage.removeItem("paymentProcessing");
+
+        showNotification({
+          title: "Payment failed",
+          message:
+            response.error.description || "Payment failed. Please try again.",
+          color: "red",
+          icon: <IconX size={16} />,
+        });
+      });
+
+      // Handle when modal closes without payment
+      rzp.on("modal.closed", function () {
+        console.log("Razorpay modal closed");
+        setPaymentInProgress(false);
+        // Give some time for handler to trigger before cleaning up
+        setTimeout(() => {
+          if (!localStorage.getItem("paymentProcessing")) {
+            localStorage.removeItem("pendingRazorpayPayment");
+          }
+        }, 3000);
+      });
+
+      // Finally open the modal
+      rzp.open();
+      setPaymentInProgress(true);
+    } catch (err) {
+      console.error("onPayNow error:", err);
       setPaymentInProgress(false);
       localStorage.removeItem("pendingRazorpayPayment");
       localStorage.removeItem("paymentProcessing");
 
-      showNotification({
-        title: "Payment failed",
-        message:
-          response.error.description || "Payment failed. Please try again.",
-        color: "red",
-        icon: <IconX size={16} />,
-      });
-    });
-
-    // Handle when modal closes without payment
-    rzp.on("modal.closed", function () {
-      console.log("Razorpay modal closed");
-      setPaymentInProgress(false);
-      // Give some time for handler to trigger before cleaning up
-      setTimeout(() => {
-        if (!localStorage.getItem("paymentProcessing")) {
-          localStorage.removeItem("pendingRazorpayPayment");
-        }
-      }, 3000);
-    });
-
-    // Finally open the modal
-    rzp.open();
-    setPaymentInProgress(true);
-  } catch (err) {
-    console.error("onPayNow error:", err);
-    setPaymentInProgress(false);
-    localStorage.removeItem("pendingRazorpayPayment");
-    localStorage.removeItem("paymentProcessing");
-
-    showApiError(
-      "Payment Error",
-      "Unable to start payment. Please try again."
-    );
-  } finally {
-    setPayLoading(false);
-  }
-};
-
- const processPaymentBackground = async (
-  response: any,
-  paymentSession: any
-) => {
-  try {
-    console.log("Processing payment in background...");
-
-    // Verify payment
-    const { data: verify } = await axiosInstance.post(VERIFY_URL, {
-      razorpay_payment_id: response.razorpay_payment_id,
-      razorpay_order_id: response.razorpay_order_id,
-      razorpay_signature: response.razorpay_signature,
-    });
-
-    if (!verify?.valid) {
-      throw new Error("Payment verification failed");
+      showApiError(
+        "Payment Error",
+        "Unable to start payment. Please try again."
+      );
+    } finally {
+      setPayLoading(false);
     }
+  };
 
-    // Update order status to confirmed (post-payment)
+  const processPaymentBackground = async (
+    response: any,
+    paymentSession: any
+  ) => {
     try {
-      await createOrderHistory({
-        items: paymentSession.items,
-        shippingAddress: paymentSession.flatUserAddress,
-        billingAddress: paymentSession.flatUserAddress,
-        paymentMethod: "online",
-        notes: "",
-        shippingCost: paymentSession.totals.shipping,
-        tax: paymentSession.totals.gst,
-        discount: paymentSession.totals.totalDiscounts,
-        // ✅ Use the stored localOrderId
-        localOrderId: paymentSession.localOrderId || paymentSession.orderId,
-        meta: {
-          razorpay: response,
-          savedScheme: paymentSession.savedScheme?.isDiscountApplicable
-            ? paymentSession.savedScheme
-            : null,
-          paymentConfirmed: true,
+      console.log("Processing payment in background...");
+
+      // Verify payment
+      const { data: verify } = await axiosInstance.post(VERIFY_URL, {
+        razorpay_payment_id: response.razorpay_payment_id,
+        razorpay_order_id: response.razorpay_order_id,
+        razorpay_signature: response.razorpay_signature,
+      });
+
+      if (!verify?.valid) {
+        throw new Error("Payment verification failed");
+      }
+
+      // Update order status to confirmed (post-payment)
+      try {
+        await createOrderHistory({
+          items: paymentSession.items,
+          shippingAddress: paymentSession.flatUserAddress,
+          billingAddress: paymentSession.flatUserAddress,
+          paymentMethod: "online",
+          notes: "",
+          shippingCost: paymentSession.totals.shipping,
+          tax: paymentSession.totals.gst,
+          discount: paymentSession.totals.totalDiscounts,
+          // ✅ Use the stored localOrderId
+          localOrderId: paymentSession.localOrderId || paymentSession.orderId,
+          meta: {
+            razorpay: response,
+            savedScheme: paymentSession.savedScheme?.isDiscountApplicable
+              ? paymentSession.savedScheme
+              : null,
+            paymentConfirmed: true,
+          },
+        });
+      } catch (orderErr) {
+        console.error("Order confirmation failed:", orderErr);
+        // Don't block success flow - log for manual intervention
+      }
+
+      // Clear cart
+      await handleClearCart();
+
+      // Clean up storage
+      localStorage.removeItem("pendingRazorpayPayment");
+      localStorage.removeItem("paymentProcessing");
+      setPaymentInProgress(false);
+
+      // Navigate to success page
+      navigate("/order-success", {
+        state: {
+          order: {
+            id: paymentSession.localOrderId || paymentSession.orderId,
+          },
+          paymentId: response.razorpay_payment_id,
         },
       });
-    } catch (orderErr) {
-      console.error("Order confirmation failed:", orderErr);
-      // Don't block success flow - log for manual intervention
+    } catch (error) {
+      console.error("Background payment processing failed:", error);
+
+      showNotification({
+        title: "Payment processing delayed",
+        message:
+          "Your payment was successful but processing is taking longer. Please wait...",
+        color: "yellow",
+        icon: <IconInfoCircle size={16} />,
+      });
     }
-
-    // Clear cart
-    await handleClearCart();
-
-    // Clean up storage
-    localStorage.removeItem("pendingRazorpayPayment");
-    localStorage.removeItem("paymentProcessing");
-    setPaymentInProgress(false);
-
-    // Navigate to success page
-    navigate("/order-success", {
-      state: {
-        order: { 
-          id: paymentSession.localOrderId || paymentSession.orderId 
-        },
-        paymentId: response.razorpay_payment_id,
-      },
-    });
-  } catch (error) {
-    console.error("Background payment processing failed:", error);
-
-    showNotification({
-      title: "Payment processing delayed",
-      message:
-        "Your payment was successful but processing is taking longer. Please wait...",
-      color: "yellow",
-      icon: <IconInfoCircle size={16} />,
-    });
-  }
-};
+  };
 
   // Similar validation for COD flow
   const onPlaceCOD = async () => {
@@ -4457,7 +4457,9 @@ export default function Checkout() {
 
                   <Group justify="space-cen" mb="xs">
                     {/* <Text c="dimmed">GST (5%)</Text> */}
-                    <Text style={{color:DARK_GREEN, fontWeight:'bold'}}>Total MRP is inclusive of 5% GST</Text>
+                    <Text style={{ color: DARK_GREEN, fontWeight: "bold" }}>
+                      Total MRP is inclusive of 5% GST
+                    </Text>
                   </Group>
 
                   <Divider my="sm" />
@@ -4465,12 +4467,8 @@ export default function Checkout() {
                     <Text fw={700}>You Pay</Text>
                     <Text fw={700}>
                       ₹
-                      {savedScheme && savedScheme.isDiscountApplicable
-                        ? Math.round(
-                            Number(savedScheme.finalAmount) +
-                              (paymentMethod === "COD" ? COD_SHIPPING : 0)
-                          )
-                        : totals.grandTotal}
+                      {Number(savedScheme.finalAmount) +
+                        (paymentMethod === "COD" ? COD_SHIPPING : 0)}
                     </Text>
                   </Group>
 
