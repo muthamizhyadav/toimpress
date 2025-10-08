@@ -4549,12 +4549,10 @@ export default function Checkout() {
                 <div>
                   <Text fw={700} size="lg" style={{ lineHeight: 1 }}>
                     ₹
-                    {savedScheme && savedScheme.isDiscountApplicable
-                      ? Math.round(
+                      {Math.round(
                           Number(savedScheme.finalAmount) +
                             (paymentMethod === "COD" ? COD_SHIPPING : 0)
-                        )
-                      : totals.grandTotal}
+                        )}
                   </Text>
                   <Text size="xs" c="dimmed">
                     View Price Details
