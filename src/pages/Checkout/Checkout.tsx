@@ -3574,7 +3574,7 @@ export default function Checkout() {
           ? Number(savedScheme.finalAmount ?? totals.grandTotal)
           : totals.grandTotal;
 
-      const amountToCollect = Math.max(0, Math.round(baseFinal));
+      const amountToCollect = Math.max(0, Math.round(savedScheme.finalAmount));
       const amountPaise = amountToCollect * 100;
 
       if (amountPaise <= 0) {
