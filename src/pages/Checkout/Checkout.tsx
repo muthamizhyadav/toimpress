@@ -3542,6 +3542,18 @@ export default function Checkout() {
   };
 
   const onPayNow = async () => {
+if (window.fbq) {
+  window.fbq("track", "Purchase", {
+    value: savedScheme.finalAmount,
+    currency: "INR",
+    contents: items.map(item => ({
+      id: item.id,
+      quantity: item.qty,
+      item_price: item.price,
+    })),
+    content_type: "product",
+  });
+}
     if (!ensureAuthAndAddress() || recoveringPayment) return;
 
     setPayLoading(true);

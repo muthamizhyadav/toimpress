@@ -593,6 +593,17 @@ export default function ProductPage() {
     }
 
     const payload = makeCartPayload(selectedSize, 1);
+
+    if ((window as any).fbq) {
+      (window as any).fbq("track", "AddToCart", {
+        content_name: productDetails?.productTitle || "Unknown Product",
+        content_ids: [productDetails?._id],
+        content_type: "product",
+        value: productDetails?.salePrice || 0,
+        currency: "INR",
+      });
+    }
+
     addToCartApi(payload, undefined, "current");
   };
 

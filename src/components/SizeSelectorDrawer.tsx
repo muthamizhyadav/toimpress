@@ -4,7 +4,11 @@ import { Drawer, Button, Text, ActionIcon, Tooltip } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { IconPlus, IconMinus } from "@tabler/icons-react";
-import { addToCart, increaseQty, decreaseQty } from "../redux/features/cartSlice";
+import {
+  addToCart,
+  increaseQty,
+  decreaseQty,
+} from "../redux/features/cartSlice";
 import { addOrUpdateCartLine } from "../redux/features/cartThunks"; // single-line API
 import axiosInstance from "../api/axiosInstance";
 import { API_GET_CART_DATA } from "../api/api";
@@ -12,7 +16,8 @@ import { API_GET_CART_DATA } from "../api/api";
 const DARK_GREEN = "#133215";
 const LIGHT_GREEN = "#4c7533";
 
-const normalizeColor = (c?: string) => (c ?? "").toString().trim().toLowerCase();
+const normalizeColor = (c?: string) =>
+  (c ?? "").toString().trim().toLowerCase();
 
 export type SizeOption = {
   band: number;
@@ -51,14 +56,56 @@ type Props = {
 };
 
 const BAND_TABLE: any[] = [
-  { band: 28, underBust: [58, 62], overBustByCup: { A: [72, 74], B: [74, 76], C: [76, 78], D: [78, 80] } },
-  { band: 30, underBust: [63, 67], overBustByCup: { A: [77, 79], B: [79, 81], C: [81, 83], D: [83, 85] } },
-  { band: 32, underBust: [68, 72], overBustByCup: { A: [82, 84], B: [84, 86], C: [86, 88], D: [88, 90] } },
-  { band: 34, underBust: [73, 77], overBustByCup: { A: [87, 89], B: [89, 91], C: [91, 93], D: [93, 95] } },
-  { band: 36, underBust: [78, 82], overBustByCup: { A: [92, 94], B: [94, 96], C: [96, 98], D: [98, 100] } },
-  { band: 38, underBust: [83, 87], overBustByCup: { A: [97, 99], B: [99, 101], C: [101, 103], D: [103, 105] } },
-  { band: 40, underBust: [88, 92], overBustByCup: { A: [102, 104], B: [104, 106], C: [106, 108], D: [108, 110] } },
-  { band: 42, underBust: [93, 97], overBustByCup: { A: [107, 109], B: [109, 111], C: [111, 113], D: [113, 115] } },
+  {
+    band: 28,
+    underBust: [58, 62],
+    overBustByCup: { A: [72, 74], B: [74, 76], C: [76, 78], D: [78, 80] },
+  },
+  {
+    band: 30,
+    underBust: [63, 67],
+    overBustByCup: { A: [77, 79], B: [79, 81], C: [81, 83], D: [83, 85] },
+  },
+  {
+    band: 32,
+    underBust: [68, 72],
+    overBustByCup: { A: [82, 84], B: [84, 86], C: [86, 88], D: [88, 90] },
+  },
+  {
+    band: 34,
+    underBust: [73, 77],
+    overBustByCup: { A: [87, 89], B: [89, 91], C: [91, 93], D: [93, 95] },
+  },
+  {
+    band: 36,
+    underBust: [78, 82],
+    overBustByCup: { A: [92, 94], B: [94, 96], C: [96, 98], D: [98, 100] },
+  },
+  {
+    band: 38,
+    underBust: [83, 87],
+    overBustByCup: { A: [97, 99], B: [99, 101], C: [101, 103], D: [103, 105] },
+  },
+  {
+    band: 40,
+    underBust: [88, 92],
+    overBustByCup: {
+      A: [102, 104],
+      B: [104, 106],
+      C: [106, 108],
+      D: [108, 110],
+    },
+  },
+  {
+    band: 42,
+    underBust: [93, 97],
+    overBustByCup: {
+      A: [107, 109],
+      B: [109, 111],
+      C: [111, 113],
+      D: [113, 115],
+    },
+  },
 ];
 
 const buildOptionsFromBandTable = (): SizeOption[] =>
@@ -68,7 +115,9 @@ const buildOptionsFromBandTable = (): SizeOption[] =>
       band: b.band,
       cups,
       underband: `${b.underBust[0]}–${b.underBust[1]} cm`,
-      overbust: `${Math.min(...Object.values(b.overBustByCup).map((r: any) => r[0]))}–${Math.max(
+      overbust: `${Math.min(
+        ...Object.values(b.overBustByCup).map((r: any) => r[0])
+      )}–${Math.max(
         ...Object.values(b.overBustByCup).map((r: any) => r[1])
       )} cm`,
     };
@@ -87,11 +136,15 @@ const PANTY_SIZES = [
   { label: "6XL", hip: "143–149 cm" },
 ];
 
-const buildSizeOptionsFromSelectedSizes = (sizesInput?: string[]): SizeOption[] | undefined => {
+const buildSizeOptionsFromSelectedSizes = (
+  sizesInput?: string[]
+): SizeOption[] | undefined => {
   if (!Array.isArray(sizesInput) || sizesInput.length === 0) return undefined;
   const map = new Map<number, Set<string>>();
   for (const s of sizesInput) {
-    const str = String(s ?? "").toUpperCase().trim();
+    const str = String(s ?? "")
+      .toUpperCase()
+      .trim();
     const m = /^(\d{2})([A-Z]+)$/.exec(str);
     if (!m) continue;
     const band = Number(m[1]);
@@ -101,7 +154,10 @@ const buildSizeOptionsFromSelectedSizes = (sizesInput?: string[]): SizeOption[] 
   }
   const arr: SizeOption[] = Array.from(map.entries())
     .sort((a, b) => a[0] - b[0])
-    .map(([band, cupsSet]) => ({ band, cups: Array.from(cupsSet.values()).sort() }));
+    .map(([band, cupsSet]) => ({
+      band,
+      cups: Array.from(cupsSet.values()).sort(),
+    }));
   return arr.length ? arr : undefined;
 };
 
@@ -130,10 +186,12 @@ export default function SizeSelectorDrawer(props: Props) {
   const [pantySize, setPantySize] = useState<string | null>(null);
 
   // Track BOTH raw & normalized colors (color is optional)
-  const [selectedColorNorm, setSelectedColorNorm] = useState<string | undefined>(
-    initialSelectedColor ? normalizeColor(initialSelectedColor) : undefined
+  const [selectedColorNorm, setSelectedColorNorm] = useState<
+    string | undefined
+  >(initialSelectedColor ? normalizeColor(initialSelectedColor) : undefined);
+  const [selectedColorRaw, setSelectedColorRaw] = useState<string | undefined>(
+    initialSelectedColor
   );
-  const [selectedColorRaw, setSelectedColorRaw] = useState<string | undefined>(initialSelectedColor);
 
   const [addedClicked, setAddedClicked] = useState(false);
 
@@ -152,14 +210,18 @@ export default function SizeSelectorDrawer(props: Props) {
   }, [selectedColorNorm]);
 
   useEffect(() => {
-    setSelectedColorNorm(initialSelectedColor ? normalizeColor(initialSelectedColor) : undefined);
+    setSelectedColorNorm(
+      initialSelectedColor ? normalizeColor(initialSelectedColor) : undefined
+    );
     setSelectedColorRaw(initialSelectedColor);
   }, [initialSelectedColor, colors]);
 
   // Build size options based on color (if provided) for Brassiere
   const effectiveOptions: SizeOption[] = useMemo(() => {
     if (mode === "Brassiere") {
-      const colorSizes = selectedColorRaw ? colorData?.[selectedColorRaw]?.sizes : undefined;
+      const colorSizes = selectedColorRaw
+        ? colorData?.[selectedColorRaw]?.sizes
+        : undefined;
       const colorOptions = buildSizeOptionsFromSelectedSizes(colorSizes);
       return colorOptions ?? options;
     }
@@ -168,16 +230,24 @@ export default function SizeSelectorDrawer(props: Props) {
 
   const combinedSizes = useMemo(() => {
     const arr: { value: string; band: number; cup: string }[] = [];
-    effectiveOptions.forEach((o) => o.cups.forEach((c) => arr.push({ value: `${o.band}${c}`, band: o.band, cup: c })));
+    effectiveOptions.forEach((o) =>
+      o.cups.forEach((c) =>
+        arr.push({ value: `${o.band}${c}`, band: o.band, cup: c })
+      )
+    );
     return arr;
   }, [effectiveOptions]);
 
-  const bandInfo = useMemo(() => effectiveOptions.find((o) => o.band === band), [band, effectiveOptions]);
+  const bandInfo = useMemo(
+    () => effectiveOptions.find((o) => o.band === band),
+    [band, effectiveOptions]
+  );
 
   useEffect(() => {
     const cat = typeof category === "string" ? category.toLowerCase() : "";
     const isBra = cat.includes("bra") || cat.includes("brassiere");
-    const isPant = cat.includes("pant") || cat.includes("panties") || cat.includes("panty");
+    const isPant =
+      cat.includes("pant") || cat.includes("panties") || cat.includes("panty");
 
     if (isBra && !isPant) {
       setAvailableMode("Brassiere");
@@ -202,7 +272,8 @@ export default function SizeSelectorDrawer(props: Props) {
 
   // Resolve color-specific block (optional)
   const colorBlock = useMemo(() => {
-    if (!colorData || (!selectedColorRaw && !selectedColorNorm)) return undefined;
+    if (!colorData || (!selectedColorRaw && !selectedColorNorm))
+      return undefined;
     const raw = selectedColorRaw ?? "";
     const norm = selectedColorNorm ?? normalizeColor(raw);
     const rawTrim = raw?.trim?.() ?? raw;
@@ -229,7 +300,9 @@ export default function SizeSelectorDrawer(props: Props) {
     // If no color is selected/available, match by id + size only
     if (!selectedColorNorm) {
       const found = items.find((it) => {
-        const sameId = String(it.id) === String(productId) || String(it.productId ?? "") === String(productId);
+        const sameId =
+          String(it.id) === String(productId) ||
+          String(it.productId ?? "") === String(productId);
         const sameSize = (it.size ?? "") === String(currentLabel);
         return sameId && sameSize;
       });
@@ -239,9 +312,13 @@ export default function SizeSelectorDrawer(props: Props) {
     // If color exists, match it too
     const wantColor = normalizeColor(selectedColorNorm);
     const found = items.find((it) => {
-      const sameId = String(it.id) === String(productId) || String(it.productId ?? "") === String(productId);
+      const sameId =
+        String(it.id) === String(productId) ||
+        String(it.productId ?? "") === String(productId);
       const sameSize = (it.size ?? "") === String(currentLabel);
-      const sameColor = normalizeColor(it.color) === wantColor || normalizeColor(it.selectedColor) === wantColor;
+      const sameColor =
+        normalizeColor(it.color) === wantColor ||
+        normalizeColor(it.selectedColor) === wantColor;
       return sameId && sameSize && sameColor;
     });
     return Number(found?.qty ?? 0);
@@ -272,7 +349,9 @@ export default function SizeSelectorDrawer(props: Props) {
   const syncSingleVariant = (newQty: number) => {
     if (!productId || !currentLabel) return;
 
-    const normColor = selectedColorNorm ? normalizeColor(selectedColorNorm) : undefined;
+    const normColor = selectedColorNorm
+      ? normalizeColor(selectedColorNorm)
+      : undefined;
 
     dispatch<any>(
       addOrUpdateCartLine({
@@ -291,9 +370,20 @@ export default function SizeSelectorDrawer(props: Props) {
   const reduxAddOne = () => {
     if (!productId || !currentLabel) return;
 
-    const normColor = selectedColorNorm ? normalizeColor(selectedColorNorm) : undefined;
+    const normColor = selectedColorNorm
+      ? normalizeColor(selectedColorNorm)
+      : undefined;
 
     if (currentQty > 0) {
+      if ((window as any).fbq) {
+        (window as any).fbq("track", "AddToCart", {
+          content_name: productTitle || "Unknown Product",
+          content_ids: [productId],
+          content_type: "product",
+          value: price || 0,
+          currency: "INR",
+        });
+      }
       dispatch(
         increaseQty({
           id: String(productId),
@@ -323,7 +413,11 @@ export default function SizeSelectorDrawer(props: Props) {
     setAddedClicked(true);
 
     const [b, c] =
-      mode === "Brassiere" && band && cup ? [band, cup] : mode === "Panties" ? [0, pantySize ?? ""] : [0, ""];
+      mode === "Brassiere" && band && cup
+        ? [band, cup]
+        : mode === "Panties"
+        ? [0, pantySize ?? ""]
+        : [0, ""];
     onConfirm({
       band: b as number,
       cup: String(c),
@@ -337,7 +431,9 @@ export default function SizeSelectorDrawer(props: Props) {
     if (!productId || !currentLabel) return;
     if (currentQty <= 0) return;
 
-    const normColor = selectedColorNorm ? normalizeColor(selectedColorNorm) : undefined;
+    const normColor = selectedColorNorm
+      ? normalizeColor(selectedColorNorm)
+      : undefined;
 
     dispatch(
       decreaseQty({
@@ -352,7 +448,11 @@ export default function SizeSelectorDrawer(props: Props) {
     syncSingleVariant(newQty);
 
     const [b, c] =
-      mode === "Brassiere" && band && cup ? [band, cup] : mode === "Panties" ? [0, pantySize ?? ""] : [0, ""];
+      mode === "Brassiere" && band && cup
+        ? [band, cup]
+        : mode === "Panties"
+        ? [0, pantySize ?? ""]
+        : [0, ""];
     onConfirm({
       band: b as number,
       cup: String(c),
@@ -393,7 +493,11 @@ export default function SizeSelectorDrawer(props: Props) {
           }`}
           style={{ background: isHex ? c : undefined }}
         >
-          {!isHex && <span style={{ fontSize: 12 }}>{String(c).slice(0, 2).toUpperCase()}</span>}
+          {!isHex && (
+            <span style={{ fontSize: 12 }}>
+              {String(c).slice(0, 2).toUpperCase()}
+            </span>
+          )}
         </button>
       </Tooltip>
     );
@@ -413,13 +517,19 @@ export default function SizeSelectorDrawer(props: Props) {
       {/* header */}
       <div className="flex gap-3 mb-3">
         <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 shrink-0">
-          <img src={headerImageUrl} alt={productTitle} className="w-full h-full object-cover" />
+          <img
+            src={headerImageUrl}
+            alt={productTitle}
+            className="w-full h-full object-cover"
+          />
         </div>
         <div className="flex-1">
           <div className="text-sm font-medium line-clamp-2">{productTitle}</div>
           <div className="mt-1 text-lg font-semibold">₹{price}</div>
           <div className="mt-1 text-xs text-gray-500">
-            {mode === "Brassiere" ? "Select size (e.g. 30A)" : "Select panty size (hip measurement)"}
+            {mode === "Brassiere"
+              ? "Select size (e.g. 30A)"
+              : "Select panty size (hip measurement)"}
           </div>
         </div>
       </div>
@@ -430,7 +540,14 @@ export default function SizeSelectorDrawer(props: Props) {
           <Text size="sm" fw={600} mb={6}>
             Colors
           </Text>
-          <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 6 }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              overflowX: "auto",
+              paddingBottom: 6,
+            }}
+          >
             {colors.map((c, idx) => renderSwatch(c, idx))}
           </div>
         </div>
@@ -483,7 +600,9 @@ export default function SizeSelectorDrawer(props: Props) {
 
           {bandInfo?.underband && bandInfo?.overbust && (
             <div className="mt-2 text-xs text-gray-600">
-              Under-bust: <span className="underline">{bandInfo.underband}</span> &nbsp;|&nbsp; Over-bust:{" "}
+              Under-bust:{" "}
+              <span className="underline">{bandInfo.underband}</span>{" "}
+              &nbsp;|&nbsp; Over-bust:{" "}
               <span className="underline">{bandInfo.overbust}</span>
             </div>
           )}
@@ -495,14 +614,25 @@ export default function SizeSelectorDrawer(props: Props) {
         <div className="mt-2">
           <div className="text-sm font-semibold mb-2">PANTY SIZE (HIP)</div>
           <div
-            style={{ maxHeight: 220, overflowY: "auto", paddingRight: 6, display: "flex", gap: 8, flexWrap: "wrap" }}
+            style={{
+              maxHeight: 220,
+              overflowY: "auto",
+              paddingRight: 6,
+              display: "flex",
+              gap: 8,
+              flexWrap: "wrap",
+            }}
           >
             {PANTY_SIZES.map((s) => (
               <button
                 key={s.label}
                 onClick={() => setPantySize(s.label)}
                 className={`px-4 py-2 rounded-xl border text-sm transition
-                  ${pantySize === s.label ? "bg-[#96BD75] text-white border-[#96BD75]" : "bg-white border-gray-300"}`}
+                  ${
+                    pantySize === s.label
+                      ? "bg-[#96BD75] text-white border-[#96BD75]"
+                      : "bg-white border-gray-300"
+                  }`}
               >
                 <div className="text-sm font-medium">{s.label}</div>
                 <div className="text-xs text-gray-600">{s.hip}</div>
@@ -511,7 +641,8 @@ export default function SizeSelectorDrawer(props: Props) {
           </div>
 
           <div className="mt-3 text-xs text-gray-600">
-            Tip: Measure around the fullest part of your hips. The size shown is the recommended hip range.
+            Tip: Measure around the fullest part of your hips. The size shown is
+            the recommended hip range.
           </div>
         </div>
       )}
@@ -524,21 +655,37 @@ export default function SizeSelectorDrawer(props: Props) {
               Selected
             </Text>
             <Text size="sm">
-              {currentLabel} {selectedColorRaw ? <span className="text-gray-600">({selectedColorRaw})</span> : null}
+              {currentLabel}{" "}
+              {selectedColorRaw ? (
+                <span className="text-gray-600">({selectedColorRaw})</span>
+              ) : null}
             </Text>
           </div>
 
           <div className="mt-3 w-full">
             {currentQty <= 0 ? (
               <div style={{ width: "100%" }}>
-                <Button fullWidth onClick={confirmSize} style={{ background: "#96BD75", color: "#fff", borderRadius: 999 }}>
+                <Button
+                  fullWidth
+                  onClick={confirmSize}
+                  style={{
+                    background: "#96BD75",
+                    color: "#fff",
+                    borderRadius: 999,
+                  }}
+                >
                   Add to cart
                 </Button>
               </div>
             ) : (
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <ActionIcon onClick={reduceSize} title="Decrease" variant="light" size="lg">
+                  <ActionIcon
+                    onClick={reduceSize}
+                    title="Decrease"
+                    variant="light"
+                    size="lg"
+                  >
                     <IconMinus size={16} />
                   </ActionIcon>
 
@@ -595,16 +742,28 @@ export default function SizeSelectorDrawer(props: Props) {
             resetState();
             onClose();
           }}
-          style={{ flex: 1, borderRadius: 999,color: LIGHT_GREEN,borderColor:LIGHT_GREEN }}
+          style={{
+            flex: 1,
+            borderRadius: 999,
+            color: LIGHT_GREEN,
+            borderColor: LIGHT_GREEN,
+          }}
         >
           Continue shopping
         </Button>
 
         <Button
           onClick={handleCheckout}
-          style={{ flex: 1, background: canCheckout ? "#96BD75" : "#b9cf9f", color: "#fff", borderRadius: 999 }}
+          style={{
+            flex: 1,
+            background: canCheckout ? "#96BD75" : "#b9cf9f",
+            color: "#fff",
+            borderRadius: 999,
+          }}
           disabled={!canCheckout}
-          title={!canCheckout ? "Add at least 1 item to proceed" : "Go to checkout"}
+          title={
+            !canCheckout ? "Add at least 1 item to proceed" : "Go to checkout"
+          }
         >
           Go to checkout
         </Button>

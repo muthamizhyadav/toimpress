@@ -46,6 +46,18 @@ const SimilarProductCard: React.FC<ProductCardProps> = ({
     }
   };
 
+  const handleCartMetaPixel = ()=>{
+         if ((window as any).fbq) {
+        (window as any).fbq("track", "AddToCart", {
+          content_name: productName || "Unknown Product",
+          content_ids: [id],
+          content_type: "product",
+          value: price || 0,
+          currency: "INR",
+        });
+      }
+  }
+
   return (
     <div className={`rounded-xl shadow p-2 bg-white flex flex-col w-full ${isMobile ? 'h-[350px]' : 'h-[375px]'}`}>
       {/* Image Section */}
@@ -98,7 +110,7 @@ const SimilarProductCard: React.FC<ProductCardProps> = ({
         {/* Cart Controls */}
         {quantity === 0 ? (
           <button
-            onClick={() => setQuantity(1)}
+            onClick={() => {setQuantity(1),handleCartMetaPixel()}}
             className="w-full mt-1 bg-[#96BD75] text-white py-2 font-semibold rounded-full flex justify-center items-center shadow-sm"
           >
             Add to cart
