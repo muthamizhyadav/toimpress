@@ -3815,195 +3815,219 @@ export default function Checkout() {
   };
 
   // Similar validation for COD flow
-  const onPlaceCOD = async () => {
-    if (!ensureAuthAndAddress()) return;
-    console.log("COD selected");
+const onPlaceCOD = async () => {
+  if (!ensureAuthAndAddress()) return;
+  console.log("COD selected");
 
-    setPayLoading(true);
-    try {
-      if (!items?.length) {
-        showNotification({
-          title: "Cart empty",
-          message: "Add items to proceed",
-          color: "yellow",
-          icon: <IconX size={16} />,
-        });
-        return;
-      }
-
-      // ✅ STEP 1: Validate APIs before COD token payment
-      const apiValidation = await validateOrderApis();
-      if (!apiValidation.success) {
-        setPayLoading(false);
-        return; // Stop here if API validation fails
-      }
-
-      const baseFinal =
-        savedScheme && savedScheme.isDiscountApplicable
-          ? Number(savedScheme.finalAmount ?? totals.grandTotal)
-          : totals.grandTotal;
-
-      const orderTotal = Math.round(baseFinal + COD_SHIPPING);
-      const tokenToCollect = COD_TOKEN;
-      const remainingAmount = Math.max(0, orderTotal - tokenToCollect);
-
-      // If no token, create order directly
-      if (tokenToCollect <= 0) {
-        // Order already created in validation step, just update status
-        try {
-          await createOrderHistory({
-            items,
-            shippingAddress: flatUserAddress,
-            billingAddress: flatUserAddress,
-            paymentMethod: "cod",
-            notes: "",
-            shippingCost: COD_SHIPPING,
-            tax: totals.gst,
-            discount: totals.totalDiscounts,
-            meta: {
-              immediateCOD: true,
-              savedScheme:
-                savedScheme && savedScheme.isDiscountApplicable
-                  ? savedScheme
-                  : null,
-              orderConfirmed: true,
-            },
-            amountToChargeOnDelivery: orderTotal,
-          });
-        } catch (orderErr) {
-          console.error("Order confirmation failed (COD immediate):", orderErr);
-        }
-
-        await handleClearCart();
-        showNotification({
-          title: "COD placed",
-          message: `Delivery agent will collect ₹${orderTotal}`,
-          color: "green",
-          icon: <IconCheck size={16} />,
-        });
-        navigate("/order-success", {
-          state: { order: { paymentMethod: "cod" } },
-        });
-        return;
-      }
-
-      // Collect COD token via Razorpay
-      const tokenPaise = tokenToCollect * 100;
-
-      const { data: order } = await axiosInstance.post(CREATE_ORDER_URL, {
-        amount: tokenPaise,
-        currency: "INR",
-        receipt: "cod_token_rcpt_" + Date.now(),
-        notes: { itemCount: String(items.length), paymentType: "COD_TOKEN" },
+  setPayLoading(true);
+  try {
+    if (!items?.length) {
+      showNotification({
+        title: "Cart empty",
+        message: "Add items to proceed",
+        color: "yellow",
+        icon: <IconX size={16} />,
       });
-
-      if (!order?.id || !order?.amount) {
-        console.error("Invalid Razorpay order (COD token):", order);
-        showNotification({
-          title: "Payment error",
-          message: "Couldn't initialize token payment. Please try again.",
-          color: "red",
-          icon: <IconX size={16} />,
-        });
-        return;
-      }
-
-      await loadRazorpay();
-
-      const prefillName = (reduxUser?.name ?? user?.name) || "Customer";
-      const prefillEmail =
-        (reduxUser?.email ?? user?.email) || "customer@example.com";
-      const prefillContact =
-        (reduxUser?.mobile ??
-          reduxUser?.phone ??
-          user?.mobile ??
-          user?.phone) ||
-        "9000000000";
-
-      const rzp = new (window as any).Razorpay({
-        key: RAZORPAY_KEY_ID,
-        amount: order.amount,
-        currency: order.currency,
-        name: "TO IMPRESS",
-        description: `COD token - ₹${tokenToCollect}`,
-        order_id: order.id,
-        prefill: {
-          name: prefillName,
-          email: prefillEmail,
-          contact: prefillContact,
-        },
-        notes: { cartItems: String(items.length), source: "web_cod_token" },
-        theme: { color: DARK_GREEN },
-        handler: async (resp: any) => {
-          try {
-            const { data: verify } = await axiosInstance.post(VERIFY_URL, resp);
-            if (!verify?.valid) {
-              alert(
-                "Token payment verification failed. Please contact support."
-              );
-              return;
-            }
-
-            // Update order status to confirmed
-            try {
-              await createOrderHistory({
-                items,
-                shippingAddress: flatUserAddress,
-                billingAddress: flatUserAddress,
-                paymentMethod: "cod_token",
-                notes: "",
-                shippingCost: COD_SHIPPING,
-                tax: totals.gst,
-                discount: totals.totalDiscounts,
-                localOrderId: order.id,
-                meta: {
-                  razorpay: resp,
-                  savedScheme:
-                    savedScheme && savedScheme.isDiscountApplicable
-                      ? savedScheme
-                      : null,
-                  orderConfirmed: true,
-                },
-                amountToChargeOnDelivery: remainingAmount,
-              });
-            } catch (orderErr) {
-              console.error("Order confirmation failed (COD token):", orderErr);
-            }
-
-            await handleClearCart();
-            showNotification({
-              title: "COD placed",
-              message: `Token ₹${tokenToCollect} paid. Remaining ₹${remainingAmount} on delivery.`,
-              color: "green",
-              icon: <IconCheck size={16} />,
-            });
-            navigate("/order-success", {
-              state: { order: { paymentMethod: "cod_token" } },
-            });
-          } catch (e) {
-            console.error("Verification failed:", e);
-            alert(
-              "Token payment succeeded but verification failed. Please contact support."
-            );
-          }
-        },
-      });
-
-      rzp.on("payment.failed", (e: any) => {
-        console.error("Razorpay COD token failed:", e?.error);
-        alert(
-          e?.error?.description || "Token payment failed. Please try again."
-        );
-      });
-
-      rzp.open();
-    } catch (err) {
-      console.error("onPlaceCOD error:", err);
-      showApiError("COD Error", "Unable to place COD order. Please try again.");
-    } finally {
-      setPayLoading(false);
+      return;
     }
-  };
+
+    // ✅ STEP 1: Validate APIs before COD token payment
+    const apiValidation = await validateOrderApis();
+    if (!apiValidation.success) {
+      setPayLoading(false);
+      return; // Stop here if API validation fails
+    }
+
+    // ✅ Get the orderId from validation
+    const localOrderId = apiValidation.orderId;
+    console.log("Using orderId for COD:", localOrderId);
+
+    const baseFinal =
+      savedScheme && savedScheme.isDiscountApplicable
+        ? Number(savedScheme.finalAmount ?? totals.grandTotal)
+        : totals.grandTotal;
+
+    const orderTotal = Math.round(baseFinal + COD_SHIPPING);
+    const tokenToCollect = COD_TOKEN;
+    const remainingAmount = Math.max(0, orderTotal - tokenToCollect);
+
+    // If no token, create order directly
+    if (tokenToCollect <= 0) {
+      // Order already created in validation step, just update status
+      try {
+        await createOrderHistory({
+          items,
+          shippingAddress: flatUserAddress,
+          billingAddress: flatUserAddress,
+          paymentMethod: "cod",
+          notes: "",
+          shippingCost: COD_SHIPPING,
+          tax: totals.gst,
+          discount: totals.totalDiscounts,
+          // ✅ Use the localOrderId from validation
+          localOrderId: localOrderId,
+          meta: {
+            immediateCOD: true,
+            savedScheme:
+              savedScheme && savedScheme.isDiscountApplicable
+                ? savedScheme
+                : null,
+            orderConfirmed: true,
+          },
+          amountToChargeOnDelivery: orderTotal,
+        });
+      } catch (orderErr) {
+        console.error("Order confirmation failed (COD immediate):", orderErr);
+      }
+
+      await handleClearCart();
+      showNotification({
+        title: "COD placed",
+        message: `Delivery agent will collect ₹${orderTotal}`,
+        color: "green",
+        icon: <IconCheck size={16} />,
+      });
+      navigate("/order-success", {
+        state: { order: { paymentMethod: "cod" } },
+      });
+      return;
+    }
+
+    // Collect COD token via Razorpay
+    const tokenPaise = tokenToCollect * 100; // Convert to paise
+
+    const { data: order } = await axiosInstance.post(CREATE_ORDER_URL, {
+      amount: tokenPaise,
+      currency: "INR",
+      receipt: "cod_token_rcpt_" + Date.now(),
+      notes: { 
+        itemCount: String(items.length), 
+        paymentType: "COD_TOKEN",
+        // ✅ Include local order ID in notes
+        localOrderId: localOrderId 
+      },
+      // ✅ Pass the localOrderId to Razorpay order creation
+      localOrderId: localOrderId
+    });
+
+    if (!order?.id || !order?.amount) {
+      console.error("Invalid Razorpay order (COD token):", order);
+      showNotification({
+        title: "Payment error",
+        message: "Couldn't initialize token payment. Please try again.",
+        color: "red",
+        icon: <IconX size={16} />,
+      });
+      return;
+    }
+
+    await loadRazorpay();
+
+    const prefillName = (reduxUser?.name ?? user?.name) || "Customer";
+    const prefillEmail =
+      (reduxUser?.email ?? user?.email) || "customer@example.com";
+    const prefillContact =
+      (reduxUser?.mobile ??
+        reduxUser?.phone ??
+        user?.mobile ??
+        user?.phone) ||
+      "9000000000";
+
+    const rzp = new (window as any).Razorpay({
+      key: RAZORPAY_KEY_ID,
+      amount: order.amount,
+      currency: order.currency,
+      name: "TO IMPRESS",
+      description: `COD token - ₹${tokenToCollect}`,
+      order_id: order.id,
+      prefill: {
+        name: prefillName,
+        email: prefillEmail,
+        contact: prefillContact,
+      },
+      notes: { 
+        cartItems: String(items.length), 
+        source: "web_cod_token",
+        // ✅ Include local order ID in Razorpay notes
+        localOrderId: localOrderId 
+      },
+      theme: { color: DARK_GREEN },
+      handler: async (resp: any) => {
+        try {
+          const { data: verify } = await axiosInstance.post(VERIFY_URL, resp);
+          if (!verify?.valid) {
+            alert(
+              "Token payment verification failed. Please contact support."
+            );
+            return;
+          }
+
+          // Update order status to confirmed
+          try {
+            await createOrderHistory({
+              items,
+              shippingAddress: flatUserAddress,
+              billingAddress: flatUserAddress,
+              paymentMethod: "cod_token",
+              notes: "",
+              shippingCost: COD_SHIPPING,
+              tax: totals.gst,
+              discount: totals.totalDiscounts,
+              // ✅ Use the localOrderId from validation
+              localOrderId: localOrderId,
+              meta: {
+                razorpay: resp,
+                savedScheme:
+                  savedScheme && savedScheme.isDiscountApplicable
+                    ? savedScheme
+                    : null,
+                orderConfirmed: true,
+              },
+              amountToChargeOnDelivery: remainingAmount,
+            });
+          } catch (orderErr) {
+            console.error("Order confirmation failed (COD token):", orderErr);
+          }
+
+          await handleClearCart();
+          showNotification({
+            title: "COD placed",
+            message: `Token ₹${tokenToCollect} paid. Remaining ₹${remainingAmount} on delivery.`,
+            color: "green",
+            icon: <IconCheck size={16} />,
+          });
+          navigate("/order-success", {
+            state: { 
+              order: { 
+                paymentMethod: "cod_token",
+                id: localOrderId 
+              } 
+            },
+          });
+        } catch (e) {
+          console.error("Verification failed:", e);
+          alert(
+            "Token payment succeeded but verification failed. Please contact support."
+          );
+        }
+      },
+    });
+
+    rzp.on("payment.failed", (e: any) => {
+      console.error("Razorpay COD token failed:", e?.error);
+      alert(
+        e?.error?.description || "Token payment failed. Please try again."
+      );
+    });
+
+    rzp.open();
+  } catch (err) {
+    console.error("onPlaceCOD error:", err);
+    showApiError("COD Error", "Unable to place COD order. Please try again.");
+  } finally {
+    setPayLoading(false);
+  }
+};
 
   // Rest of the component remains the same...
   useEffect(() => {
