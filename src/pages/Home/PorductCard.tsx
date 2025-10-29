@@ -68,6 +68,15 @@ const ProductCard: React.FC<ProductCardProps> = ({
   // NEW: keep selected color locally (so cart + image react to drawer selection)
   const [selectedColorLocal, setSelectedColorLocal] = useState<string | undefined>(selectedColor);
 
+  const AddToCartClick = ()=>{
+      const token = localStorage.getItem("token");
+      if (token) {
+            setOpenSizeDrawer(true)
+      }else{
+        navigate('/account')
+      }
+  }
+  
   const cartItems: any[] = useSelector((s: any) => (s?.cart?.items ?? []) as any[]);
 
   const handleNavigation = () => navigate(`/product/?id=${id}`);
@@ -342,7 +351,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
         <div>
           <button
-            onClick={() => setOpenSizeDrawer(true)}
+            onClick={() => AddToCartClick()}
             disabled={addCtaDisabled}
             className={`w-full ${addCtaDisabled ? "opacity-60 cursor-not-allowed" : ""} bg-[#96BD75] text-white py-2 font-bold rounded-full flex justify-center items-center gap-2 shadow-sm mb-2`}
           >
