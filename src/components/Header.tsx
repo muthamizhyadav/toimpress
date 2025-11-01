@@ -131,8 +131,6 @@ export default function Header() {
       else if (Array.isArray(payload?.data)) items = payload.data; // only if this is known to be cart lines
       else if (Array.isArray(payload)) items = payload;
 
-      console.log(items, "items")
-
       const computed = computeCountFromItems(items);
       const count = computed || apiTotal || 0;
 

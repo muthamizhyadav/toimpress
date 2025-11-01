@@ -13,6 +13,8 @@ export type Product = {
   imageUrl?: string;
   isNew?: boolean;
   discount?: number;
+  size:any
+
 };
 
 type ProductGridProps = {
@@ -125,6 +127,8 @@ const ProductGrid: React.FC<ProductGridProps> = ({
     }
   };
 
+  
+
   return (
     <div style={{ padding: isMobile ? "10px 15px" : "2rem" }}>
       <Text size="40px" fw={700} align="center" mb="lg" style={{ textTransform: "capitalize" }}>
@@ -162,6 +166,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
                   isNew={item.isNew}
                   isOnSale={Boolean(item.originalPrice && item.price && item.price < item.originalPrice)}
                   rating={0}
+                  sizes={item.size}
                 />
               </div>
             ))}

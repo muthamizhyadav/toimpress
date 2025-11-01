@@ -47,8 +47,7 @@ const fetchProducts = async (
     // just return empty (lets the grid stop requesting more).
     if (pagination && page > (pagination?.totalPages ?? page) && !pagination?.hasNextPage) {
       return [];
-    }
-
+    }    
     return fetchedProducts.map((product: any, index: number) => ({
       id: product._id ?? index,
       title: product.productTitle,
@@ -57,6 +56,7 @@ const fetchProducts = async (
       category: product.category,
       imageUrl: product.images?.[0] || BraModel,
       isNew: product.isNew || false,
+      size:product.selectedSizes,
       discount:
         product.price && product.salePrice
           ? Math.round(

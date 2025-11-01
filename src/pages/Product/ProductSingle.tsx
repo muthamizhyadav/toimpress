@@ -1460,6 +1460,7 @@ export default function ProductPage() {
             ? drawerProduct.selectedColors ?? drawerProduct.colors ?? []
             : productDetails?.selectedColors ?? productDetails?.colors ?? []
         }
+        
       />
 
       {/* Return / Exchange Policy Drawer */}

@@ -39,6 +39,7 @@ interface ProductCardProps {
   colorData?: ColorDataMap;
   selectedColor?: string;
   promo?: PromoInfo | null;
+  sizes:any
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({
@@ -56,10 +57,11 @@ const ProductCard: React.FC<ProductCardProps> = ({
   colorData,
   selectedColor,
   promo = null,
+  sizes
 }) => {
   const isMobile = useMediaQuery("(max-width: 600px)");
   const navigate = useNavigate();
-
+  
   const [qty, setQty] = useState<number>(0);
   const [openSizeDrawer, setOpenSizeDrawer] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -374,6 +376,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
         // NEW
         colors={colors}
         colorData={colorData}
+        sizes={sizes}
+
       />
     </div>
   );

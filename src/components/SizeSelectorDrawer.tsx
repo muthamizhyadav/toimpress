@@ -53,6 +53,7 @@ type Props = {
   selectedColor?: string | undefined; // initial (raw) like "#23AD7D"
   colors?: string[];
   colorData?: ColorDataMap;
+  sizes?: any;
 };
 
 const BAND_TABLE: any[] = [
@@ -170,17 +171,18 @@ export default function SizeSelectorDrawer(props: Props) {
     price,
     category,
     imageUrl,
-    options = buildOptionsFromBandTable(),
+    // options = buildOptionsFromBandTable(),
     productId,
     selectedColor: initialSelectedColor,
     colors = [],
     colorData,
+    sizes,
   } = props;
 
   type Mode = "Brassiere" | "Panties" | "Both";
   const [mode, setMode] = useState<"Brassiere" | "Panties">("Brassiere");
   const [availableMode, setAvailableMode] = useState<Mode>("Both");
-
+  
   const [band, setBand] = useState<number | null>(null);
   const [cup, setCup] = useState<string | null>(null);
   const [pantySize, setPantySize] = useState<string | null>(null);
@@ -216,17 +218,31 @@ export default function SizeSelectorDrawer(props: Props) {
     setSelectedColorRaw(initialSelectedColor);
   }, [initialSelectedColor, colors]);
 
-  // Build size options based on color (if provided) for Brassiere
-  const effectiveOptions: SizeOption[] = useMemo(() => {
-    if (mode === "Brassiere") {
-      const colorSizes = selectedColorRaw
-        ? colorData?.[selectedColorRaw]?.sizes
-        : undefined;
-      const colorOptions = buildSizeOptionsFromSelectedSizes(colorSizes);
-      return colorOptions ?? options;
+  const effectiveOptions: SizeOption[] = useMemo(() => {    
+    if (!sizes || !Array.isArray(sizes)) return [];
+
+    // If sizes contain "30A", "32B", etc.
+    const braLike = sizes.some((s) =>
+      /^\d{2}[A-Z]+$/.test(String(s).toUpperCase())
+    );
+    if (braLike) {
+      const built = buildSizeOptionsFromSelectedSizes(sizes);
+      setMode("Brassiere");
+      return built ?? [];
     }
+
+    // If sizes are "S", "M", "L", etc.
+    const pantyLike = sizes.some((s) =>
+      /^[XSML\d]+$/.test(String(s).toUpperCase())
+    );
+    if (pantyLike) {
+      setMode("Panties");
+      return [];
+    }
+
+    // fallback
     return [];
-  }, [mode, selectedColorRaw, colorData, options]);
+  }, [sizes]);
 
   const combinedSizes = useMemo(() => {
     const arr: { value: string; band: number; cup: string }[] = [];
