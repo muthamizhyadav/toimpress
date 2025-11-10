@@ -418,7 +418,7 @@ export default function SizeSelectorDrawer(props: Props) {
           price,
           qty: 1,
           size: String(currentLabel),
-          selectedColor: normColor ?? "", // keep consistent with slice
+          selectedColor: normColor ?? "",
           displayColor: selectedColorRaw ?? "",
           silent: true,
         } as any)

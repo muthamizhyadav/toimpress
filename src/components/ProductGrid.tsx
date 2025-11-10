@@ -77,7 +77,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
   pageSize = 16,
 }) => {
   const isMobile = useMediaQuery("(max-width: 640px)");
-  const [items, setItems] = useState<Product[]>([]);
+  const [items, setItems] = useState<any[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [offset, setOffset] = useState(0);
   const limit = pageSize;
@@ -97,6 +97,8 @@ const ProductGrid: React.FC<ProductGridProps> = ({
       try {
         // 👇 Correct param order: (offset, limit, categoryName, size, price)
         const newItems = await fetchProducts(0, limit, categoryName || "", size, price);
+        console.log(newItems,"newItems");
+        
         if (currentRequestId !== requestIdRef.current) return; // stale
         setItems(newItems);
         setOffset(newItems.length);
@@ -167,6 +169,8 @@ const ProductGrid: React.FC<ProductGridProps> = ({
                   isOnSale={Boolean(item.originalPrice && item.price && item.price < item.originalPrice)}
                   rating={0}
                   sizes={item.size}
+                  colors={item.colors}
+                  selectedColor={item.colors[0]}
                 />
               </div>
             ))}

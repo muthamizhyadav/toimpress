@@ -63,6 +63,7 @@ const fetchProducts = async (
               ((product.price - product.salePrice) / product.price) * 100
             )
           : 0,
+      colors:product.selectedColors
     }));
   } catch (error) {
     console.error("Failed to fetch products:", error);
