@@ -259,8 +259,8 @@ export default function TopCategories() {
                               // NEW: pass color data downstream
                               colors={colors}
                               colorData={product.colorData}
-                              selectedColor={colors?.[0]} // optional: preselect first color
-                            />
+                              selectedColor={colors?.[0]}
+                              sizes={product.selectedSizes}                            />
                           </Carousel.Slide>
                         );
                       })

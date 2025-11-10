@@ -562,6 +562,8 @@ export default function SizeSelectorDrawer(props: Props) {
               gap: 8,
               overflowX: "auto",
               paddingBottom: 6,
+              paddingLeft:10,
+              paddingTop:5
             }}
           >
             {colors.map((c, idx) => renderSwatch(c, idx))}
