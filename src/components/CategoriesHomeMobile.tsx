@@ -13,6 +13,14 @@ import Combo_Logo from "../assets/images/Combo_thumbnail.jpeg";
 import Offerzone_Logo from "../assets/images/Offerzone_thumbnail.jpeg";
 import New_Arrivals_Logo from "../assets/images/New_Arrivals_thumbnail.jpeg";
 import Panties_Logo from "../assets/images/Panties_thumbnail.jpeg";
+import Accessories from "../assets/images/Accessories.jpg";
+import Elite from "../assets/images/Elite.jpg";
+import NightWear from "../assets/images/NightWear.jpg";
+import Sports from "../assets/images/Sports.jpg";
+
+
+
+
 
 // default/fallback icon
 const Default_Logo = Bra_Logo;
@@ -27,7 +35,7 @@ type CategoryFromApi = {
   [k: string]: any;
 };
 
-type Category = { id: string; label: string; icon: string; name: string };
+type Category = { _id: string; categoryTitle: string; imageUrl: string; order: string };
 
 // keep a local mapping for icons — keys are normalized to lowercase
 const ICON_MAP: Record<string, string> = {
@@ -38,13 +46,6 @@ const ICON_MAP: Record<string, string> = {
   "offers zone": Offerzone_Logo,
 };
 
-const hardcodedCategories: Category[] = [
-  { id: "1", label: "bra", icon: Bra_Logo, name: "Bra" },
-  { id: "5", label: "combo", icon: Combo_Logo, name: "Combo" },
-  { id: "2", label: "panties", icon: Panties_Logo, name: "Panties" },
-  { id: "4", label: "new arrivals", icon: New_Arrivals_Logo, name: "New Arrivals" },
-  { id: "3", label: "offers zone", icon: Offerzone_Logo, name: "Offer Zone" },
-];
 
 function normalizeLabel(raw?: string) {
   if (!raw) return "";
@@ -60,7 +61,7 @@ function pickIconForLabel(label?: string) {
 export default function CategoriesHomeMobile() {
   const navigate = useNavigate();
   const [loadedCategories, setLoadedCategories] =
-    useState<Category[]>(hardcodedCategories);
+    useState<Category[]>();
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -70,9 +71,10 @@ export default function CategoriesHomeMobile() {
       try {
         const resp = await axiosInstance.get(API_GET_CATEGORIES);
         const payload = (resp as any)?.data ?? resp;
-
+        console.log(payload,"payload");
+        setLoadedCategories(payload)
         let found: any[] = [];
-
+        
         if (Array.isArray(payload)) {
           found = payload;
         } else if (payload && Array.isArray((payload as any).data)) {
@@ -87,19 +89,7 @@ export default function CategoriesHomeMobile() {
           return;
         }
 
-        const mapped: Category[] = found.map((c: CategoryFromApi) => {
-          const rawLabel =
-            c.name ?? c.title ?? c.label ?? (c._id ? String(c._id) : "");
-          const label = normalizeLabel(rawLabel) || "unknown";
-          const id = String(c.id ?? c._id ?? c.categoryId ?? label);
-          const icon = pickIconForLabel(c.categoryTitle);
-          const name = c.categoryTitle ?? rawLabel ?? "Unknown";
-          return { id, label, icon, name };
-        });
 
-        if (mounted && mapped.length > 0) {
-          setLoadedCategories(mapped);
-        }
       } catch (error: any) {
         console.error("Failed to fetch categories", error);
         showNotification({
@@ -121,7 +111,7 @@ export default function CategoriesHomeMobile() {
   }, []);
 
   const handleNavigation = (category: Category) => {
-    navigate(`/category?name=${encodeURIComponent(category.name)}`);
+    navigate(`/category?name=${encodeURIComponent(category.categoryTitle)}`);
   };
 
   return (
@@ -131,8 +121,8 @@ export default function CategoriesHomeMobile() {
       className="px-4 py-2 my-3"
       style={{ backgroundColor: "#F3E8D3" }}
     >
-      {loadedCategories.map((item) => (
-        <Grid.Col span={4} key={item.id}>
+      {loadedCategories && loadedCategories.map((item) => (
+        <Grid.Col span={4} key={item._id}>
           <Card
             shadow="sm"
             radius="md"
@@ -163,20 +153,21 @@ export default function CategoriesHomeMobile() {
               }}
             >
               <Image
-                src={item.icon}
-                alt={item.name}
+                src={item.imageUrl}
+                alt={item.imageUrl}
                 width={48}
                 height={48}
                 fit="contain"
-                loading="lazy"        // 👈 native lazy-load
-                decoding="async"      // 👈 decode off main thread when possible
+                loading="lazy"        
+                decoding="async"    
                 styles={{
+                  // @ts-ignore
                   image: { objectFit: "contain" },
                 }}
               />
               </Box>
             <Text size="xs" mt="xs" fw={600}>
-              {item.name}
+              {item.categoryTitle}
             </Text>
           </Card>
         </Grid.Col>
