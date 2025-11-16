@@ -56,15 +56,17 @@ const HomeBanner: React.FC = () => {
 
   // Desktop target resolver by slide index
   const desktopTargetForIndex = (index: number): string => {
+    console.log(index,"index");
+    
     switch (index) {
       case 0:
         return makeCategoryPath({ name: "Combo", price: 999 });
       case 1:
         return makeCategoryPath({ name: "Brassiere" });
       case 2:
-        return makeCategoryPath({ name: "Panties" });
-      case 3:
         return makeCategoryPath({ name: "Offers Zone" });
+      case 3:
+        return makeCategoryPath({ name: "Co-Ords" });
       default:
         // Fallback for any 5th+ slides
         return makeCategoryPath({ name: "Brassiere" });

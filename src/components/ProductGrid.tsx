@@ -97,7 +97,6 @@ const ProductGrid: React.FC<ProductGridProps> = ({
       try {
         // 👇 Correct param order: (offset, limit, categoryName, size, price)
         const newItems = await fetchProducts(0, limit, categoryName || "", size, price);
-        console.log(newItems,"newItems");
         
         if (currentRequestId !== requestIdRef.current) return; // stale
         setItems(newItems);

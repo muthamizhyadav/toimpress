@@ -232,7 +232,6 @@ export default function TopCategories() {
                       </Carousel.Slide>
                     ) : (
                       products.map((product: any, i: number) => {
-                        console.log(product, "product")
                         const sizeOptions = buildSizeOptionsFromSelectedSizes(product.selectedSizes);
                         const colors =
                           Array.isArray(product.selectedColors) && product.selectedColors.length
