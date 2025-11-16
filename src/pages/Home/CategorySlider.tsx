@@ -7,6 +7,8 @@ import BraType from "../../assets/svg/BraType.svg";
 import Banner1 from "../../assets/images/To Impress - Website Banners-09.jpg"
 import Banner2 from "../../assets/images/To Impress - Website Banners-14.jpg"
 import Banner3 from "../../assets/images/To Impress - Website Banners-15.jpg"
+import Coord from "../../assets/images/coord.jpg"
+
 
 
 const bannerData = [
@@ -27,6 +29,13 @@ const bannerData = [
   {
     imageUrl: Banner3,
     title: "Luxe Comfort",
+    subtitle: "Luxury for every day",
+    offer: "BUY 2 @ RS.1499",
+    buttonText: "SHOP NOW",
+  },
+    {
+    imageUrl: Coord,
+    title: "Co-ord",
     subtitle: "Luxury for every day",
     offer: "BUY 2 @ RS.1499",
     buttonText: "SHOP NOW",
