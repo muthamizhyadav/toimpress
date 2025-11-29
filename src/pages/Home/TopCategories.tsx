@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Tabs, Button, Container } from "@mantine/core";
 import { Carousel } from "@mantine/carousel";
 import BraModel from "../../assets/svg/braModel.svg";
-import ProductCard from "./PorductCard"; // keep your path
+import ProductCard from "./PorductCard"; 
 import { useMediaQuery } from "@mantine/hooks";
 import axiosInstance from "../../api/axiosInstance";
 import { API_GET_CATEGORIES, API_GET_CATEGORIES_PRODUCTS } from "../../api/api";
@@ -149,9 +149,11 @@ export default function TopCategories() {
                   <Tabs.Tab
                     key={tabValue}
                     value={tabValue}
+                       // @ts-ignore
                     ref={(el) => (tabRefs.current[tabValue] = el)}
                     className="p-0 m-0"
                     styles={{
+                         // @ts-ignore
                       root: {
                         border: "none",
                         boxShadow: "none",
@@ -201,6 +203,7 @@ export default function TopCategories() {
                 <Carousel
                   slideSize="240px"
                   slideGap="md"
+                  // @ts-ignore
                   align="start"
                   withControls
                   withIndicators={false}

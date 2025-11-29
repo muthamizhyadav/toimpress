@@ -15,21 +15,18 @@ export default function Profile() {
       style={{
         display: "flex",
         flexDirection: "column",
-        minHeight: "100vh", // full height of viewport
+        minHeight: "100vh",
       }}
     >
       <SmallHeader />
       <Header />
 
-      {/* Content area grows to push footer down */}
       <div style={{ flex: 1 }}>
         {isAuthenticated ? <ProfileCard /> : <AuthModal />}
       </div>
 
-      {/* Footer stays at the bottom */}
       <Footer />
 
-      {/* Mobile nav stays fixed at bottom of viewport */}
       <MobileBottomNavbar />
     </div>
   );

@@ -90,7 +90,6 @@ export default function CategoryPage() {
     <>
       <SmallHeader />
       <Header />
-      {/* ✅ pass size to ProductGrid */}
       <ProductGrid
         fetchProducts={fetchProducts}
         categoryName={categoryName}

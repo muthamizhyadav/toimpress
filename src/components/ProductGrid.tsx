@@ -170,6 +170,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
                   sizes={item.size}
                   colors={item.colors}
                   selectedColor={item.colors[0]}
+                  fromGrid={true}
                 />
               </div>
             ))}

@@ -57,6 +57,7 @@ import BraDescp7 from "../../assets/svg/bradescription/descp7.svg";
 import BraDescp8 from "../../assets/svg/bradescription/descp8.svg";
 
 import { showNotification } from "@mantine/notifications";
+import CartQuantityControl from "../../components/shared/CartQuantityControl";
 
 /* small data used in the description area */
 const tags = [
@@ -683,73 +684,10 @@ export default function ProductPage() {
   const onSizeSelect = (sizeLabel: string) => {
     setSelectedSize(sizeLabel);
 
-    // const sizeIndex = sizesInput.findIndex(
-    //   (s) => String(s).toUpperCase() === String(sizeLabel).toUpperCase()
-    // );
-    // if (sizeIndex >= 0 && galleryImages && galleryImages[sizeIndex]) {
-    //   const newGallery = [...galleryImages];
-    //   if (sizeIndex !== 0) {
-    //     const [selImg] = newGallery.splice(sizeIndex, 1);
-    //     newGallery.unshift(selImg);
-    //   }
-    //   setGalleryImages(newGallery);
-    //   setMainImage(newGallery[0] || "");
-    //   return;
-    // }
 
-    // // Try to lookup size-specific images in common shapes: imagesBySize, sizeImages, variants with size
-    // const key = String(sizeLabel).toLowerCase();
-    // let foundImgs: string[] | undefined = undefined;
-
-    // const tryMap = (map: any) => {
-    //   if (!map) return undefined;
-    //   if (typeof map === "object" && !Array.isArray(map)) {
-    //     const v = map[sizeLabel] ?? map[key] ?? map[sizeLabel?.toUpperCase?.()];
-    //     if (v) return Array.isArray(v) ? v : [v];
-    //   }
-    //   return undefined;
-    // };
-
-    // foundImgs =
-    //   tryMap(productDetails?.imagesBySize) ??
-    //   tryMap(productDetails?.sizeImages) ??
-    //   tryMap(productDetails?.imageBySize);
-
-    // if (!foundImgs && Array.isArray(productDetails?.variants)) {
-    //   const entry = productDetails.variants.find((vv: any) => {
-    //     // consider variant.size or variant.selectedSize
-    //     return String(vv.size ?? vv.selectedSize ?? "").toLowerCase() === key;
-    //   });
-    //   if (entry)
-    //     foundImgs = entry.images ?? (entry.image ? [entry.image] : undefined);
-    // }
-
-    // if (!foundImgs && Array.isArray(productDetails?.colors)) {
-    //   // sometimes colors array contains sizes mapping with images
-    //   const entry = productDetails.colors.find(
-    //     (c: any) => Array.isArray(c.sizes) && c.sizes.includes(sizeLabel)
-    //   );
-    //   if (entry)
-    //     foundImgs = entry.images ?? (entry.image ? [entry.image] : undefined);
-    // }
-
-    // if (!foundImgs) foundImgs = productDetails?.images ?? [];
-
-    // const imgsArr = Array.isArray(foundImgs)
-    //   ? foundImgs
-    //   : foundImgs
-    //   ? [String(foundImgs)]
-    //   : [];
-    // if (imgsArr.length) {
-    //   setGalleryImages(imgsArr);
-    //   setMainImage(imgsArr[0] || "");
-    // } else {
-    //   setMainImage(galleryImages[0] || imagesInput[0] || "");
-    // }
   };
 
-  // helper: build grouped SizeOption[] from a product's selectedSizes array
-  // helper: build grouped SizeOption[] from a product's selectedSizes array
+ 
   const buildSizeOptionsForProduct = (prod: any): SizeOption[] => {
     const sizesArr: string[] = prod?.selectedSizes ?? prod?.sizes ?? [];
     const map = new Map<number, Set<string>>();
@@ -793,121 +731,6 @@ export default function ProductPage() {
       }));
   };
 
-  // similar product add — if it needs size, open drawer; otherwise call API directly
-  const handleAddSimilarClicked = (p: any) => {
-    const pid = p._id ?? p.id ?? String(p.product ?? Date.now());
-    const sizes = p?.selectedSizes ?? p?.sizes ?? [];
-    const needsSize = Array.isArray(sizes) && sizes.length > 0;
-
-    // chosen color for similar if available
-    const thisColor =
-      (p.selectedColors && p.selectedColors[0]) || (p.color ?? undefined);
-
-    if (!needsSize) {
-      // check existing qty in redux for this variant
-      const existing = getExistingQtyForVariant(pid, undefined, thisColor);
-      const qtyToSend = existing + 1;
-
-      const payload = {
-        productId: pid,
-        quantity: qtyToSend,
-        selectedSize: undefined,
-        selectedColor: thisColor || undefined,
-      };
-
-      const reduxItem = {
-        id: pid,
-        productId: pid,
-        imageUrl: (p.images && p.images[0]) || p.image || "",
-        title: p.productTitle ?? p.title ?? p.productName ?? "",
-        productName: p.productTitle ?? p.title ?? p.productName ?? "",
-        price: p.salePrice ?? p.price,
-        originalPrice: p.price,
-        rating: 0,
-        qty: qtyToSend,
-        size: undefined,
-        color: thisColor || undefined,
-        silent: true,
-      };
-
-      // call unified API helper which will dispatch addToCart(...) on success
-      addToCartApi(payload, reduxItem, pid);
-      return;
-    }
-
-    // open drawer for this product (size required)
-    setDrawerProduct(p);
-    setOpenSizeDrawer(true);
-  };
-
-  // when drawer confirms for a similar product
-  // sel now may contain quantity (but we compute authoritative qty here)
-  const onDrawerConfirm = async (sel: {
-    band: number;
-    cup: string;
-    label: string;
-    quantity?: number;
-  }) => {
-    const chosen = sel.label;
-
-    // if drawerProduct is null => it was main product
-    if (!drawerProduct) {
-      // main product flow: compute existing qty for main product & selected size/color
-      const existing = getExistingQtyForVariant(
-        productId as string,
-        chosen,
-        selectedColor || undefined
-      );
-      const qtyToSend = existing + 1;
-      const payload = makeCartPayload(chosen, qtyToSend);
-      await addToCartApi(payload, undefined, "current");
-      setOpenSizeDrawer(false);
-      return;
-    }
-
-    // similar product flow
-    const p = drawerProduct;
-    const pid = p._id ?? p.id ?? String(p.product ?? Date.now());
-    const thisColor = (p.selectedColors && p.selectedColors[0]) || undefined;
-    // authoritative existing qty from redux
-    const existing = getExistingQtyForVariant(pid, chosen, thisColor);
-    const qtyToSend = existing + 1;
-
-    const payload = {
-      productId: pid,
-      quantity: qtyToSend,
-      selectedSize: chosen,
-      selectedColor: thisColor,
-    };
-    const reduxItem = {
-      id: pid,
-      productId: pid,
-      imageUrl: (p.images && p.images[0]) || p.image || "",
-      title: p.productTitle ?? p.title ?? p.productName ?? "",
-      productName: p.productTitle ?? p.title ?? p.productName ?? "",
-      price: p.salePrice ?? p.price,
-      originalPrice: p.price,
-      rating: 0,
-      qty: qtyToSend,
-      size: chosen,
-      color: thisColor,
-      silent: true,
-    };
-
-    await addToCartApi(payload, reduxItem, pid);
-    setOpenSizeDrawer(false);
-    setDrawerProduct(null);
-  };
-
-  // cancel drawer
-  const onDrawerClose = () => {
-    setOpenSizeDrawer(false);
-    setDrawerProduct(null);
-  };
-
-  // -------------------
-  // JSX (thumbnails now use galleryImages fallback to imagesInput)
-  // -------------------
   return (
     <Container size="xl" py="md">
       <Grid>
@@ -1132,98 +955,28 @@ export default function ProductPage() {
             ) : null}
           </Box>
 
-          {/* Actions */}
           <Group mt="lg" gap="sm" align="center">
-            {currentQty > 0 ? (
-              <Group
-                gap="xs"
-                style={{
-                  background: LIGHT_GREEN,
-                  borderRadius: 999,
-                  padding: "6px 8px",
-                }}
-              >
-                <ActionIcon
-                  variant="transparent"
-                  onClick={() => {
-                    // compute new qty and call server
-                    const nextQty = Math.max(0, currentQty - 1);
-                    updateLineQuantity(
-                      productId as string,
-                      nextQty,
-                      requiresSize ? selectedSize : undefined,
-                      requiresColor ? selectedColor : undefined,
-                      "current"
-                    );
-                  }}
-                  aria-label="Decrease quantity"
-                >
-                  <IconMinus size={16} color="#fff" />
-                </ActionIcon>
-
-                <Button
-                  variant="subtle"
-                  size="compact-sm"
-                  radius="xl"
-                  styles={{ root: { color: "white", pointerEvents: "none" } }}
-                >
-                  {currentQty}
-                </Button>
-
-                <ActionIcon
-                  variant="transparent"
-                  onClick={() => {
-                    const nextQty = currentQty + 1;
-                    updateLineQuantity(
-                      productId as string,
-                      nextQty,
-                      requiresSize ? selectedSize : undefined,
-                      requiresColor ? selectedColor : undefined,
-                      "current"
-                    );
-                  }}
-                  aria-label="Increase quantity"
-                >
-                  <IconPlus size={16} color="#fff" />
-                </ActionIcon>
-              </Group>
-            ) : (
               <>
-                <Button
-                  loading={!!addingMap["current"]}
-                  color="brand"
-                  styles={(theme) => ({
-                    root: {
-                      backgroundColor: "#92B775",
-                      color: "#FFF",
-                      fontWeight: 600,
-                    },
-                  })}
-                  onClick={handleAddToCart}
-                >
-                  Add to cart
-                </Button>
-
-                <Button
-                  loading={!!addingMap["current"]}
-                  variant="filled"
-                  color="brand"
-                  styles={(theme) => ({
-                    root: {
-                      borderColor: "#92B775", // LIGHT_GREEN border
-                      color: "#133215", // DARK_GREEN text
-                      fontWeight: 600,
-                      "&:hover": {
-                        backgroundColor: "rgba(146,183,117,0.15)", // subtle LIGHT_GREEN hover
-                      },
-                    },
-                  })}
-                  onClick={handleBuyNow}
-                >
-                  Buy Now
-                </Button>
+                {selectedSize && productDetails ? (
+                  <CartQuantityControl
+                    id={productId}
+                    title={productDetails.productTitle}
+                    price={productDetails.salePrice}
+                    image={mainImage || galleryImages?.[0] || ""}
+                    size={selectedSize}
+                    color={selectedColor}
+                    compact={false}
+                  />
+                ) : (
+                  <Button
+                    fullWidth
+                    disabled
+                    style={{ background: "#ccc", borderRadius: 999 }}
+                  >
+                    Select size & color
+                  </Button>
+                )}
               </>
-            )}
           </Group>
 
           <Button
@@ -1381,7 +1134,6 @@ export default function ProductPage() {
                         size="xs"
                         variant="filled"
                         loading={!!addingMap[pid]}
-                        onClick={() => handleAddSimilarClicked(p)}
                         styles={(theme) => ({
                           root: {
                             backgroundColor: "#92b775", // main green from root palette
@@ -1415,55 +1167,6 @@ export default function ProductPage() {
           )}
         </SimpleGrid>
       </Box>
-
-      {/* SizeSelectorDrawer */}
-      <SizeSelectorDrawer
-        opened={openSizeDrawer}
-        onClose={onDrawerClose}
-        onConfirm={() => {}}
-        productTitle={
-          drawerProduct
-            ? drawerProduct.productTitle ?? drawerProduct.title ?? "Product"
-            : titleInput
-        }
-        price={
-          drawerProduct
-            ? drawerProduct.salePrice ?? drawerProduct.price
-            : salePriceInput ?? priceInput
-        }
-        imageUrl={
-          drawerProduct
-            ? (drawerProduct.images && drawerProduct.images[0]) ||
-              drawerProduct.image ||
-              ""
-            : mainImage || galleryImages?.[0] || imagesInput?.[0] || ""
-        }
-        options={
-          drawerProduct
-            ? buildSizeOptionsForProduct(drawerProduct)
-            : sizeOptions.length
-            ? sizeOptions
-            : undefined
-        }
-        productId={
-          drawerProduct ? drawerProduct._id ?? drawerProduct.id : productId
-        }
-        selectedColor={
-          drawerProduct
-            ? (drawerProduct.selectedColors &&
-                drawerProduct.selectedColors[0]) ||
-              undefined
-            : selectedColor
-        }
-        colors={
-          drawerProduct
-            ? drawerProduct.selectedColors ?? drawerProduct.colors ?? []
-            : productDetails?.selectedColors ?? productDetails?.colors ?? []
-        }
-        
-      />
-
-      {/* Return / Exchange Policy Drawer */}
       <Drawer
         opened={openReturnPolicy}
         onClose={() => setOpenReturnPolicy(false)}

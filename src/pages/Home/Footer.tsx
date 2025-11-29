@@ -11,7 +11,7 @@ import {
   Image,
 } from "@mantine/core";
 import { IconPhone, IconMail, IconLocation } from "@tabler/icons-react";
-import Logo from "../../../public/logo.png"
+import Logo from "/logo.png"
 
 
 
