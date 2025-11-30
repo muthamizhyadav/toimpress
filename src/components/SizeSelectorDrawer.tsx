@@ -125,47 +125,46 @@ export default function SizeSelectorDrawer({
 
       {/* FOOTER BUTTONS */}
       <div
-  className="sticky bottom-0 left-0 right-0 bg-white p-3"
-  style={{
-    zIndex: 10,
-    boxShadow: "0 -4px 12px rgba(0,0,0,0.05)",
-  }}
->
-  <div className="flex gap-3">
-    <Button
-      fullWidth
-      variant="outline"
-      onClick={onClose}
-      style={{
-        borderRadius: 999,
-        borderColor: "#96BD75",
-        color: "#96BD75",
-      }}
-    >
-      Continue shopping
-    </Button>
-
-    {selectedSize && selectedColor ? (
-      <CartQuantityControl
-        id={productId}
-        title={productTitle}
-        price={price}
-        image={imageUrl}
-        size={selectedSize}
-        color={selectedColor}
-      />
-    ) : (
-      <Button
-        fullWidth
-        disabled
-        style={{ background: "#ccc", borderRadius: 999 }}
+        className="sticky bottom-0 left-0 right-0 bg-white p-3"
+        style={{
+          zIndex: 10,
+          boxShadow: "0 -4px 12px rgba(0,0,0,0.05)",
+        }}
       >
-        Select size & color
-      </Button>
-    )}
-  </div>
-</div>
+        <div className="flex gap-3">
+          <Button
+            fullWidth
+            variant="outline"
+            onClick={onClose}
+            style={{
+              borderRadius: 999,
+              borderColor: "#96BD75",
+              color: "#96BD75",
+            }}
+          >
+            Continue shopping
+          </Button>
 
+          {selectedSize && selectedColor ? (
+            <CartQuantityControl
+              id={productId}
+              title={productTitle}
+              price={price}
+              image={imageUrl}
+              size={selectedSize}
+              color={selectedColor}
+            />
+          ) : (
+            <Button
+              fullWidth
+              disabled
+              style={{ background: "#ccc", borderRadius: 999 }}
+            >
+              Select size & color
+            </Button>
+          )}
+        </div>
+      </div>
     </Drawer>
   );
 }

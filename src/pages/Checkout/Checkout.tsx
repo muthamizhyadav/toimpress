@@ -327,7 +327,7 @@ export default function Checkout() {
 
   const [user, setUser] = useState<any>(null);
   const [storedUserAddress, setStoredUserAddress] = useState<any>(null);
-
+  const [offerAmount, setOfferAmount] = useState<number>(0);
   const [couponCode, setCouponCode] = useState<string>("");
   const [appliedCoupon, setAppliedCoupon] = useState<{
     code: string;
@@ -335,6 +335,31 @@ export default function Checkout() {
   } | null>(null);
 
   const [savedScheme, setSavedScheme] = useState<any>(null);
+
+  const getCouponDetails = async (data: any) => {
+    const resp = await axiosInstance.post(
+      "coupons/by-product-and-amount",
+      data
+    );
+    if (resp.data) {
+      console.log(resp.data, "finalResult");
+      setOfferAmount(resp.data.totalDiscount);
+    }
+  };
+
+  useEffect(() => {
+    const grouped = items.reduce((acc: any, item: any) => {
+      if (!acc[item.id]) {
+        acc[item.id] = { id: item.id, amount: 0 };
+      }
+      acc[item.id].amount += item.price * item.qty;
+      return acc;
+    }, {});
+    if (grouped) {
+      getCouponDetails(grouped);
+    }
+    console.log(grouped, "mapped items");
+  }, [items]);
 
   const verifyAndCompletePayment = async (paymentData: any) => {
     try {
@@ -413,7 +438,6 @@ export default function Checkout() {
     }
 
     console.log(reduxAddress, "reduxAddress checkout");
-    
   }, [reduxUser, reduxAddress]);
 
   const fetchCart = useCallback(async () => {
@@ -442,8 +466,8 @@ export default function Checkout() {
             0,
           isDiscountApplicable: Boolean(root.isDiscountApplicable),
         };
-        console.log(parsed,"parsed");
-        
+        console.log(parsed, "parsed");
+
         setSavedScheme(parsed);
       } else if (
         root &&
@@ -631,7 +655,7 @@ export default function Checkout() {
       setLoading(false);
     }
   };
-        
+
   const totals = useMemo(() => {
     const localSubtotal = (items || []).reduce((sum, i) => {
       const p = i.salePrice ?? i.price ?? 0;
@@ -661,7 +685,6 @@ export default function Checkout() {
         ? Math.round((totalDiscounts / localSubtotal) * 100)
         : 0;
 
-
     if (savedScheme && savedScheme.isDiscountApplicable) {
       const sTotalSales = Number(savedScheme.totalSalesPrice ?? 0);
       const sMinus = Number(savedScheme.minusValue ?? 0);
@@ -672,10 +695,10 @@ export default function Checkout() {
       );
       
       return {
-        subtotal: Math.round(sTotalSales),
+        subtotal: Math.round(sTotalSales) - (offerAmount),
         totalQty,
-        couponDiscount: Number(savedScheme.couponAmount ?? couponDiscount),
-        totalDiscounts: Math.round(sMinus),
+        couponDiscount: Number(offerAmount),
+        totalDiscounts: Math.round(offerAmount),
         gst: Math.round(sGst),
         shipping: paymentMethod === "COD" ? COD_SHIPPING : 0,
         grandTotal: effectiveFinal,
@@ -688,14 +711,12 @@ export default function Checkout() {
       subtotal: Math.round(localSubtotal),
       totalQty,
       couponDiscount,
-      totalDiscounts,
+      totalDiscounts: Math.round(offerAmount),
       gst: gstComputed,
       shipping,
       grandTotal: grandTotalComputed,
       savingsPercent: savingsPercentComputed,
     };
-
-    
   }, [items, paymentMethod, appliedCoupon]);
 
   const promo = useMemo(() => {
@@ -953,7 +974,7 @@ export default function Checkout() {
         0,
         Math.round(savedScheme?.finalAmount ?? totals.grandTotal)
       );
-      const amountPaise = totals.subtotal * 100;
+      const amountPaise = (totals.subtotal - offerAmount) * 100;
 
       if (amountPaise <= 0) {
         showNotification({
@@ -1018,7 +1039,7 @@ export default function Checkout() {
 
       const rzp = new (window as any).Razorpay({
         key: RAZORPAY_KEY_ID,
-        amount: order.amount,
+        amount: order.amount ,
         currency: order.currency,
         name: "TO IMPRESS",
         description: "Order Payment",
@@ -1679,7 +1700,7 @@ export default function Checkout() {
                         leftSection={<IconPencil size={14} />}
                         onClick={() => setAddressModalOpen(true)}
                       >
-                        {flatUserAddress ? 'Change':'Add'} Address
+                        {flatUserAddress ? "Change" : "Add"} Address
                       </Button>
                     </Group>
 
@@ -1726,7 +1747,6 @@ export default function Checkout() {
                           <Text size="sm" c="dimmed">
                             No address found.
                           </Text>
-                          
                         </Stack>
                       </Paper>
                     )}
@@ -1820,10 +1840,8 @@ export default function Checkout() {
                       ₹
                       {Math.max(
                         0,
-                        totals.subtotal -
-                          (savedScheme && savedScheme.isDiscountApplicable
-                            ? Math.round(Number(savedScheme.minusValue ?? 0))
-                            : totals.totalDiscounts ?? 0)
+                        totals.subtotal - offerAmount
+                          
                       )}
                     </Text>
                   </Group>
@@ -1846,8 +1864,8 @@ export default function Checkout() {
                     <Text fw={700}>You Pay</Text>
                     <Text fw={700}>
                       ₹
-                      {(totals.subtotal) +
-                        (paymentMethod === "COD" ? COD_SHIPPING : 0)}
+                      {totals.subtotal +
+                        (paymentMethod === "COD" ? COD_SHIPPING : 0) - offerAmount}
                     </Text>
                   </Group>
 
@@ -1878,7 +1896,7 @@ export default function Checkout() {
                             ? Math.round(savedScheme.minusValue)
                             : totals.totalDiscounts}
                         </Text>
-                        <Text size="xs" c="dimmed">
+                        {/* <Text size="xs" c="dimmed">
                           {savedScheme && savedScheme.isDiscountApplicable
                             ? `${Math.round(
                                 (Number(savedScheme.minusValue) /
@@ -1886,7 +1904,7 @@ export default function Checkout() {
                                   100
                               )}%`
                             : `${totals.savingsPercent ?? 0}%`}
-                        </Text>
+                        </Text> */}
                       </div>
                       <div>🎁</div>
                     </Group>
@@ -1934,8 +1952,8 @@ export default function Checkout() {
                   <Text fw={700} size="lg" style={{ lineHeight: 1 }}>
                     ₹
                     {Math.round(
-                      (totals.subtotal) +
-                        (paymentMethod === "COD" ? COD_SHIPPING : 0)
+                      totals.subtotal +
+                        (paymentMethod === "COD" ? COD_SHIPPING : 0) - offerAmount
                     )}
                   </Text>
                   <Text size="xs" c="dimmed">
@@ -1977,7 +1995,8 @@ export default function Checkout() {
                     if (!isAuthenticated) {
                       openLoginModal();
                       return;
-                    } if (isAuthenticated && flatUserAddress === null) {
+                    }
+                    if (isAuthenticated && flatUserAddress === null) {
                       setAddressModalOpen(true);
                       return;
                     }
