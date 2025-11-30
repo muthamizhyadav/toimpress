@@ -359,7 +359,7 @@ export default function Checkout() {
       getCouponDetails(grouped);
     }
     console.log(grouped, "mapped items");
-  }, [items]);
+  }, [items, dispatch]);
 
   const verifyAndCompletePayment = async (paymentData: any) => {
     try {
