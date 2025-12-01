@@ -224,12 +224,22 @@ export default function ProductPage() {
   }, [selectedColor, productDetails, galleryImages]);
 
   useEffect(() => {
-    const newImages = getImagesForSelectedColor;
-    setGalleryImages(newImages);
-    if (newImages.length > 0 && !newImages.includes(mainImage)) {
-      setMainImage(newImages[0]);
+  const newImages = getImagesForSelectedColor;
+  if (!Array.isArray(newImages)) return;
+
+  setGalleryImages((prev) => {
+    if (JSON.stringify(prev) === JSON.stringify(newImages)) return prev;
+    return newImages;
+  });
+
+  setMainImage((prev) => {
+    if (newImages.length > 0 && !newImages.includes(prev)) {
+      return newImages[0];
     }
-  }, [getImagesForSelectedColor]);
+    return prev;
+  });
+}, [selectedColor, productDetails?.colorData]);
+
 
   const colorDataMap: Record<string, any> | undefined =
     productDetails?.colorData;
