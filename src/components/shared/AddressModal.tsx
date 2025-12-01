@@ -1,16 +1,11 @@
-import {
-  Modal,
-  TextInput,
-  Button,
-  Stack,
-  Text,
-  Group,
-} from "@mantine/core";
+import { Modal, TextInput, Button, Stack, Text, Group } from "@mantine/core";
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { saveAddress } from "../../redux/features/authSlice";
 import { showNotification } from "@mantine/notifications";
 import { RootState } from "../../redux/store";
+import { UPDATE_PROFILE } from "../../api/api";
+import axiosInstance from "../../api/axiosInstance";
 
 type Props = {
   opened: boolean;
@@ -21,12 +16,14 @@ export default function AddressModal({ opened, onClose }: Props) {
   const dispatch = useDispatch();
   const user = useSelector((state: RootState) => state.auth.user);
 
-  // Prefill if user details exist
   const [name, setName] = useState(user?.name || "");
   const [email, setEmail] = useState(user?.email || "");
   const [phone, setPhone] = useState(user?.mobile || "");
   const [street, setStreet] = useState("");
   const [city, setCity] = useState("");
+  const [line1, setLine1] = useState("");
+  const [line2, setLine2] = useState("");
+
   const [state, setState] = useState("");
   const [zip, setZip] = useState("");
 
@@ -44,7 +41,7 @@ export default function AddressModal({ opened, onClose }: Props) {
     return true;
   };
 
-  const handleSaveAddress = () => {
+  const handleSaveAddress = async () => {
     if (!validateFields()) return;
 
     setLoading(true);
@@ -59,21 +56,22 @@ export default function AddressModal({ opened, onClose }: Props) {
       zip,
       country: "India",
       landmark: "",
-      line1: street,
-      line2: city,
-      rawId: Date.now(), // unique ID
+      line1: line1,
+      line2: line2,
+      rawId: Date.now(),
     };
-
-    dispatch(saveAddress(addressObj)); // <-- Redux update
-
-    showNotification({
-      title: "Address Saved",
-      message: "Your address has been updated successfully!",
-      color: "green",
-    });
-
-    setLoading(false);
-    onClose();
+    const url = `${UPDATE_PROFILE}/${encodeURIComponent(user.id)}/address`;
+    const response = await axiosInstance.post(url, {address:addressObj});
+    if (response.data) {
+      dispatch(saveAddress(response.data.address));
+      showNotification({
+        title: "Address Saved",
+        message: "Your address has been updated successfully!",
+        color: "green",
+      });
+      setLoading(false);
+      onClose();
+    }
   };
 
   return (
@@ -82,25 +80,32 @@ export default function AddressModal({ opened, onClose }: Props) {
       onClose={onClose}
       centered
       title="Add Delivery Address"
-      radius="md"
-      padding="lg"
+      radius="sm"
+      padding="md"
+      size={"xl"}
     >
       <Stack spacing="sm">
-        <Text size="sm" fw={600}>Full Name *</Text>
+        <Text size="sm" fw={600}>
+          Full Name *
+        </Text>
         <TextInput
           placeholder="Enter full name"
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
 
-        <Text size="sm" fw={600}>Email</Text>
+        <Text size="sm" fw={600}>
+          Email
+        </Text>
         <TextInput
           placeholder="Enter email (optional)"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
 
-        <Text size="sm" fw={600}>Phone Number *</Text>
+        <Text size="sm" fw={600}>
+          Phone Number *
+        </Text>
         <TextInput
           placeholder="10-digit phone"
           value={phone}
@@ -110,7 +115,9 @@ export default function AddressModal({ opened, onClose }: Props) {
           }
         />
 
-        <Text size="sm" fw={600}>Street Address *</Text>
+        <Text size="sm" fw={600}>
+          Street Address *
+        </Text>
         <TextInput
           placeholder="Street / Door Number"
           value={street}
@@ -119,7 +126,9 @@ export default function AddressModal({ opened, onClose }: Props) {
 
         <Group grow>
           <div style={{ flex: 1 }}>
-            <Text size="sm" fw={600}>City *</Text>
+            <Text size="sm" fw={600}>
+              City *
+            </Text>
             <TextInput
               placeholder="City"
               value={city}
@@ -128,7 +137,9 @@ export default function AddressModal({ opened, onClose }: Props) {
           </div>
 
           <div style={{ flex: 1 }}>
-            <Text size="sm" fw={600}>State *</Text>
+            <Text size="sm" fw={600}>
+              State *
+            </Text>
             <TextInput
               placeholder="State"
               value={state}
@@ -136,8 +147,33 @@ export default function AddressModal({ opened, onClose }: Props) {
             />
           </div>
         </Group>
+        <Group grow>
+          <div style={{ flex: 1 }}>
+            <Text size="sm" fw={600}>
+              address line 1
+            </Text>
+            <TextInput
+              placeholder="address line 1"
+              value={line1}
+              onChange={(e) => setLine1(e.target.value)}
+            />
+          </div>
 
-        <Text size="sm" fw={600}>PIN / ZIP Code *</Text>
+          <div style={{ flex: 1 }}>
+            <Text size="sm" fw={600}>
+              address line 2
+            </Text>
+            <TextInput
+              placeholder="address line 2"
+              value={line2}
+              onChange={(e) => setLine2(e.target.value)}
+            />
+          </div>
+        </Group>
+
+        <Text size="sm" fw={600}>
+          PIN / ZIP Code *
+        </Text>
         <TextInput
           placeholder="6-digit PIN"
           value={zip}

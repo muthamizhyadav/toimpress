@@ -348,18 +348,25 @@ export default function Checkout() {
   };
 
   useEffect(() => {
-    const grouped = items.reduce((acc: any, item: any) => {
-      if (!acc[item.id]) {
-        acc[item.id] = { id: item.id, amount: 0 };
-      }
-      acc[item.id].amount += item.price * item.qty;
-      return acc;
-    }, {});
-    if (grouped) {
-      getCouponDetails(grouped);
-    }
-    console.log(grouped, "mapped items");
-  }, [items, dispatch]);
+  if (!items.length) return;
+
+  // If saved scheme from server is already providing discount 
+  // we do NOT call coupon discount API
+  if (savedScheme && savedScheme.isDiscountApplicable) {
+    setOfferAmount(Math.round(savedScheme.minusValue || 0));
+    return;
+  }
+
+  const grouped = items.reduce((acc: any, item: any) => {
+    if (!acc[item.id]) acc[item.id] = { id: item.id, amount: 0 };
+    const price = item.salePrice ?? item.price ?? 0;
+    acc[item.id].amount += price * item.qty;
+    return acc;
+  }, {});
+
+  getCouponDetails(grouped);
+}, [items, savedScheme]);
+
 
   const verifyAndCompletePayment = async (paymentData: any) => {
     try {
@@ -656,68 +663,103 @@ export default function Checkout() {
     }
   };
 
-  const totals = useMemo(() => {
-    const localSubtotal = (items || []).reduce((sum, i) => {
-      const p = i.salePrice ?? i.price ?? 0;
-      return sum + p * (i.qty ?? 1);
-    }, 0);
+  // const totals = useMemo(() => {
+  //   const localSubtotal = (items || []).reduce((sum, i) => {
+  //     const p = i.salePrice ?? i.price ?? 0;
+  //     return sum + p * (i.qty ?? 1);
+  //   }, 0);
 
-    const totalQty = (items || []).reduce((q, i) => q + (i.qty ?? 0), 0);
+  //   const totalQty = (items || []).reduce((q, i) => q + (i.qty ?? 0), 0);
 
-    let couponDiscount = 0;
-    if (appliedCoupon?.code === "SAVE10") {
-      couponDiscount = Math.round(Math.min(100, localSubtotal * 0.1));
-    } else if (appliedCoupon) {
-      couponDiscount = appliedCoupon.discount ?? 0;
-    }
+  //   let couponDiscount = 0;
+  //   if (appliedCoupon?.code === "SAVE10") {
+  //     couponDiscount = Math.round(Math.min(100, localSubtotal * 0.1));
+  //   } else if (appliedCoupon) {
+  //     couponDiscount = appliedCoupon.discount ?? 0;
+  //   }
 
-    const totalDiscounts = Math.min(localSubtotal, couponDiscount);
-    const discountedBase = localSubtotal - totalDiscounts;
-    const gstRaw = discountedBase * GST_PERCENT;
-    const gstComputed = Math.round(gstRaw);
-    const shipping =
-      paymentMethod === "COD" && items?.length ? COD_SHIPPING : 0;
-    let grandTotalComputed = Math.round(
-      discountedBase + gstComputed + shipping
-    );
-    let savingsPercentComputed =
-      localSubtotal > 0
-        ? Math.round((totalDiscounts / localSubtotal) * 100)
-        : 0;
+  //   const totalDiscounts = Math.min(localSubtotal, couponDiscount);
+  //   const discountedBase = localSubtotal - totalDiscounts;
+  //   const gstRaw = discountedBase * GST_PERCENT;
+  //   const gstComputed = Math.round(gstRaw);
+  //   const shipping =
+  //     paymentMethod === "COD" && items?.length ? COD_SHIPPING : 0;
+  //   let grandTotalComputed = Math.round(
+  //     discountedBase + gstComputed + shipping
+  //   );
+  //   let savingsPercentComputed =
+  //     localSubtotal > 0
+  //       ? Math.round((totalDiscounts / localSubtotal) * 100)
+  //       : 0;
 
-    if (savedScheme && savedScheme.isDiscountApplicable) {
-      const sTotalSales = Number(savedScheme.totalSalesPrice ?? 0);
-      const sMinus = Number(savedScheme.minusValue ?? 0);
-      const sFinal = Number(savedScheme.finalAmount ?? 0);
-      const sGst = Math.round(Number(savedScheme.gst ?? 0));
-      const effectiveFinal = Math.round(
-        sFinal + (paymentMethod === "COD" ? COD_SHIPPING : 0)
-      );
+  //   if (savedScheme && savedScheme.isDiscountApplicable) {
+  //     const sTotalSales = Number(savedScheme.totalSalesPrice ?? 0);
+  //     const sMinus = Number(savedScheme.minusValue ?? 0);
+  //     const sFinal = Number(savedScheme.finalAmount ?? 0);
+  //     const sGst = Math.round(Number(savedScheme.gst ?? 0));
+  //     const effectiveFinal = Math.round(
+  //       sFinal + (paymentMethod === "COD" ? COD_SHIPPING : 0)
+  //     );
       
-      return {
-        subtotal: Math.round(sTotalSales) - (offerAmount),
-        totalQty,
-        couponDiscount: Number(offerAmount),
-        totalDiscounts: Math.round(offerAmount),
-        gst: Math.round(sGst),
-        shipping: paymentMethod === "COD" ? COD_SHIPPING : 0,
-        grandTotal: effectiveFinal,
-        savingsPercent:
-          sTotalSales > 0 ? Math.round((sMinus / sTotalSales) * 100) : 0,
-      };
-    }
+  //     return {
+  //       subtotal: Math.round(sTotalSales) - (offerAmount),
+  //       totalQty,
+  //       couponDiscount: Number(offerAmount),
+  //       totalDiscounts: Math.round(offerAmount),
+  //       gst: Math.round(sGst),
+  //       shipping: paymentMethod === "COD" ? COD_SHIPPING : 0,
+  //       grandTotal: effectiveFinal,
+  //       savingsPercent:
+  //         sTotalSales > 0 ? Math.round((sMinus / sTotalSales) * 100) : 0,
+  //     };
+  //   }
+
+  //   return {
+  //     subtotal: Math.round(localSubtotal),
+  //     totalQty,
+  //     couponDiscount,
+  //     totalDiscounts: Math.round(offerAmount),
+  //     gst: gstComputed,
+  //     shipping,
+  //     grandTotal: grandTotalComputed,
+  //     savingsPercent: savingsPercentComputed,
+  //   };
+  // }, [items, paymentMethod, appliedCoupon]);
+
+  const totals = useMemo(() => {
+  const localSubtotal = items.reduce(
+    (sum, i) => sum + (i.salePrice ?? i.price ?? 0) * (i.qty ?? 1),
+    0
+  );
+
+  // If scheme discount is active → use scheme values
+  if (savedScheme?.isDiscountApplicable) {
+    const schemeDiscount = Math.round(Number(savedScheme.minusValue ?? 0));
+    const shipping = paymentMethod === "COD" ? COD_SHIPPING : 0;
+    const grand = Math.round(
+      (savedScheme.finalAmount ?? 0) + shipping
+    );
 
     return {
-      subtotal: Math.round(localSubtotal),
-      totalQty,
-      couponDiscount,
-      totalDiscounts: Math.round(offerAmount),
-      gst: gstComputed,
+      subtotal: localSubtotal,
+      totalDiscounts: schemeDiscount,
       shipping,
-      grandTotal: grandTotalComputed,
-      savingsPercent: savingsPercentComputed,
+      grandTotal: grand,
     };
-  }, [items, paymentMethod, appliedCoupon]);
+  }
+
+  const shipping = paymentMethod === "COD" ? COD_SHIPPING : 0;
+  const totalDiscounts = Math.round(offerAmount);
+  const grandTotal = Math.round(localSubtotal - totalDiscounts + shipping);
+
+  return {
+    subtotal: localSubtotal,
+    totalDiscounts,
+    shipping,
+    grandTotal,
+  };
+}, [items, savedScheme, paymentMethod, offerAmount]);
+
 
   const promo = useMemo(() => {
     if (
