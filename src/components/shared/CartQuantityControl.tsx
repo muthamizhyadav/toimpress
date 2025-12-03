@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Button, Text, ActionIcon } from "@mantine/core";
+import { Button, Text, ActionIcon, Loader } from "@mantine/core";
 import { IconPlus, IconMinus } from "@tabler/icons-react";
 import {
   addToCart,
@@ -31,67 +31,45 @@ export default function CartQuantityControl({
   compact = false,
 }: Props) {
   const dispatch = useDispatch();
+  const [loading, setLoading] = useState(false);
 
   const qty = useSelector((state: any) => {
-    const found = state.cart.items?.find((it: any) => {
-      const matchId = normalize(it.id) === normalize(id);
-      const matchSize = normalize(it.size) === normalize(size);
-
-      // If color exists, include in match condition
-      if (color) {
-        return (
-          matchId && matchSize && normalize(it.color) === normalize(color)
-        );
-      }
-
-      // Otherwise match only by id + size
-      return matchId && matchSize;
-    });
-
-    return found?.qty ?? 0;
+    return (
+      state.cart.items?.find((it: any) =>
+        normalize(it.id) === normalize(id) &&
+        (!size || normalize(it.size) === normalize(size)) &&
+        (!color || normalize(it.color) === normalize(color))
+      )?.qty ?? 0
+    );
   });
 
-  console.log(id, title, price, image, size, color);
+  const delay = () => new Promise((resolve) => setTimeout(resolve, 200)); // 👈 smooth UI
 
-  const handleAdd = () => {
-    dispatch(
-      addToCart({
-        id,
-        title,
-        price,
-        image,
-        size,
-        color,
-        qty: 1,
-      })
-    );
+  const handleAdd = async () => {
+    setLoading(true);
+    dispatch(addToCart({ id, title, price, image, size, color, qty: 1 }));
+    await delay();
+    setLoading(false);
   };
 
-  const handlePlus = () => {
-    dispatch(
-      updateCartItemQuantity({
-        id,
-        size,
-        color,
-        qty: qty + 1,
-      })
-    );
+  const handlePlus = async () => {
+    setLoading(true);
+    dispatch(updateCartItemQuantity({ id, size, color, qty: qty + 1 }));
+    await delay();
+    setLoading(false);
   };
 
-  const handleMinus = () => {
+  const handleMinus = async () => {
+    setLoading(true);
+
     if (qty <= 1) {
       dispatch(removeFromCart({ id, size, color }));
-      return;
+    } else {
+      dispatch(updateCartItemQuantity({ id, size, color, qty: qty - 1 }));
     }
 
-    dispatch(
-      updateCartItemQuantity({
-        id,
-        size,
-        color,
-        qty: qty - 1,
-      })
-    );
+    await delay();
+    setLoading(false);
   };
 
   if (qty <= 0) {
@@ -100,33 +78,40 @@ export default function CartQuantityControl({
         fullWidth={!compact}
         size={compact ? "xs" : "sm"}
         onClick={handleAdd}
+        disabled={loading}
         style={{
           background: "#96BD75",
           color: "#fff",
           borderRadius: 999,
         }}
       >
-        Add to cart
+        {loading ? <Loader size="xs" color="white" /> : "Add to cart"}
       </Button>
     );
   }
 
   return (
-    <div className="flex items-center gap-2 cursor-pointer">
-      <ActionIcon onClick={handleMinus} variant="light">
-        <IconMinus size={16} />
+    <div className="flex items-center gap-2">
+      <ActionIcon
+        onClick={handleMinus}
+        variant="light"
+        loading={loading}
+        disabled={loading}
+      >
+        {loading ? <Loader size={14} /> : <IconMinus size={16} />}
       </ActionIcon>
 
       <Text fw={700} size="xl" style={{ minWidth: 28, textAlign: "center" }}>
-        {qty}
+        {loading ? "..." : qty}
       </Text>
 
       <ActionIcon
         onClick={handlePlus}
         variant="filled"
+        disabled={loading}
         style={{ background: "#96BD75", color: "#fff" }}
       >
-        <IconPlus size={16} />
+        {loading ? <Loader size={14} color="white" /> : <IconPlus size={16} />}
       </ActionIcon>
     </div>
   );

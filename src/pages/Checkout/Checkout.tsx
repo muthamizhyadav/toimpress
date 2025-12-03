@@ -1978,7 +1978,7 @@ export default function Checkout() {
               boxShadow: "0 -2px 10px rgba(0,0,0,0.04)",
             }}
           >
-            <Container
+           { !loginModalOpened &&  !addressModalOpen && <Container
               size="lg"
               style={{ display: "flex", flexDirection: "column", gap: 8 }}
             >
@@ -2055,7 +2055,7 @@ export default function Checkout() {
                   PLACE ORDER
                 </Button>
               </div>
-            </Container>
+            </Container>}
           </Box>
           <LoginOtpModal opened={loginModalOpened} onClose={closeLoginModal} />
         </>
