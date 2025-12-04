@@ -90,12 +90,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
     dispatch(
       addToCart({
         id,
-        productName,
+        title:productName,
         price,
-        imageUrl: displayImageUrl,
-        selectedColor: selectedColorLocal,
-        selectedSize,
+        image: displayImageUrl,
+        color: selectedColorLocal,
+        size:selectedSize,
         qty: 1,
+        category:category as string,
       })
     );
 

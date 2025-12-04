@@ -15,6 +15,7 @@ type Props = {
   colorData?: any;
   sizes?: string[];
   productId: string | number;
+  category?: string;
 };
 
 export default function SizeSelectorDrawer({
@@ -27,9 +28,11 @@ export default function SizeSelectorDrawer({
   sizes = [],
   productId,
   colorData,
+  category,
 }: Props) {
   const [selectedColor, setSelectedColor] = useState<string | undefined>();
   const [selectedSize, setSelectedSize] = useState<string | undefined>();
+console.log(category,"categorycategory");
 
   useEffect(() => {
     if (!opened) return;
@@ -153,6 +156,7 @@ export default function SizeSelectorDrawer({
               image={imageUrl}
               size={selectedSize}
               color={selectedColor}
+              category={category}
             />
           ) : (
             <Button

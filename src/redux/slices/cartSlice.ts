@@ -9,6 +9,7 @@ export interface CartItem {
   size?: string | number;
   color?: string;
   qty: number;
+  category?:string;
 }
 
 interface CartState {
@@ -28,12 +29,14 @@ export const cartSlice = createSlice({
   reducers: {
     addToCart: (state, action: PayloadAction<CartItem>) => {
       const item = action.payload;
-
+      console.log(item,'reduxItem');
+      
       const existing = state.items.find(
         (i) =>
           normalize(i.id) === normalize(item.id) &&
           normalize(i.size) === normalize(item.size) &&
-          normalize(i.color) === normalize(item.color)
+          normalize(i.color) === normalize(item.color) &&
+          normalize((i as any).category) === normalize((item as any).category)
       );
 
       if (existing) {
@@ -61,15 +64,16 @@ export const cartSlice = createSlice({
 
     updateCartItemQuantity: (
       state,
-      action: PayloadAction<{ id: string | number; size?: string | number; color?: string; qty: number }>
+      action: PayloadAction<{ id: string | number; size?: string | number; color?: string; qty: number; category?:string }>
     ) => {
-      const { id, size, color, qty } = action.payload;
+      const { id, size, color, qty, category } = action.payload;
 
       const item = state.items.find(
         (i) =>
           normalize(i.id) === normalize(id) &&
           normalize(i.size) === normalize(size) &&
-          normalize(i.color) === normalize(color)
+          normalize(i.color) === normalize(color) && 
+          normalize((i as any).category) === normalize(category)
       );
 
       if (item) {

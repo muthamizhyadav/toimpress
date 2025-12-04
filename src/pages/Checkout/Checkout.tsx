@@ -348,25 +348,32 @@ export default function Checkout() {
   };
 
   useEffect(() => {
-  if (!items.length) return;
+    if (!items.length) return;
+    console.log(items, "items");
 
-  // If saved scheme from server is already providing discount 
-  // we do NOT call coupon discount API
-  if (savedScheme && savedScheme.isDiscountApplicable) {
-    setOfferAmount(Math.round(savedScheme.minusValue || 0));
-    return;
-  }
+    if (savedScheme && savedScheme.isDiscountApplicable) {
+      setOfferAmount(Math.round(savedScheme.minusValue || 0));
+      return;
+    }
 
-  const grouped = items.reduce((acc: any, item: any) => {
-    if (!acc[item.id]) acc[item.id] = { id: item.id, amount: 0 };
-    const price = item.salePrice ?? item.price ?? 0;
-    acc[item.id].amount += price * item.qty;
-    return acc;
-  }, {});
+    const grouped = Object.values(
+      items.reduce((acc: any, item: any) => {
+        if (!acc[item.category]) {
+          acc[item.category] = {
+            category: item.category,
+            ids: [],
+            total: 0,
+          };
+        }
+        acc[item.category].ids.push(item.id);
+        acc[item.category].total += item.price * item.qty;
 
-  getCouponDetails(grouped);
-}, [items, savedScheme]);
+        return acc;
+      }, {})
+    );    
 
+    getCouponDetails(grouped);
+  }, [items, savedScheme]);
 
   const verifyAndCompletePayment = async (paymentData: any) => {
     try {
@@ -700,7 +707,7 @@ export default function Checkout() {
   //     const effectiveFinal = Math.round(
   //       sFinal + (paymentMethod === "COD" ? COD_SHIPPING : 0)
   //     );
-      
+
   //     return {
   //       subtotal: Math.round(sTotalSales) - (offerAmount),
   //       totalQty,
@@ -727,39 +734,36 @@ export default function Checkout() {
   // }, [items, paymentMethod, appliedCoupon]);
 
   const totals = useMemo(() => {
-  const localSubtotal = items.reduce(
-    (sum, i) => sum + (i.salePrice ?? i.price ?? 0) * (i.qty ?? 1),
-    0
-  );
-
-  // If scheme discount is active → use scheme values
-  if (savedScheme?.isDiscountApplicable) {
-    const schemeDiscount = Math.round(Number(savedScheme.minusValue ?? 0));
-    const shipping = paymentMethod === "COD" ? COD_SHIPPING : 0;
-    const grand = Math.round(
-      (savedScheme.finalAmount ?? 0) + shipping
+    const localSubtotal = items.reduce(
+      (sum, i) => sum + (i.salePrice ?? i.price ?? 0) * (i.qty ?? 1),
+      0
     );
+
+    // If scheme discount is active → use scheme values
+    if (savedScheme?.isDiscountApplicable) {
+      const schemeDiscount = Math.round(Number(savedScheme.minusValue ?? 0));
+      const shipping = paymentMethod === "COD" ? COD_SHIPPING : 0;
+      const grand = Math.round((savedScheme.finalAmount ?? 0) + shipping);
+
+      return {
+        subtotal: localSubtotal,
+        totalDiscounts: schemeDiscount,
+        shipping,
+        grandTotal: grand,
+      };
+    }
+
+    const shipping = paymentMethod === "COD" ? COD_SHIPPING : 0;
+    const totalDiscounts = Math.round(offerAmount);
+    const grandTotal = Math.round(localSubtotal - totalDiscounts + shipping);
 
     return {
       subtotal: localSubtotal,
-      totalDiscounts: schemeDiscount,
+      totalDiscounts,
       shipping,
-      grandTotal: grand,
+      grandTotal,
     };
-  }
-
-  const shipping = paymentMethod === "COD" ? COD_SHIPPING : 0;
-  const totalDiscounts = Math.round(offerAmount);
-  const grandTotal = Math.round(localSubtotal - totalDiscounts + shipping);
-
-  return {
-    subtotal: localSubtotal,
-    totalDiscounts,
-    shipping,
-    grandTotal,
-  };
-}, [items, savedScheme, paymentMethod, offerAmount]);
-
+  }, [items, savedScheme, paymentMethod, offerAmount]);
 
   const promo = useMemo(() => {
     if (
@@ -1081,7 +1085,7 @@ export default function Checkout() {
 
       const rzp = new (window as any).Razorpay({
         key: RAZORPAY_KEY_ID,
-        amount: order.amount ,
+        amount: order.amount,
         currency: order.currency,
         name: "TO IMPRESS",
         description: "Order Payment",
@@ -1878,14 +1882,7 @@ export default function Checkout() {
 
                   <Group justify="space-between" mb="xs">
                     <Text c="dimmed">Cart Subtotal</Text>
-                    <Text>
-                      ₹
-                      {Math.max(
-                        0,
-                        totals.subtotal - offerAmount
-                          
-                      )}
-                    </Text>
+                    <Text>₹{Math.max(0, totals.subtotal - offerAmount)}</Text>
                   </Group>
 
                   <Group justify="space-between" mb="xs">
@@ -1907,7 +1904,8 @@ export default function Checkout() {
                     <Text fw={700}>
                       ₹
                       {totals.subtotal +
-                        (paymentMethod === "COD" ? COD_SHIPPING : 0) - offerAmount}
+                        (paymentMethod === "COD" ? COD_SHIPPING : 0) -
+                        offerAmount}
                     </Text>
                   </Group>
 
@@ -1978,84 +1976,93 @@ export default function Checkout() {
               boxShadow: "0 -2px 10px rgba(0,0,0,0.04)",
             }}
           >
-           { !loginModalOpened &&  !addressModalOpen && <Container
-              size="lg"
-              style={{ display: "flex", flexDirection: "column", gap: 8 }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 12,
-                }}
+            {!loginModalOpened && !addressModalOpen && (
+              <Container
+                size="lg"
+                style={{ display: "flex", flexDirection: "column", gap: 8 }}
               >
-                <div>
-                  <Text fw={700} size="lg" style={{ lineHeight: 1 }}>
-                    ₹
-                    {Math.round(
-                      totals.subtotal +
-                        (paymentMethod === "COD" ? COD_SHIPPING : 0) - offerAmount
-                    )}
-                  </Text>
-                  <Text size="xs" c="dimmed">
-                    View Price Details
-                  </Text>
-
-                  {savedScheme && savedScheme.isDiscountApplicable ? (
-                    <Text size="xs" style={{ color: DARK_GREEN, marginTop: 4 }}>
-                      Buy above ₹
-                      {Math.round(Number(savedScheme.couponAmount ?? 0))} — flat{" "}
-                      {savedScheme.discountvalue}% off applied
-                    </Text>
-                  ) : promo && !promo.applied ? (
-                    <Text size="xs" style={{ color: DARK_GREEN, marginTop: 4 }}>
-                      Buy above ₹{Math.round(Number(promo.threshold))} — flat{" "}
-                      {promo.discountPercent}% off available
-                    </Text>
-                  ) : null}
-                </div>
-
-                <div style={{ textAlign: "right" }}>
-                  <Text size="sm">Your Savings</Text>
-                  <Text fw={700} style={{ color: LIGHT_GREEN }}>
-                    ₹
-                    {savedScheme && savedScheme.isDiscountApplicable
-                      ? Math.round(savedScheme.minusValue)
-                      : totals.totalDiscounts}
-                  </Text>
-                </div>
-              </div>
-
-              <div style={{ display: "flex", gap: 8 }}>
-                <Button
-                  style={{ backgroundColor: DARK_GREEN }}
-                  radius="md"
-                  size="md"
-                  fullWidth
-                  onClick={() => {
-                    if (!isAuthenticated) {
-                      openLoginModal();
-                      return;
-                    }
-                    if (isAuthenticated && flatUserAddress === null) {
-                      setAddressModalOpen(true);
-                      return;
-                    }
-                    if (paymentMethod === "RAZORPAY") onPayNow();
-                    else onPlaceCOD();
-                  }}
-                  loading={payLoading}
-                  sx={{
-                    backgroundColor: "red",
-                    color: "#fff",
-                    "&:hover": { backgroundColor: "#0f2a12" },
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 12,
                   }}
                 >
-                  PLACE ORDER
-                </Button>
-              </div>
-            </Container>}
+                  <div>
+                    <Text fw={700} size="lg" style={{ lineHeight: 1 }}>
+                      ₹
+                      {Math.round(
+                        totals.subtotal +
+                          (paymentMethod === "COD" ? COD_SHIPPING : 0) -
+                          offerAmount
+                      )}
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      View Price Details
+                    </Text>
+
+                    {savedScheme && savedScheme.isDiscountApplicable ? (
+                      <Text
+                        size="xs"
+                        style={{ color: DARK_GREEN, marginTop: 4 }}
+                      >
+                        Buy above ₹
+                        {Math.round(Number(savedScheme.couponAmount ?? 0))} —
+                        flat {savedScheme.discountvalue}% off applied
+                      </Text>
+                    ) : promo && !promo.applied ? (
+                      <Text
+                        size="xs"
+                        style={{ color: DARK_GREEN, marginTop: 4 }}
+                      >
+                        Buy above ₹{Math.round(Number(promo.threshold))} — flat{" "}
+                        {promo.discountPercent}% off available
+                      </Text>
+                    ) : null}
+                  </div>
+
+                  <div style={{ textAlign: "right" }}>
+                    <Text size="sm">Your Savings</Text>
+                    <Text fw={700} style={{ color: LIGHT_GREEN }}>
+                      ₹
+                      {savedScheme && savedScheme.isDiscountApplicable
+                        ? Math.round(savedScheme.minusValue)
+                        : totals.totalDiscounts}
+                    </Text>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: 8 }}>
+                  <Button
+                    style={{ backgroundColor: DARK_GREEN }}
+                    radius="md"
+                    size="md"
+                    fullWidth
+                    onClick={() => {
+                      if (!isAuthenticated) {
+                        openLoginModal();
+                        return;
+                      }
+                      if (isAuthenticated && flatUserAddress === null) {
+                        setAddressModalOpen(true);
+                        return;
+                      }
+                      if (paymentMethod === "RAZORPAY") onPayNow();
+                      else onPlaceCOD();
+                    }}
+                    loading={payLoading}
+                    sx={{
+                      backgroundColor: "red",
+                      color: "#fff",
+                      "&:hover": { backgroundColor: "#0f2a12" },
+                    }}
+                  >
+                    PLACE ORDER
+                  </Button>
+                </div>
+              </Container>
+            )}
           </Box>
           <LoginOtpModal opened={loginModalOpened} onClose={closeLoginModal} />
         </>

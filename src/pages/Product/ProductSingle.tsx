@@ -35,12 +35,6 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { GET_PRODUCTS_DETAILS, API_CART } from "../../api/api";
 import axiosInstance from "../../api/axiosInstance";
 import { useDispatch, useSelector } from "react-redux";
-import {
-  addToCart,
-  increaseQty,
-  decreaseQty,
-  removeFromCart,
-} from "../../redux/features/cartSlice";
 import type { RootState } from "../../redux/store";
 
 import SizeSelectorDrawer, {
@@ -58,6 +52,7 @@ import BraDescp8 from "../../assets/svg/bradescription/descp8.svg";
 
 import { showNotification } from "@mantine/notifications";
 import CartQuantityControl from "../../components/shared/CartQuantityControl";
+import { addToCart, removeFromCart } from "../../redux/slices/cartSlice";
 
 /* small data used in the description area */
 const tags = [
@@ -119,7 +114,8 @@ export default function ProductPage() {
         const sims = resp?.data?.similerProducts || resp?.data?.similarProducts;
         const couponData = resp?.data?.coupon;
         setCoupon(couponData || null);
-
+        console.log(detail,"detail");
+        
         setProductDetails(detail);
         setSimilarProducts(sims || []);
 
@@ -456,9 +452,11 @@ export default function ProductPage() {
           qty: payload.quantity,
           size: payload.selectedSize,
           color: payload.selectedColor,
+          category:productDetails.category,
           silent: true,
         };
-
+        console.log(reduxItem,"reduxItem");
+        
         dispatch(addToCart(reduxItem));
 
         showNotification({
@@ -534,7 +532,6 @@ export default function ProductPage() {
               id: String(pid),
               size,
               color,
-              silent: true,
             })
           );
         } catch (e) {
@@ -976,6 +973,7 @@ export default function ProductPage() {
                     size={selectedSize}
                     color={selectedColor}
                     compact={false}
+                    category={productDetails.category}
                   />
                 ) : (
                   <Button

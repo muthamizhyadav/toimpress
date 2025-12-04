@@ -19,6 +19,7 @@ type Props = {
   size?: string | number;
   color?: string;
   compact?: boolean;
+  category?: string;
 };
 
 export default function CartQuantityControl({
@@ -29,16 +30,18 @@ export default function CartQuantityControl({
   size,
   color,
   compact = false,
+  category,
 }: Props) {
   const dispatch = useDispatch();
   const [loading, setLoading] = useState(false);
 
   const qty = useSelector((state: any) => {
     return (
-      state.cart.items?.find((it: any) =>
-        normalize(it.id) === normalize(id) &&
-        (!size || normalize(it.size) === normalize(size)) &&
-        (!color || normalize(it.color) === normalize(color))
+      state.cart.items?.find(
+        (it: any) =>
+          normalize(it.id) === normalize(id) &&
+          (!size || normalize(it.size) === normalize(size)) &&
+          (!color || normalize(it.color) === normalize(color))
       )?.qty ?? 0
     );
   });
@@ -47,25 +50,34 @@ export default function CartQuantityControl({
 
   const handleAdd = async () => {
     setLoading(true);
-    dispatch(addToCart({ id, title, price, image, size, color, qty: 1 }));
+    dispatch(addToCart({ id, title, price, image, size, color, qty: 1, category }));
     await delay();
     setLoading(false);
   };
 
   const handlePlus = async () => {
     setLoading(true);
-    dispatch(updateCartItemQuantity({ id, size, color, qty: qty + 1 }));
+    dispatch(updateCartItemQuantity({ id, size, color, qty: qty + 1, category }));
     await delay();
     setLoading(false);
   };
 
   const handleMinus = async () => {
     setLoading(true);
+    console.log(category, "category");
 
     if (qty <= 1) {
       dispatch(removeFromCart({ id, size, color }));
     } else {
-      dispatch(updateCartItemQuantity({ id, size, color, qty: qty - 1 }));
+      dispatch(
+        updateCartItemQuantity({
+          id,
+          size,
+          color,
+          qty: qty - 1,
+          category: category,
+        })
+      );
     }
 
     await delay();
