@@ -1740,14 +1740,14 @@ export default function Checkout() {
                       <Text size="sm" fw={600}>
                         Shipping to
                       </Text>
-                      <Button
+                      {/* <Button
                         size="xs"
                         variant="subtle"
                         leftSection={<IconPencil size={14} />}
                         onClick={() => setAddressModalOpen(true)}
                       >
                         {flatUserAddress ? "Change" : "Add"} Address
-                      </Button>
+                      </Button> */}
                     </Group>
 
                     {flatUserAddress ? (
