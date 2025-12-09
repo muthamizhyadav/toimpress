@@ -42,25 +42,25 @@ const bannerData = [
   },
 ];
 
-const CategorySlider: React.FC = () => {
+const CategorySlider: React.FC<any> = ({banners}) => {
   const isMobile = useMediaQuery("(max-width: 768px)");
-
+  console.log(banners,"banners");
+  
   if (isMobile) {
     // 📱 Mobile: one card per row with 15px padding on both sides
     return (
       <div className="my-4 px-[15px] flex flex-col gap-4">
-        {bannerData.map((banner, index) => (
+        {banners && banners.map((banner:any, index:number) => (
           <MobileBannerCard key={index} {...banner} />
         ))}
       </div>
     );
   }
 
-  // 💻 Desktop: Carousel with indicators
   return (
     <div className="my-8 px-6">
       <Carousel
-        slideSize="33.33%" // 3 slides visible
+        slideSize="33.33%"
         slideGap="md"
         align="start"
         height="auto"
@@ -81,9 +81,9 @@ const CategorySlider: React.FC = () => {
         //   },
         // }}
       >
-        {bannerData.map((banner, index) => (
+        { banners && banners.map((banner:any, index:number) => (
           <Carousel.Slide key={index}>
-            <HomeBannerCard {...banner} />
+            <HomeBannerCard imageUrl={banner.url} title={banner.title} reDirectionUrl={banner.reDirectionUrl}/>
           </Carousel.Slide>
         ))}
       </Carousel>

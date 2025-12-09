@@ -8,18 +8,14 @@ interface HomeBannerCardProps {
   offer: string;
   buttonText: string;
   height?: string;
+  reDirectionUrl?: string;
 }
 
-const HomeBannerCard: React.FC<HomeBannerCardProps> = ({ imageUrl, title }) => {
+const HomeBannerCard: React.FC<HomeBannerCardProps> = ({ imageUrl, title, reDirectionUrl }) => {
   const navigate = useNavigate();
 
   const handleNavigation = () => {
-    console.log(title, "title");
-    if (title == "Co-ord") {
-      navigate(`category?name=Co-Ords`);
-    } else {
-      navigate(`/category?name=Brassiere`);
-    }
+      navigate(`${reDirectionUrl}`);
   };
 
   return (
