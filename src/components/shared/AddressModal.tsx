@@ -1,4 +1,12 @@
-import { Modal, TextInput, Button, Stack, Text, Group } from "@mantine/core";
+import {
+  Modal,
+  TextInput,
+  Button,
+  Stack,
+  Text,
+  Group,
+  Textarea,
+} from "@mantine/core";
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { saveAddress } from "../../redux/features/authSlice";
@@ -61,7 +69,7 @@ export default function AddressModal({ opened, onClose }: Props) {
       rawId: Date.now(),
     };
     const url = `${UPDATE_PROFILE}/${encodeURIComponent(user.id)}/address`;
-    const response = await axiosInstance.post(url, {address:addressObj});
+    const response = await axiosInstance.post(url, { address: addressObj });
     if (response.data) {
       dispatch(saveAddress(response.data.address));
       showNotification({
@@ -116,12 +124,15 @@ export default function AddressModal({ opened, onClose }: Props) {
         />
 
         <Text size="sm" fw={600}>
-          Street Address *
+          Full Address *
         </Text>
-        <TextInput
-          placeholder="Street / Door Number"
+        <Textarea
+          placeholder="House No / Apartment, Road Name, Locality, Landmark, City, Pincode"
           value={street}
           onChange={(e) => setStreet(e.target.value)}
+          autosize
+          minRows={4}
+          maxRows={4}
         />
 
         <Group grow>
@@ -147,7 +158,7 @@ export default function AddressModal({ opened, onClose }: Props) {
             />
           </div>
         </Group>
-        <Group grow>
+        {/* <Group grow>
           <div style={{ flex: 1 }}>
             <Text size="sm" fw={600}>
               address line 1
@@ -169,7 +180,7 @@ export default function AddressModal({ opened, onClose }: Props) {
               onChange={(e) => setLine2(e.target.value)}
             />
           </div>
-        </Group>
+        </Group> */}
 
         <Text size="sm" fw={600}>
           PIN / ZIP Code *

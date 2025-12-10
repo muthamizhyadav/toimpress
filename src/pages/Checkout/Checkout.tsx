@@ -1191,24 +1191,24 @@ export default function Checkout() {
       }
 
       try {
-        await createOrderHistory({
-          items: paymentSession.items,
-          shippingAddress: paymentSession.flatUserAddress,
-          billingAddress: paymentSession.flatUserAddress,
-          paymentMethod: "online",
-          notes: "",
-          shippingCost: paymentSession.totals.shipping,
-          tax: paymentSession.totals.gst,
-          discount: paymentSession.totals.totalDiscounts,
-          localOrderId: paymentSession.localOrderId || paymentSession.orderId,
-          meta: {
-            razorpay: response,
-            savedScheme: paymentSession.savedScheme?.isDiscountApplicable
-              ? paymentSession.savedScheme
-              : null,
-            paymentConfirmed: true,
-          },
-        });
+        // await createOrderHistory({
+        //   items: paymentSession.items,
+        //   shippingAddress: paymentSession.flatUserAddress,
+        //   billingAddress: paymentSession.flatUserAddress,
+        //   paymentMethod: "online",
+        //   notes: "",
+        //   shippingCost: paymentSession.totals.shipping,
+        //   tax: paymentSession.totals.gst,
+        //   discount: paymentSession.totals.totalDiscounts,
+        //   localOrderId: paymentSession.localOrderId || paymentSession.orderId,
+        //   meta: {
+        //     razorpay: response,
+        //     savedScheme: paymentSession.savedScheme?.isDiscountApplicable
+        //       ? paymentSession.savedScheme
+        //       : null,
+        //     paymentConfirmed: true,
+        //   },
+        // });
       } catch (orderErr) {
         console.error("Order confirmation failed:", orderErr);
       }
