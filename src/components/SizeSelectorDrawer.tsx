@@ -32,7 +32,6 @@ export default function SizeSelectorDrawer({
 }: Props) {
   const [selectedColor, setSelectedColor] = useState<string | undefined>();
   const [selectedSize, setSelectedSize] = useState<string | undefined>();
-console.log(category,"categorycategory");
 
   useEffect(() => {
     if (!opened) return;
@@ -46,8 +45,6 @@ console.log(category,"categorycategory");
     }
     return imageUrl;
   }, [selectedColor, colorData, imageUrl]);
-
-  console.log(selectedColor, selectedSize, headerImage);
 
   const renderColorSwatch = (c: string, idx: number) => {
     const active = normalizeColor(selectedColor) === normalizeColor(c);

@@ -1,5 +1,5 @@
 // pages/CategoryPage.tsx
-import React from "react";
+import React, { useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import Header from "../../components/Header";
 import ProductGrid, { Product } from "../../components/ProductGrid";
@@ -11,6 +11,7 @@ import axiosInstance from "../../api/axiosInstance";
 import {
   API_GET_CATEGORIES_PRODUCTS,
   API_GET_CATEGORIES_PRODUCTS_BYSIZE,
+  PAGEIMPRESSIONS
 } from "../../api/api";
 
 // Real API fetch function
@@ -85,6 +86,29 @@ export default function CategoryPage() {
     : rawId
     ? rawId
     : "";
+
+const pageLogCreation = async () => {
+    try {
+      const data = {
+        pageName:"category",
+        iscategoryPage:true,
+        isproductPage:false,
+        isAddToCartPage:false,
+        categoryName:categoryName,
+        productName:''
+      }
+      const res = await axiosInstance.post(PAGEIMPRESSIONS,data);
+      console.log(res,"RES");
+    } catch (error) {
+      console.log(error);
+      
+    }
+  }
+
+
+  useEffect(()=>{
+    pageLogCreation()
+  },[])
 
   return (
     <>

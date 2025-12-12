@@ -7,6 +7,8 @@ import {
   removeFromCart,
   updateCartItemQuantity,
 } from "../../redux/slices/cartSlice";
+import axiosInstance from "../../api/axiosInstance";
+import { PAGEIMPRESSIONS } from "../../api/api";
 
 const normalize = (v?: string | number) =>
   v ? v.toString().trim().toLowerCase() : "";
@@ -48,10 +50,30 @@ export default function CartQuantityControl({
 
   const delay = () => new Promise((resolve) => setTimeout(resolve, 200)); // 👈 smooth UI
 
+
+  const pageLogCreation = async () => {
+    try {
+      const data = {
+        pageName:"product",
+        iscategoryPage:false,
+        isproductPage:false,
+        isAddToCartPage:true,
+        categoryName:'',
+        productName:title
+      }
+      const res = await axiosInstance.post(PAGEIMPRESSIONS,data);
+      console.log(res,"RES");
+    } catch (error) {
+      console.log(error);
+      
+    }
+  }
+
   const handleAdd = async () => {
     setLoading(true);
     dispatch(addToCart({ id, title, price, image, size, color, qty: 1, category }));
     await delay();
+    await pageLogCreation();
     setLoading(false);
   };
 

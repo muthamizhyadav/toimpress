@@ -7,7 +7,6 @@ const axiosInstance = axios.create({
 
 const requestHandler = (request:any) => {
   request.headers["Access-Control-Allow-Origin"] = "*";
-  console.log(localStorage.getItem("token"),"token api request");
   
   request.headers.authorization = `Bearer ${localStorage.getItem("token")}`;
   return request;

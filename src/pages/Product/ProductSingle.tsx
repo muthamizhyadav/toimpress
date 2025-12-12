@@ -1,4 +1,3 @@
-// pages/Product/ProductPage.tsx
 import {
   Container,
   Grid,
@@ -32,7 +31,7 @@ import {
 } from "@tabler/icons-react";
 import { useMediaQuery } from "@mantine/hooks";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { GET_PRODUCTS_DETAILS, API_CART } from "../../api/api";
+import { GET_PRODUCTS_DETAILS, API_CART,PAGEIMPRESSIONS } from "../../api/api";
 import axiosInstance from "../../api/axiosInstance";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "../../redux/store";
@@ -104,7 +103,29 @@ export default function ProductPage() {
 
   const [openReturnPolicy, setOpenReturnPolicy] = useState(false);
 
+
+  const pageLogCreation = async () => {
+    try {
+      console.log(productDetails.productTitle,"productDetails");
+
+      const data = {
+        pageName:"product",
+        iscategoryPage:false,
+        isproductPage:true,
+        isAddToCartPage:false,
+        categoryName:'',
+        productName:productDetails.productTitle
+      }
+      const res = await axiosInstance.post(PAGEIMPRESSIONS,data);
+      console.log(res,"RES");
+    } catch (error) {
+      console.log(error);
+      
+    }
+  }
+
   useEffect(() => {
+    
     const fetchData = async () => {
       try {
         const resp = await axiosInstance.get(
@@ -115,7 +136,7 @@ export default function ProductPage() {
         const couponData = resp?.data?.coupon;
         setCoupon(couponData || null);
         console.log(detail,"detail");
-        
+        await pageLogCreation()
         setProductDetails(detail);
         setSimilarProducts(sims || []);
 
@@ -162,8 +183,11 @@ export default function ProductPage() {
         console.error("Error fetching product:", err);
       }
     };
+    console.log("calling");
+    
     if (productId) fetchData();
   }, [productId]);
+
 
   const isProductEligibleForCoupon = useMemo(() => {
     if (!coupon?.isActive || !productId) return false;

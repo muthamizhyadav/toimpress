@@ -43,9 +43,7 @@ const bannerData = [
 ];
 
 const CategorySlider: React.FC<any> = ({banners}) => {
-  const isMobile = useMediaQuery("(max-width: 768px)");
-  console.log(banners,"banners");
-  
+  const isMobile = useMediaQuery("(max-width: 768px)");  
   if (isMobile) {
     // 📱 Mobile: one card per row with 15px padding on both sides
     return (
