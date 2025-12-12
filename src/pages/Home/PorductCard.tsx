@@ -73,20 +73,14 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const displayImageUrl =
     (selectedColorLocal && colorData?.[selectedColorLocal]?.images?.[0]) ||
     imageUrl;
-
-  // ----------------------------------------------------
-  // ✅ ADD TO CART → CHECK SIZE FIRST
-  // ----------------------------------------------------
   const AddToCartClick = () => {
     const selectedSize = sizes?.selected ?? null;
 
-    // 🔥 If size is NOT selected → open drawer
     if (!selectedSize && sizeOptions?.length) {
       setOpenSizeDrawer(true);
       return;
     }
 
-    // Otherwise directly add to cart
     dispatch(
       addToCart({
         id,
@@ -99,14 +93,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
         category:category as string,
       })
     );
-
-    showNotification({
-      title: "Added to Cart",
-      message: `${productName} added successfully`,
-      color: "green",
-      icon: <IconCheck size={18} />,
-      autoClose: 2000,
-    });
+    setOpenSizeDrawer(true)
   };
 
   return (

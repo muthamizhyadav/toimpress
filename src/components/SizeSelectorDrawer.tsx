@@ -145,7 +145,7 @@ export default function SizeSelectorDrawer({
             Continue shopping
           </Button>
 
-          {selectedSize && selectedColor ? (
+          {/* {selectedSize && selectedColor ? ( */}
             <CartQuantityControl
               id={productId}
               title={productTitle}
@@ -155,15 +155,15 @@ export default function SizeSelectorDrawer({
               color={selectedColor}
               category={category}
             />
-          ) : (
-            <Button
+          {/* ) : ( */}
+            {/* <Button
               fullWidth
               disabled
               style={{ background: "#ccc", borderRadius: 999 }}
             >
               Select size & color
             </Button>
-          )}
+          )} */}
         </div>
       </div>
     </Drawer>

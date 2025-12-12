@@ -439,92 +439,70 @@ export default function ProductPage() {
     return Number(found?.qty ?? 0);
   };
 
-  const addToCartApi = async (
-    payload: {
-      productId: string;
-      quantity: number;
-      selectedSize?: string;
-      selectedColor?: string;
-    },
-    reduxPayload?: any,
-    mapKey = "current"
-  ) => {
-    try {
-      setAdding(mapKey, true);
-
-      const body = {
-        productId: String(payload.productId),
-        quantity: payload.quantity,
-        selectedSize: payload.selectedSize,
-        selectedColor: payload.selectedColor,
-      };
-
-      const resp = await axiosInstance.post(API_CART, body, {
-        headers: { "Content-Type": "application/json" },
-      });
-
-      if (resp?.status === 200 || resp?.status === 201) {
-        const reduxItem = reduxPayload ?? {
-          id: payload.productId,
-          productId: payload.productId,
-          imageUrl: mainImage || galleryImages?.[0] || imagesInput?.[0] || "",
-          title: titleInput,
-          productName: titleInput,
-          price: salePriceInput ?? priceInput,
-          originalPrice: priceInput,
-          rating: 0,
-          qty: payload.quantity,
-          size: payload.selectedSize,
-          color: payload.selectedColor,
-          category:productDetails.category,
-          silent: true,
-        };
-        console.log(reduxItem,"reduxItem");
+  // const addToCartApi = async (
+  //   payload: {
+  //     productId: string;
+  //     quantity: number;
+  //     selectedSize?: string;
+  //     selectedColor?: string;
+  //   },
+  //   reduxPayload?: any,
+  //   mapKey = "current"
+  // ) => {
+  //   try {
+  //     setAdding(mapKey, true);
+  //       const reduxItem = reduxPayload ?? {
+  //         id: payload.productId,
+  //         productId: payload.productId,
+  //         imageUrl: mainImage || galleryImages?.[0] || imagesInput?.[0] || "",
+  //         title: titleInput,
+  //         productName: titleInput,
+  //         price: salePriceInput ?? priceInput,
+  //         originalPrice: priceInput,
+  //         rating: 0,
+  //         qty: payload.quantity,
+  //         size: payload.selectedSize,
+  //         color: payload.selectedColor,
+  //         category:productDetails.category,
+  //         silent: true,
+  //       };
         
-        dispatch(addToCart(reduxItem));
+  //       dispatch(addToCart(reduxItem));
 
-        showNotification({
-          title: "Added to cart",
-          message: "Item added to cart",
-          color: "green",
-          icon: <IconCheck size={16} />,
-        });
-      } else {
-        showNotification({
-          title: "Unable to add",
-          message: resp?.data?.message ?? "Try again",
-          color: "red",
-          icon: <IconX size={16} />,
-        });
-      }
-    } catch (err: any) {
-      console.error("Add to cart API error:", err);
+  //       showNotification({
+  //         title: "Added to cart",
+  //         message: "Item added to cart",
+  //         color: "green",
+  //         icon: <IconCheck size={16} />,
+  //       });
+  //   } catch (err: any) {
+  //     console.error("Add to cart API error:", err);
 
-      const status = err?.response?.status;
-      const apiMessage =
-        err?.response?.data?.message ?? err?.message ?? "Unable to add to cart";
+  //     const status = err?.response?.status;
+  //     const apiMessage =
+  //       err?.response?.data?.message ?? err?.message ?? "Unable to add to cart";
 
-      if (status === 401 || status === 403) {
-        showNotification({
-          title: "Please login",
-          message: "You need to login to add items to cart.",
-          color: "blue",
-          icon: <IconX size={16} />,
-          autoClose: 3000,
-        });
-        navigate("/account");
-      } else {
-        showNotification({
-          title: "Add failed",
-          message: apiMessage,
-          color: "red",
-          icon: <IconX size={16} />,
-        });
-      }
-    } finally {
-      setAdding(mapKey, false);
-    }
-  };
+  //     if (status === 401 || status === 403) {
+  //       showNotification({
+  //         title: "Please login",
+  //         message: "You need to login to add items to cart.",
+  //         color: "blue",
+  //         icon: <IconX size={16} />,
+  //         autoClose: 3000,
+  //       });
+  //       navigate("/account");
+  //     } else {
+  //       showNotification({
+  //         title: "Add failed",
+  //         message: apiMessage,
+  //         color: "red",
+  //         icon: <IconX size={16} />,
+  //       });
+  //     }
+  //   } finally {
+  //     setAdding(mapKey, false);
+  //   }
+  // };
 
   const updateLineQuantity = async (
     pid: string | number,
@@ -636,7 +614,7 @@ export default function ProductPage() {
       });
     }
 
-    addToCartApi(payload, undefined, "current");
+    // addToCartApi(payload, undefined, "current");
   };
 
   const handleBuyNow = async () => {
@@ -650,7 +628,7 @@ export default function ProductPage() {
       return;
     }
     const payload = makeCartPayload(selectedSize, 1);
-    await addToCartApi(payload, undefined, "current");
+    // await addToCartApi(payload, undefined, "current");
     navigate("/checkout");
   };
 
@@ -988,7 +966,7 @@ export default function ProductPage() {
 
           <Group mt="lg" gap="sm" align="center">
               <>
-                {selectedSize && productDetails ? (
+                {/* {selectedSize && productDetails ? ( */}
                   <CartQuantityControl
                     id={productId}
                     title={productDetails.productTitle}
@@ -999,15 +977,15 @@ export default function ProductPage() {
                     compact={false}
                     category={productDetails.category}
                   />
-                ) : (
-                  <Button
+                {/* ) : ( */}
+                  {/* <Button
                     fullWidth
                     disabled
                     style={{ background: "#ccc", borderRadius: 999 }}
                   >
                     Select size & color
                   </Button>
-                )}
+                )} */}
               </>
           </Group>
 
