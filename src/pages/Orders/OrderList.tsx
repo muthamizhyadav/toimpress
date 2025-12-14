@@ -17,9 +17,10 @@ import {
   Anchor,
   ThemeIcon,
   Divider,
+  Card,
 } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
-import { IconCircle, IconCheck, IconClock } from "@tabler/icons-react";
+import { IconCircle, IconCheck, IconClock, IconPackage } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import axiosInstance from "../../api/axiosInstance";
 import { useSelector } from "react-redux";
@@ -93,8 +94,6 @@ export default function OrderList() {
   const handleLoadMore = () => {
     if (hasMore && !loading) setPage((prev) => prev + 1);
   };
-
-  console.log(orders, "orders");
 
   const parseDelhiveryResponse = (resData: any) => {
     // 1) if old shape: res.data.tracking (array of steps)
@@ -288,6 +287,16 @@ export default function OrderList() {
     );
   };
 
+  // Helper to get order status color
+  const getStatusColor = (status: string) => {
+    const statusLower = status?.toLowerCase();
+    if (statusLower.includes("delivered")) return "green";
+    if (statusLower.includes("cancel")) return "red";
+    if (statusLower.includes("shipped")) return "blue";
+    if (statusLower.includes("processing")) return "yellow";
+    return "gray";
+  };
+
   return (
     <Box p={isMobile ? 0 : "xl"} bg={theme.colors.gray[1]}>
       <Center>
@@ -303,17 +312,14 @@ export default function OrderList() {
           <Tabs defaultValue="All" keepMounted={false}>
             <ScrollArea h="75vh" mt="xs" offsetScrollbars>
               {orders.map((order, i) => (
-                <Box
+                <Card
                   key={i}
                   p="lg"
                   my="md"
-                  bg="white"
+                  radius="lg"
+                  withBorder
                   onClick={() => handleClick(order)}
                   sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    borderRadius: theme.radius.xl,
-                    border: `1px solid ${theme.colors.gray[3]}`,
                     cursor: "pointer",
                     transition: "transform 0.25s ease, box-shadow 0.25s ease",
                     boxShadow: "0 2px 6px rgba(0,0,0,0.06)",
@@ -323,23 +329,20 @@ export default function OrderList() {
                     },
                   }}
                 >
-                  <Group position="apart" mb="xs">
+                  {/* Order Header */}
+                  <Group position="apart" mb="md">
                     <Group spacing="xs">
                       <Badge
-                        color={
-                          order.status?.toLowerCase().includes("delivered")
-                            ? "green"
-                            : order.status?.toLowerCase().includes("cancel")
-                            ? "red"
-                            : "blue"
-                        }
+                        color={getStatusColor(order.status)}
                         variant="filled"
                         radius="sm"
                         sx={{ textTransform: "capitalize" }}
                       >
                         {order.status ?? "Processing"}
                       </Badge>
-
+                      <Text size="sm" fw={600}>
+                        Order #{order.orderNumber}
+                      </Text>
                       <Text size="xs" c="dimmed">
                         {order.createdAt
                           ? new Date(order.createdAt).toLocaleDateString()
@@ -347,80 +350,114 @@ export default function OrderList() {
                       </Text>
                     </Group>
 
-                    <Anchor
-                      size="sm"
-                      fw={600}
-                      c="blue"
-                      underline
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const waybill =
-                          order?.delhiveryDetails?.waybill ??
-                          order?.awb ??
-                          order?.items?.[0]?.awb ??
-                          order?.id;
-                        const refnum =
-                          order?.delhiveryDetails?.refnum ??
-                          order?.referenceNo ??
-                          order?.orderNumber ??
-                          "";
-                        handleTrackOrder(waybill, refnum);
-                      }}
-                      sx={{
-                        "&:hover": { color: theme.colors.blue[7] },
-                      }}
-                    >
-                      Track Order →
-                    </Anchor>
+                    <Group spacing="xs">
+                      <Text size="sm" fw={600}>
+                        Total: ₹{order.totalAmount}
+                      </Text>
+                      <Anchor
+                        size="sm"
+                        fw={600}
+                        c="blue"
+                        underline
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const waybill =
+                            order?.delhiveryDetails?.waybill ??
+                            order?.awb ??
+                            order?.items?.[0]?.awb ??
+                            order?.id;
+                          const refnum =
+                            order?.delhiveryDetails?.refnum ??
+                            order?.referenceNo ??
+                            order?.orderNumber ??
+                            "";
+                          handleTrackOrder(waybill, refnum);
+                        }}
+                        sx={{
+                          "&:hover": { color: theme.colors.blue[7] },
+                        }}
+                      >
+                        Track Order
+                      </Anchor>
+                    </Group>
                   </Group>
 
-                  <Group noWrap align="center">
-                    <AspectRatio ratio={1} w={85}>
-                      <Image
-                        src={
-                          order.items[0].productUrl ||
-                          order.items[0].productImage ||
-                          "/placeholder.png"
-                        }
-                        radius="lg"
-                        alt="product"
-                        fit="cover"
-                        sx={{
-                          border: `1px solid ${theme.colors.gray[2]}`,
-                          backgroundColor: theme.colors.gray[1],
-                        }}
-                      />
-                    </AspectRatio>
+                  {/* Order Items List */}
+                  <Stack spacing="md">
+                    {order.items?.map((item: any, itemIndex: number) => (
+                      <Group key={item._id} noWrap align="flex-start" spacing="md">
+                        <AspectRatio ratio={1} w={80} miw={80}>
+                          <Image
+                            src={
+                              item.productUrl ||
+                              item.productImage ||
+                              "/placeholder.png"
+                            }
+                            radius="md"
+                            alt={item.productTitle}
+                            fit="cover"
+                            sx={{
+                              border: `1px solid ${theme.colors.gray[2]}`,
+                              backgroundColor: theme.colors.gray[1],
+                            }}
+                          />
+                        </AspectRatio>
 
-                    <Box ml="md" style={{ flex: 1 }}>
-                      <Text
-                        fw={700}
-                        size={isMobile ? "sm" : "md"}
-                        lineClamp={1}
-                      >
-                        {order.items[0].productName ??
-                          order.items[0].productTitle ??
-                          "Product"}
+                        <Box style={{ flex: 1 }}>
+                          <Text fw={600} size="sm" lineClamp={2}>
+                            {item.productTitle}
+                          </Text>
+                          <Group spacing="xs" mt={4}>
+                            <Text size="xs" c="dimmed">
+                              Size: <Text span fw={500}>{item.selectedSize}</Text>
+                            </Text>
+                            <Text size="xs" c="dimmed">
+                              • Qty: <Text span fw={500}>{item.quantity}</Text>
+                            </Text>
+                            <Text size="xs" c="dimmed">
+                              • Price: <Text span fw={500}>₹{item.price}</Text>
+                            </Text>
+                          </Group>
+                          <Group position="apart" mt={6}>
+                            <Badge
+                              color="gray"
+                              variant="light"
+                              size="xs"
+                              leftSection={<IconPackage size={12} />}
+                            >
+                              Subtotal: ₹{item.subtotal}
+                            </Badge>
+                            {itemIndex === 0 && order.items.length > 1 && (
+                              <Text size="xs" c="dimmed">
+                                +{order.items.length - 1} more item{order.items.length - 1 > 1 ? 's' : ''}
+                              </Text>
+                            )}
+                          </Group>
+                        </Box>
+                      </Group>
+                    ))}
+                  </Stack>
+
+                  {/* Order Footer */}
+                  <Divider my="md" />
+                  <Group position="apart">
+                    <Box>
+                      <Text size="xs" c="dimmed">
+                        Shipping to: {order.shippingAddress?.city}, {order.shippingAddress?.state}
                       </Text>
-
-                      <Text size="xs" c="dimmed" mt={4}>
-                        Size:{" "}
-                        <Text span fw={600}>
-                          {order.items[0].selectedSize}
-                        </Text>{" "}
-                        • Qty:{" "}
-                        <Text span fw={600}>
-                          {order.items[0].quantity}
-                        </Text>
-                      </Text>
-
-                      <Text fw={700} mt={6} c="dark">
-                        ₹{order.items[0].price}
+                      <Text size="xs" c="dimmed">
+                        Payment: {order.paymentMethod === 'online' ? 'Online' : 'Cash on Delivery'}
                       </Text>
                     </Box>
+                    <Group spacing="xs">
+                      {order.items.length > 1 && (
+                        <Text size="sm" fw={600}>
+                          {order.items.length} items
+                        </Text>
+                      )}
+                    </Group>
                   </Group>
-                  {/* <Divider mb="sm" /> */}
-                </Box>
+                </Card>
               ))}
 
               {loading && (
@@ -450,7 +487,6 @@ export default function OrderList() {
       </Center>
 
       {/* Tracking Drawer */}
-      {/* 💯 Unchanged Logic */}
       <Drawer
         opened={trackOpened}
         onClose={closeTrack}
@@ -483,47 +519,117 @@ export default function OrderList() {
         )}
       </Drawer>
 
-      {/* Item Detail Drawer – unchanged */}
+      {/* Order Details Drawer */}
       <Drawer
-        opened={false}
+        opened={opened}
         onClose={close}
-        title={`Order ID: ${selectedOrder?.id}`}
+        title={`Order #${selectedOrder?.orderNumber}`}
         position="right"
-        size={isMobile ? "100%" : "420px"}
+        size={isMobile ? "100%" : "480px"}
         overlayProps={{ opacity: 0.15 }}
+        padding="lg"
       >
         {selectedOrder && (
           <Stack spacing="lg">
-            {selectedOrder.items?.map((item: any, idx: number) => (
-              <Box key={idx}>
-                <Image
-                  src={
-                    item.productImage || item.productUrl || "/placeholder.png"
-                  }
-                  radius="md"
-                  fit="cover"
-                  h={180}
-                />
-                <Text fw={600} mt="xs">
-                  {item.productName ?? item.productTitle}
+            {/* Order Summary */}
+            <Card withBorder radius="md">
+              <Group position="apart" mb="sm">
+                <Text fw={600}>Order Summary</Text>
+                <Badge
+                  color={getStatusColor(selectedOrder.status)}
+                  variant="light"
+                  size="sm"
+                >
+                  {selectedOrder.status}
+                </Badge>
+              </Group>
+              
+              <Group position="apart" mb={4}>
+                <Text size="sm">Order Date:</Text>
+                <Text size="sm" fw={500}>
+                  {new Date(selectedOrder.createdAt).toLocaleDateString()}
                 </Text>
-                <Text size="sm">Size: {item.selectedSize}</Text>
-                <Text size="sm">Qty: {item.quantity}</Text>
-              </Box>
-            ))}
+              </Group>
+              
+              <Group position="apart" mb={4}>
+                <Text size="sm">Payment:</Text>
+                <Text size="sm" fw={500} c={selectedOrder.paymentStatus === 'paid' ? 'green' : 'orange'}>
+                  {selectedOrder.paymentMethod === 'online' ? 'Online' : 'COD'} • {selectedOrder.paymentStatus}
+                </Text>
+              </Group>
+              
+              <Divider my="sm" />
+              
+              <Group position="apart" mb={4}>
+                <Text size="sm">Subtotal:</Text>
+                <Text size="sm">₹{selectedOrder.totalAmount - selectedOrder.shippingCost}</Text>
+              </Group>
+              
+              <Group position="apart" mb={4}>
+                <Text size="sm">Shipping:</Text>
+                <Text size="sm">₹{selectedOrder.shippingCost}</Text>
+              </Group>
+              
+              <Group position="apart" fw={600} mt="sm">
+                <Text>Total Amount:</Text>
+                <Text>₹{selectedOrder.totalAmount}</Text>
+              </Group>
+            </Card>
 
-            <Divider />
+            {/* Order Items */}
+            <Box>
+              <Text fw={600} mb="sm">Items ({selectedOrder.items.length})</Text>
+              <Stack spacing="md">
+                {selectedOrder.items?.map((item: any, idx: number) => (
+                  <Card key={item._id} withBorder radius="md" p="md">
+                    <Group noWrap align="flex-start">
+                      <AspectRatio ratio={1} w={80} miw={80}>
+                        <Image
+                          src={item.productUrl || item.productImage || "/placeholder.png"}
+                          radius="md"
+                          alt={item.productTitle}
+                          fit="cover"
+                        />
+                      </AspectRatio>
+                      
+                      <Box style={{ flex: 1 }}>
+                        <Text fw={600} size="sm">{item.productTitle}</Text>
+                        <Group spacing="xs" mt={4}>
+                          <Badge variant="outline" size="xs">
+                            Size: {item.selectedSize}
+                          </Badge>
+                          <Badge variant="outline" size="xs">
+                            Qty: {item.quantity}
+                          </Badge>
+                        </Group>
+                        <Group position="apart" mt="sm">
+                          <Text fw={600} size="sm">₹{item.price}</Text>
+                          <Text size="sm" c="dimmed">Subtotal: ₹{item.subtotal}</Text>
+                        </Group>
+                      </Box>
+                    </Group>
+                  </Card>
+                ))}
+              </Stack>
+            </Box>
 
-            <Text size="sm" c="dimmed">
-              Shipping: {selectedOrder.shippingAddress?.street},{" "}
-              {selectedOrder.shippingAddress?.city}
-            </Text>
+            {/* Shipping Address */}
+            {selectedOrder.shippingAddress && (
+              <Card withBorder radius="md">
+                <Text fw={600} mb="sm">Shipping Address</Text>
+                <Stack spacing={4}>
+                  <Text size="sm">{selectedOrder.shippingAddress.line1}</Text>
+                  <Text size="sm">
+                    {selectedOrder.shippingAddress.city}, {selectedOrder.shippingAddress.state}
+                  </Text>
+                  <Text size="sm">{selectedOrder.shippingAddress.country}</Text>
+                </Stack>
+              </Card>
+            )}
 
-            <Group grow>
-              <Button variant="filled" onClick={close}>
-                Close
-              </Button>
-            </Group>
+            <Button fullWidth onClick={close} mt="md">
+              Close
+            </Button>
           </Stack>
         )}
       </Drawer>
