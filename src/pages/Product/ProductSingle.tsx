@@ -31,7 +31,7 @@ import {
 } from "@tabler/icons-react";
 import { useMediaQuery } from "@mantine/hooks";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { GET_PRODUCTS_DETAILS, API_CART,PAGEIMPRESSIONS } from "../../api/api";
+import { GET_PRODUCTS_DETAILS, API_CART, PAGEIMPRESSIONS } from "../../api/api";
 import axiosInstance from "../../api/axiosInstance";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "../../redux/store";
@@ -52,6 +52,7 @@ import BraDescp8 from "../../assets/svg/bradescription/descp8.svg";
 import { showNotification } from "@mantine/notifications";
 import CartQuantityControl from "../../components/shared/CartQuantityControl";
 import { addToCart, removeFromCart } from "../../redux/slices/cartSlice";
+import React from "react";
 
 /* small data used in the description area */
 const tags = [
@@ -103,29 +104,26 @@ export default function ProductPage() {
 
   const [openReturnPolicy, setOpenReturnPolicy] = useState(false);
 
-
   const pageLogCreation = async () => {
     try {
-      console.log(productDetails.productTitle,"productDetails");
+      console.log(productDetails.productTitle, "productDetails");
 
       const data = {
-        pageName:"product",
-        iscategoryPage:false,
-        isproductPage:true,
-        isAddToCartPage:false,
-        categoryName:'',
-        productName:productDetails.productTitle
-      }
-      const res = await axiosInstance.post(PAGEIMPRESSIONS,data);
-      console.log(res,"RES");
+        pageName: "product",
+        iscategoryPage: false,
+        isproductPage: true,
+        isAddToCartPage: false,
+        categoryName: "",
+        productName: productDetails.productTitle,
+      };
+      const res = await axiosInstance.post(PAGEIMPRESSIONS, data);
+      console.log(res, "RES");
     } catch (error) {
       console.log(error);
-      
     }
-  }
+  };
 
   useEffect(() => {
-    
     const fetchData = async () => {
       try {
         const resp = await axiosInstance.get(
@@ -135,8 +133,8 @@ export default function ProductPage() {
         const sims = resp?.data?.similerProducts || resp?.data?.similarProducts;
         const couponData = resp?.data?.coupon;
         setCoupon(couponData || null);
-        console.log(detail,"detail");
-        await pageLogCreation()
+        console.log(detail, "detail");
+        await pageLogCreation();
         setProductDetails(detail);
         setSimilarProducts(sims || []);
 
@@ -184,17 +182,18 @@ export default function ProductPage() {
       }
     };
     console.log("calling");
-    
+
     if (productId) fetchData();
   }, [productId]);
 
-
   const isProductEligibleForCoupon = useMemo(() => {
-    if (!coupon?.isActive || !productId) return false;
+    if (!Array.isArray(coupon) || !productId) return false;
 
-    return (
-      coupon.products?.includes(productId) ||
-      coupon.category === productDetails?.category
+    return coupon.some(
+      (c) =>
+        c.isActive &&
+        (c.products?.includes(productId) ||
+          c.category === productDetails?.category)
     );
   }, [coupon, productId, productDetails?.category]);
 
@@ -244,22 +243,21 @@ export default function ProductPage() {
   }, [selectedColor, productDetails, galleryImages]);
 
   useEffect(() => {
-  const newImages = getImagesForSelectedColor;
-  if (!Array.isArray(newImages)) return;
+    const newImages = getImagesForSelectedColor;
+    if (!Array.isArray(newImages)) return;
 
-  setGalleryImages((prev) => {
-    if (JSON.stringify(prev) === JSON.stringify(newImages)) return prev;
-    return newImages;
-  });
+    setGalleryImages((prev) => {
+      if (JSON.stringify(prev) === JSON.stringify(newImages)) return prev;
+      return newImages;
+    });
 
-  setMainImage((prev) => {
-    if (newImages.length > 0 && !newImages.includes(prev)) {
-      return newImages[0];
-    }
-    return prev;
-  });
-}, [selectedColor, productDetails?.colorData]);
-
+    setMainImage((prev) => {
+      if (newImages.length > 0 && !newImages.includes(prev)) {
+        return newImages[0];
+      }
+      return prev;
+    });
+  }, [selectedColor, productDetails?.colorData]);
 
   const colorDataMap: Record<string, any> | undefined =
     productDetails?.colorData;
@@ -466,7 +464,7 @@ export default function ProductPage() {
   //         category:productDetails.category,
   //         silent: true,
   //       };
-        
+
   //       dispatch(addToCart(reduxItem));
 
   //       showNotification({
@@ -692,11 +690,8 @@ export default function ProductPage() {
 
   const onSizeSelect = (sizeLabel: string) => {
     setSelectedSize(sizeLabel);
-
-
   };
 
- 
   const buildSizeOptionsForProduct = (prod: any): SizeOption[] => {
     const sizesArr: string[] = prod?.selectedSizes ?? prod?.sizes ?? [];
     const map = new Map<number, Set<string>>();
@@ -744,34 +739,76 @@ export default function ProductPage() {
     <Container size="xl" py="md">
       <Grid>
         <Grid.Col span={{ base: 12, md: 6 }} style={{ position: "relative" }}>
-          {isProductEligibleForCoupon && (
-            <Box
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 10,
-                zIndex: 10,
-              }}
-            >
-              <Badge
-                color="red"
-                size="lg"
-                radius="sm"
-                styles={{
-                  root: {
-                    backgroundColor: LIGHT_GREEN,
-                    color: "white",
-                    fontWeight: "bold",
-                    fontSize: "12px",
-                    padding: "8px 12px",
-                    textTransform: "none",
-                  },
-                }}
-              >
-                Buy ₹{coupon.discount} Get {coupon.offerDiscount}% OFF
-              </Badge>
-            </Box>
-          )}
+         {coupon.map((item: any, index: number) => (
+  <React.Fragment key={index}>
+    {/* Coupon Badge */}
+    <Badge
+      size="lg"
+      radius="sm"
+      style={{
+        backgroundColor: LIGHT_GREEN,
+        color: "#ffffff",
+        fontWeight: 700,
+        fontSize: "12px",
+        padding: "6px 12px",
+        textTransform: "none",
+        whiteSpace: "normal",
+        lineHeight: 1.2,
+        alignSelf: "flex-end",
+      }}
+    >
+      Buy ₹{item.discount} Get {item.offerDiscount}% OFF
+    </Badge>
+
+    {/* OR Divider */}
+    {index < coupon.length - 1 && (
+      <Box
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "4px 8px",
+          borderRadius: 4,
+          backgroundColor: "rgba(255,255,255,0.9)",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+          alignSelf: "flex-end",
+          width: "fit-content",
+        }}
+      >
+        <Box
+          style={{
+            width: 60,
+            height: 2,
+            backgroundColor: "grey",
+          }}
+        />
+
+        <Text
+          size="xs"
+          fw={700}
+          c="dark"
+          style={{
+            whiteSpace: "nowrap",
+            padding: "0 6px",
+            color: "grey",
+          }}
+        >
+          OR
+        </Text>
+
+        <Box
+          style={{
+            width: 60,
+            height: 2,
+            backgroundColor: "grey",
+          }}
+        />
+      </Box>
+    )}
+  </React.Fragment>
+))}
+
+
           <Image
             src={mainImage}
             alt="Main product"
@@ -965,20 +1002,20 @@ export default function ProductPage() {
           </Box>
 
           <Group mt="lg" gap="sm" align="center">
-              <>
-                {/* {selectedSize && productDetails ? ( */}
-                  <CartQuantityControl
-                    id={productId}
-                    title={productDetails.productTitle}
-                    price={productDetails.salePrice}
-                    image={mainImage || galleryImages?.[0] || ""}
-                    size={selectedSize}
-                    color={selectedColor}
-                    compact={false}
-                    category={productDetails.category}
-                  />
-                {/* ) : ( */}
-                  {/* <Button
+            <>
+              {/* {selectedSize && productDetails ? ( */}
+              <CartQuantityControl
+                id={productId}
+                title={productDetails.productTitle}
+                price={productDetails.salePrice}
+                image={mainImage || galleryImages?.[0] || ""}
+                size={selectedSize}
+                color={selectedColor}
+                compact={false}
+                category={productDetails.category}
+              />
+              {/* ) : ( */}
+              {/* <Button
                     fullWidth
                     disabled
                     style={{ background: "#ccc", borderRadius: 999 }}
@@ -986,7 +1023,7 @@ export default function ProductPage() {
                     Select size & color
                   </Button>
                 )} */}
-              </>
+            </>
           </Group>
 
           <Button
