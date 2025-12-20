@@ -768,20 +768,11 @@ export default function ProductPage() {
           alignItems: "center",
           gap: 6,
           padding: "4px 8px",
-          borderRadius: 4,
-          backgroundColor: "rgba(255,255,255,0.9)",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
           alignSelf: "flex-end",
           width: "fit-content",
         }}
       >
-        <Box
-          style={{
-            width: 60,
-            height: 2,
-            backgroundColor: "grey",
-          }}
-        />
+
 
         <Text
           size="xs"
@@ -790,19 +781,15 @@ export default function ProductPage() {
           style={{
             whiteSpace: "nowrap",
             padding: "0 6px",
-            color: "grey",
+            color: "#94a3b8",
+
+            paddingLeft:67
           }}
         >
-          OR
+         <span style={{color:"#133215"}}>( or )</span> 
         </Text>
 
-        <Box
-          style={{
-            width: 60,
-            height: 2,
-            backgroundColor: "grey",
-          }}
-        />
+  
       </Box>
     )}
   </React.Fragment>
