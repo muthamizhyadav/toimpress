@@ -332,14 +332,14 @@ export default function OrderList() {
                   {/* Order Header */}
                   <Group position="apart" mb="md">
                     <Group spacing="xs">
-                      <Badge
+                      {/* <Badge
                         color={getStatusColor(order.status)}
                         variant="filled"
                         radius="sm"
                         sx={{ textTransform: "capitalize" }}
                       >
                         {order.status ?? "Processing"}
-                      </Badge>
+                      </Badge> */}
                       <Text size="sm" fw={600}>
                         Order #{order.orderNumber}
                       </Text>
@@ -535,13 +535,13 @@ export default function OrderList() {
             <Card withBorder radius="md">
               <Group position="apart" mb="sm">
                 <Text fw={600}>Order Summary</Text>
-                <Badge
+                {/* <Badge
                   color={getStatusColor(selectedOrder.status)}
                   variant="light"
                   size="sm"
                 >
                   {selectedOrder.status}
-                </Badge>
+                </Badge> */}
               </Group>
               
               <Group position="apart" mb={4}>
@@ -551,12 +551,12 @@ export default function OrderList() {
                 </Text>
               </Group>
               
-              <Group position="apart" mb={4}>
+              {/* <Group position="apart" mb={4}>
                 <Text size="sm">Payment:</Text>
                 <Text size="sm" fw={500} c={selectedOrder.paymentStatus === 'paid' ? 'green' : 'orange'}>
                   {selectedOrder.paymentMethod === 'online' ? 'Online' : 'COD'} • {selectedOrder.paymentStatus}
                 </Text>
-              </Group>
+              </Group> */}
               
               <Divider my="sm" />
               
