@@ -739,62 +739,57 @@ export default function ProductPage() {
     <Container size="xl" py="md">
       <Grid>
         <Grid.Col span={{ base: 12, md: 6 }} style={{ position: "relative" }}>
-         {coupon.map((item: any, index: number) => (
-  <React.Fragment key={index}>
-    {/* Coupon Badge */}
-    <Badge
-      size="lg"
-      radius="sm"
-      style={{
-        backgroundColor: LIGHT_GREEN,
-        color: "#ffffff",
-        fontWeight: 700,
-        fontSize: "12px",
-        padding: "6px 12px",
-        textTransform: "none",
-        whiteSpace: "normal",
-        lineHeight: 1.2,
-        alignSelf: "flex-end",
-      }}
-    >
-      Buy ₹{item.discount} Get {item.offerDiscount}% OFF
-    </Badge>
+          {coupon.map((item: any, index: number) => (
+            <React.Fragment key={index}>
+              {/* Coupon Badge */}
+              <Badge
+                size="lg"
+                radius="sm"
+                style={{
+                  backgroundColor: LIGHT_GREEN,
+                  color: "#ffffff",
+                  fontWeight: 700,
+                  fontSize: "12px",
+                  padding: "6px 12px",
+                  textTransform: "none",
+                  whiteSpace: "normal",
+                  lineHeight: 1.2,
+                  alignSelf: "flex-end",
+                }}
+              >
+                Buy ₹{item.discount} Get {item.offerDiscount}% OFF
+              </Badge>
 
-    {/* OR Divider */}
-    {index < coupon.length - 1 && (
-      <Box
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          padding: "4px 8px",
-          alignSelf: "flex-end",
-          width: "fit-content",
-        }}
-      >
+              {/* OR Divider */}
+              {index < coupon.length - 1 && (
+                <Box
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "4px 8px",
+                    alignSelf: "flex-end",
+                    width: "fit-content",
+                  }}
+                >
+                  <Text
+                    size="xs"
+                    fw={700}
+                    c="dark"
+                    style={{
+                      whiteSpace: "nowrap",
+                      padding: "0 6px",
+                      color: "#94a3b8",
 
-
-        <Text
-          size="xs"
-          fw={700}
-          c="dark"
-          style={{
-            whiteSpace: "nowrap",
-            padding: "0 6px",
-            color: "#94a3b8",
-
-            paddingLeft:67
-          }}
-        >
-         <span style={{color:"#133215"}}>( or )</span> 
-        </Text>
-
-  
-      </Box>
-    )}
-  </React.Fragment>
-))}
-
+                      paddingLeft: 67,
+                    }}
+                  >
+                    <span style={{ color: "#133215" }}>( or )</span>
+                  </Text>
+                </Box>
+              )}
+            </React.Fragment>
+          ))}
 
           <Image
             src={mainImage}
@@ -988,30 +983,64 @@ export default function ProductPage() {
             ) : null}
           </Box>
 
-          <Group mt="lg" gap="sm" align="center">
-            <>
-              {/* {selectedSize && productDetails ? ( */}
-              <CartQuantityControl
-                id={productId}
-                title={productDetails.productTitle}
-                price={productDetails.salePrice}
-                image={mainImage || galleryImages?.[0] || ""}
-                size={selectedSize}
-                color={selectedColor}
-                compact={false}
-                category={productDetails.category}
-              />
-              {/* ) : ( */}
-              {/* <Button
-                    fullWidth
-                    disabled
-                    style={{ background: "#ccc", borderRadius: 999 }}
-                  >
-                    Select size & color
-                  </Button>
-                )} */}
-            </>
-          </Group>
+        <Group
+  mt="lg"
+  gap="md"
+  align="center"
+  direction={{ base: "column", md: "row" }}
+  wrap="nowrap"
+  w="100%"
+>
+  {/* Cart Control */}
+  <CartQuantityControl
+    id={productId}
+    title={productDetails.productTitle}
+    price={productDetails.salePrice}
+    image={mainImage || galleryImages?.[0] || ""}
+    size={selectedSize}
+    color={selectedColor}
+    compact={false}
+    category={productDetails.category}
+  />
+
+  {/* Buttons */}
+  <Group
+    gap="sm"
+    direction={{ base: "column", md: "row" }}
+    wrap="nowrap"
+    w={{ base: "100%", md: "auto" }}
+  >
+    <Button
+      variant="outline"
+      fullWidth={{ base: true, md: false }}
+      onClick={() => navigate("/")}
+      styles={{
+        root: {
+          borderColor: LIGHT_GREEN,
+          color: LIGHT_GREEN,
+          "&:hover": {
+            backgroundColor: LIGHT_GREEN,
+            color: "#fff",
+          },
+        },
+      }}
+    >
+      Continue Shopping
+    </Button>
+
+    <Button
+      color="dark"
+      fullWidth={{ base: true, md: false }}
+      onClick={() => navigate("/checkout")}
+      style={{
+        background:DARK_GREEN
+      }}
+    >
+      Go to Cart
+    </Button>
+  </Group>
+</Group>
+
 
           <Button
             variant="subtle"
