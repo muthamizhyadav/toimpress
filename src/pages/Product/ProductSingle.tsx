@@ -983,64 +983,61 @@ export default function ProductPage() {
             ) : null}
           </Box>
 
-        <Group
-  mt="lg"
-  gap="md"
-  align="center"
-  direction={{ base: "column", md: "row" }}
-  wrap="nowrap"
-  w="100%"
->
-  {/* Cart Control */}
-  <CartQuantityControl
-    id={productId}
-    title={productDetails.productTitle}
-    price={productDetails.salePrice}
-    image={mainImage || galleryImages?.[0] || ""}
-    size={selectedSize}
-    color={selectedColor}
-    compact={false}
-    category={productDetails.category}
-  />
+          <Group
+            mt="lg"
+            gap="md"
+            align="stretch"
+            direction={{ base: "column", md: "row" }}
+            w="100%"
+          >
+            {/* Cart Control */}
+            <CartQuantityControl
+              id={productId}
+              title={productDetails.productTitle}
+              price={productDetails.salePrice}
+              image={mainImage || galleryImages?.[0] || ""}
+              size={selectedSize}
+              color={selectedColor}
+              compact={false}
+              category={productDetails.category}
+            />
 
-  {/* Buttons */}
-  <Group
-    gap="sm"
-    direction={{ base: "column", md: "row" }}
-    wrap="nowrap"
-    w={{ base: "100%", md: "auto" }}
-  >
-    <Button
-      variant="outline"
-      fullWidth={{ base: true, md: false }}
-      onClick={() => navigate("/")}
-      styles={{
-        root: {
-          borderColor: LIGHT_GREEN,
-          color: LIGHT_GREEN,
-          "&:hover": {
-            backgroundColor: LIGHT_GREEN,
-            color: "#fff",
-          },
-        },
-      }}
-    >
-      Continue Shopping
-    </Button>
+            {/* Buttons */}
+            <Group
+              gap="sm"
+              direction={{ base: "column", md: "row" }}
+              w={{ base: "100%", md: "auto" }}
+            >
+              <Button
+                variant="outline"
+                fullWidth
+                onClick={() => navigate("/")}
+                styles={{
+                  root: {
+                    borderColor: LIGHT_GREEN,
+                    color: LIGHT_GREEN,
+                    "&:hover": {
+                      backgroundColor: LIGHT_GREEN,
+                      color: "#fff",
+                    },
+                  },
+                }}
+              >
+                Continue Shopping
+              </Button>
 
-    <Button
-      color="dark"
-      fullWidth={{ base: true, md: false }}
-      onClick={() => navigate("/checkout")}
-      style={{
-        background:DARK_GREEN
-      }}
-    >
-      Go to Cart
-    </Button>
-  </Group>
-</Group>
-
+              <Button
+                color="dark"
+                fullWidth
+                onClick={() => navigate("/checkout")}
+                style={{
+                  background: DARK_GREEN,
+                }}
+              >
+                Go to Cart
+              </Button>
+            </Group>
+          </Group>
 
           <Button
             variant="subtle"
