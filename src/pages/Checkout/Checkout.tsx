@@ -934,6 +934,8 @@ export default function Checkout() {
 
         setCreatedOrderId(serverOrderId);
       } catch (orderError: any) {
+
+        
         showApiError(
           "Order Creation Failed",
           orderError.message || "Unable to create order. Please try again."
