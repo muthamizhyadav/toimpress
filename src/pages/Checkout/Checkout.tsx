@@ -46,6 +46,7 @@ import { useAuth } from "../../assets/hooks/useAuth";
 import { useDisclosure } from "@mantine/hooks";
 import LoginOtpModal from "../../components/LoginOtpModal";
 import AddressModal from "../../components/shared/AddressModal";
+import { trackPixel } from "../../utils/metaPixel";
 
 const normalizeColor = (c?: string) =>
   (c ?? "").toString().trim().toLowerCase();
@@ -256,7 +257,7 @@ export default function Checkout() {
   const [paymentInProgress, setPaymentInProgress] = useState(false);
   const [recoveringPayment, setRecoveringPayment] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"RAZORPAY" | "COD">(
-    "RAZORPAY"
+    "RAZORPAY",
   );
   const { isAuthenticated } = useAuth();
   const [addressModalOpen, setAddressModalOpen] = useState(false);
@@ -308,19 +309,19 @@ export default function Checkout() {
   }, []);
 
   const reduxUser = useSelector(
-    (state: any) => state.auth?.user ?? state.user?.user ?? null
+    (state: any) => state.auth?.user ?? state.user?.user ?? null,
   );
   const reduxAddress = useSelector(
     (state: any) =>
       state.auth?.userAddress ??
       state.user?.user?.address ??
       state.address ??
-      null
+      null,
   );
 
   // ✅ Cart items come from Redux only
   const reduxCartItems = useSelector(
-    (state: any) => state.cart?.items ?? []
+    (state: any) => state.cart?.items ?? [],
   ) as CartItem[];
 
   const items = reduxCartItems;
@@ -339,7 +340,7 @@ export default function Checkout() {
   const getCouponDetails = async (data: any) => {
     const resp = await axiosInstance.post(
       "coupons/by-product-and-amount",
-      data
+      data,
     );
     if (resp.data) {
       console.log(resp.data, "finalResult");
@@ -369,8 +370,8 @@ export default function Checkout() {
         acc[item.category].total += item.price * item.qty;
 
         return acc;
-      }, {})
-    );    
+      }, {}),
+    );
 
     getCouponDetails(grouped);
   }, [items, savedScheme]);
@@ -464,10 +465,10 @@ export default function Checkout() {
         const parsed = {
           ...root,
           totalSalesPrice: Number(
-            root.totalSalesPrice ?? root.total_sales_price ?? 0
+            root.totalSalesPrice ?? root.total_sales_price ?? 0,
           ),
           minusValue: Number(
-            root.minusValue ?? root.minus_value ?? root.discountAmount ?? 0
+            root.minusValue ?? root.minus_value ?? root.discountAmount ?? 0,
           ),
           finalAmount: Number(root.finalAmount ?? root.final_amount ?? 0),
           gst: Math.round(Number(root.gst ?? 0)),
@@ -492,10 +493,10 @@ export default function Checkout() {
         const parsed = {
           ...s,
           totalSalesPrice: Number(
-            s.totalSalesPrice ?? s.total_sales_price ?? 0
+            s.totalSalesPrice ?? s.total_sales_price ?? 0,
           ),
           minusValue: Number(
-            s.minusValue ?? s.minus_value ?? s.discountAmount ?? 0
+            s.minusValue ?? s.minus_value ?? s.discountAmount ?? 0,
           ),
           finalAmount: Number(s.finalAmount ?? s.final_amount ?? 0),
           gst: Math.round(Number(s.gst ?? 0)),
@@ -540,7 +541,7 @@ export default function Checkout() {
             size: line.size ?? "",
             selectedColor: normalizeColor(line.color ?? ""),
             // silent: true,
-          }) as any
+          }) as any,
         );
       } else {
         dispatch(
@@ -549,7 +550,7 @@ export default function Checkout() {
             size: line.size ?? "",
             selectedColor: normalizeColor(line.color ?? ""),
             qty: newQuantity,
-          }) as any
+          }) as any,
         );
       }
 
@@ -619,8 +620,8 @@ export default function Checkout() {
             quantity: 0,
             selectedSize: it.size,
             selectedColor: it.color,
-          })
-        )
+          }),
+        ),
       );
 
       try {
@@ -736,7 +737,7 @@ export default function Checkout() {
   const totals = useMemo(() => {
     const localSubtotal = items.reduce(
       (sum, i) => sum + (i.salePrice ?? i.price ?? 0) * (i.qty ?? 1),
-      0
+      0,
     );
 
     // If scheme discount is active → use scheme values
@@ -771,10 +772,10 @@ export default function Checkout() {
       typeof savedScheme.isDiscountApplicable !== "undefined"
     ) {
       const threshold = Number(
-        savedScheme.couponAmount ?? savedScheme.totalSalesPrice ?? 0
+        savedScheme.couponAmount ?? savedScheme.totalSalesPrice ?? 0,
       );
       const discountPercent = Number(
-        savedScheme.discountvalue ?? savedScheme.couponOfferDiscount ?? 0
+        savedScheme.discountvalue ?? savedScheme.couponOfferDiscount ?? 0,
       );
       const applied = Boolean(savedScheme.isDiscountApplicable);
       if (threshold > 0 && discountPercent > 0)
@@ -785,10 +786,10 @@ export default function Checkout() {
     for (const it of items) {
       const raw = it.raw ?? {};
       const threshold = Number(
-        raw.couponDiscount ?? raw.couponAmount ?? raw.coupon_threshold ?? 0
+        raw.couponDiscount ?? raw.couponAmount ?? raw.coupon_threshold ?? 0,
       );
       const discountPercent = Number(
-        raw.couponOfferDiscount ?? raw.discountvalue ?? raw.couponPercent ?? 0
+        raw.couponOfferDiscount ?? raw.discountvalue ?? raw.couponPercent ?? 0,
       );
       const applied = Boolean(raw.isDiscountApplicable ?? false);
       if (threshold > 0 && discountPercent > 0) {
@@ -889,7 +890,7 @@ export default function Checkout() {
       throw new Error(
         error?.response?.data?.message ??
           error?.message ??
-          "Failed to create order. Please try again."
+          "Failed to create order. Please try again.",
       );
     }
   }
@@ -934,11 +935,9 @@ export default function Checkout() {
 
         setCreatedOrderId(serverOrderId);
       } catch (orderError: any) {
-
-        
         showApiError(
           "Order Creation Failed",
-          orderError.message || "Unable to create order. Please try again."
+          orderError.message || "Unable to create order. Please try again.",
         );
         return { success: false };
       }
@@ -955,7 +954,7 @@ export default function Checkout() {
       } catch (shipmentError: any) {
         showApiError(
           "Shipment Creation Failed",
-          "Something went wrong while creating your shipment. Don't worry, please try again in a moment."
+          "Something went wrong while creating your shipment. Don't worry, please try again in a moment.",
         );
         return { success: false };
       }
@@ -978,7 +977,7 @@ export default function Checkout() {
       console.error("API validation failed:", error);
       showApiError(
         "System Error",
-        "Unable to process your order. Please try again later."
+        "Unable to process your order. Please try again later.",
       );
       return { success: false };
     }
@@ -1020,7 +1019,7 @@ export default function Checkout() {
       const localOrderId = apiValidation.orderId;
       const amountToCollect = Math.max(
         0,
-        Math.round(savedScheme?.finalAmount ?? totals.grandTotal)
+        Math.round(savedScheme?.finalAmount ?? totals.grandTotal),
       );
       const amountPaise = (totals.subtotal - offerAmount) * 100;
 
@@ -1070,7 +1069,7 @@ export default function Checkout() {
       };
       localStorage.setItem(
         "pendingRazorpayPayment",
-        JSON.stringify(paymentSession)
+        JSON.stringify(paymentSession),
       );
 
       await loadRazorpay();
@@ -1125,7 +1124,7 @@ export default function Checkout() {
           paymentSession.localOrderId = localOrderId;
           localStorage.setItem(
             "pendingRazorpayPayment",
-            JSON.stringify(paymentSession)
+            JSON.stringify(paymentSession),
           );
           localStorage.setItem("paymentProcessing", "true");
 
@@ -1168,7 +1167,7 @@ export default function Checkout() {
 
       showApiError(
         "Payment Error",
-        "Unable to start payment. Please try again."
+        "Unable to start payment. Please try again.",
       );
     } finally {
       setPayLoading(false);
@@ -1177,7 +1176,7 @@ export default function Checkout() {
 
   const processPaymentBackground = async (
     response: any,
-    paymentSession: any
+    paymentSession: any,
   ) => {
     try {
       console.log("Processing payment in background...");
@@ -1245,11 +1244,19 @@ export default function Checkout() {
     }
   };
 
-  // Similar validation for COD flow
   const onPlaceCOD = async () => {
     if (!ensureAuthAndAddress()) return;
-    console.log("COD selected");
-
+    trackPixel("InitiateCheckout", {
+      content_ids: items.map((item) => item.id),
+      contents: items.map((item) => ({
+        id: item.id,
+        quantity: item.qty,
+        item_price: item.price,
+      })),
+      value: totals.grandTotal,
+      currency: "INR",
+      num_items: items.length,
+    });
     setPayLoading(true);
     try {
       if (!items?.length) {
@@ -1262,14 +1269,12 @@ export default function Checkout() {
         return;
       }
 
-      // ✅ STEP 1: Validate APIs before COD token payment
       const apiValidation = await validateOrderApis();
       if (!apiValidation.success) {
         setPayLoading(false);
-        return; // Stop here if API validation fails
+        return;
       }
 
-      // ✅ Get the orderId from validation
       const localOrderId = apiValidation.orderId;
       console.log("Using orderId for COD:", localOrderId);
 
@@ -1282,9 +1287,7 @@ export default function Checkout() {
       const tokenToCollect = COD_TOKEN;
       const remainingAmount = Math.max(0, orderTotal - tokenToCollect);
 
-      // If no token, create order directly
       if (tokenToCollect <= 0) {
-        // Order already created in validation step, just update status
         try {
           await createOrderHistory({
             items,
@@ -1295,7 +1298,6 @@ export default function Checkout() {
             shippingCost: COD_SHIPPING,
             tax: totals.gst,
             discount: totals.totalDiscounts,
-            // ✅ Use the localOrderId from validation
             localOrderId: localOrderId,
             meta: {
               immediateCOD: true,
@@ -1317,6 +1319,16 @@ export default function Checkout() {
           message: `Delivery agent will collect ₹${orderTotal}`,
           color: "green",
           icon: <IconCheck size={16} />,
+        });
+        trackPixel("Purchase", {
+          content_ids: items.map((item) => item.id),
+          contents: items.map((item) => ({
+            id: item.id,
+            quantity: item.qty,
+            item_price: item.price,
+          })),
+          value: orderTotal,
+          currency: "INR",
         });
         navigate("/order-success", {
           state: { order: { paymentMethod: "cod" } },
@@ -1388,7 +1400,7 @@ export default function Checkout() {
             const { data: verify } = await axiosInstance.post(VERIFY_URL, resp);
             if (!verify?.valid) {
               alert(
-                "Token payment verification failed. Please contact support."
+                "Token payment verification failed. Please contact support.",
               );
               return;
             }
@@ -1421,6 +1433,16 @@ export default function Checkout() {
             }
 
             await handleClearCart();
+            trackPixel("Purchase", {
+              content_ids: items.map((item) => item.id),
+              contents: items.map((item) => ({
+                id: item.id,
+                quantity: item.qty,
+                item_price: item.price,
+              })),
+              value: tokenToCollect,
+              currency: "INR",
+            });
             showNotification({
               title: "COD placed",
               message: `Token ₹${tokenToCollect} paid. Remaining ₹${remainingAmount} on delivery.`,
@@ -1438,7 +1460,7 @@ export default function Checkout() {
           } catch (e) {
             console.error("Verification failed:", e);
             alert(
-              "Token payment succeeded but verification failed. Please contact support."
+              "Token payment succeeded but verification failed. Please contact support.",
             );
           }
         },
@@ -1447,7 +1469,7 @@ export default function Checkout() {
       rzp.on("payment.failed", (e: any) => {
         console.error("Razorpay COD token failed:", e?.error);
         alert(
-          e?.error?.description || "Token payment failed. Please try again."
+          e?.error?.description || "Token payment failed. Please try again.",
         );
       });
 
@@ -1505,7 +1527,7 @@ export default function Checkout() {
                 razorpay_order_id: paymentData.orderId,
                 razorpay_signature: paymentData.signature,
               },
-              paymentData
+              paymentData,
             );
           }
         }
@@ -1997,7 +2019,7 @@ export default function Checkout() {
                       {Math.round(
                         totals.subtotal +
                           (paymentMethod === "COD" ? COD_SHIPPING : 0) -
-                          offerAmount
+                          offerAmount,
                       )}
                     </Text>
                     <Text size="xs" c="dimmed">

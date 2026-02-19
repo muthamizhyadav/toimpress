@@ -127,7 +127,7 @@ export default function ProductPage() {
     const fetchData = async () => {
       try {
         const resp = await axiosInstance.get(
-          `${GET_PRODUCTS_DETAILS}${productId}`
+          `${GET_PRODUCTS_DETAILS}${productId}`,
         );
         const detail = resp?.data?.product;
         const sims = resp?.data?.similerProducts || resp?.data?.similarProducts;
@@ -193,7 +193,7 @@ export default function ProductPage() {
       (c) =>
         c.isActive &&
         (c.products?.includes(productId) ||
-          c.category === productDetails?.category)
+          c.category === productDetails?.category),
     );
   }, [coupon, productId, productDetails?.category]);
 
@@ -259,11 +259,26 @@ export default function ProductPage() {
     });
   }, [selectedColor, productDetails?.colorData]);
 
+  useEffect(() => {
+    console.log(productDetails, "productDetails");
+    if (productDetails) {
+      if (window.fbq) {
+        window.fbq("track", "ViewContent", {
+          content_ids: [productDetails._id],
+          content_name: productDetails.productTitle,
+          content_type: "product",
+          value: productDetails.salePrice,
+          currency: "INR",
+        });
+      }
+    }
+  }, [productDetails]);
+
   const colorDataMap: Record<string, any> | undefined =
     productDetails?.colorData;
   const colorsInput: string[] = colorDataMap
     ? Object.keys(colorDataMap)
-    : productDetails?.selectedColors ?? [];
+    : (productDetails?.selectedColors ?? []);
   const sizesInput: string[] = productDetails?.selectedSizes ?? [];
   const imagesInput: string[] = productDetails?.images ?? [];
   const priceInput: number | undefined = productDetails?.price;
@@ -319,7 +334,7 @@ export default function ProductPage() {
 
   const getSizesForColor = (
     color: string,
-    prod: any = productDetails
+    prod: any = productDetails,
   ): string[] => {
     const sizesFlat: string[] = prod?.selectedSizes ?? [];
     if (!color) return sizesFlat;
@@ -354,7 +369,7 @@ export default function ProductPage() {
 
     if (Array.isArray(mapCandidate)) {
       const found = (mapCandidate as any[]).find(
-        (m) => String(m.color).toLowerCase() === String(color).toLowerCase()
+        (m) => String(m.color).toLowerCase() === String(color).toLowerCase(),
       );
       if (found) {
         const xs = found.sizes ?? found.selectedSizes ?? found.availableSizes;
@@ -364,7 +379,8 @@ export default function ProductPage() {
 
     if (Array.isArray(prod?.colors)) {
       const c = prod?.colors.find(
-        (c: any) => String(c.name).toLowerCase() === String(color).toLowerCase()
+        (c: any) =>
+          String(c.name).toLowerCase() === String(color).toLowerCase(),
       );
       if (c && Array.isArray(c.sizes)) return c.sizes;
     }
@@ -374,16 +390,16 @@ export default function ProductPage() {
 
   const availableSizesForSelectedColor = getSizesForColor(
     selectedColor,
-    productDetails
+    productDetails,
   );
   const availableSizesSet = useMemo(
     () =>
       new Set(
         (availableSizesForSelectedColor || []).map((s: string) =>
-          String(s).toUpperCase()
-        )
+          String(s).toUpperCase(),
+        ),
       ),
-    [availableSizesForSelectedColor]
+    [availableSizesForSelectedColor],
   );
 
   if (!productDetails) return null;
@@ -397,7 +413,7 @@ export default function ProductPage() {
     (it: any) =>
       String(it.id) === String(productId) &&
       (it.size ?? "") === (selectedSize || "") &&
-      (it.color ?? "") === (selectedColor || "")
+      (it.color ?? "") === (selectedColor || ""),
   );
   const currentQty: number = currentCartItem?.qty ?? 0;
 
@@ -409,7 +425,7 @@ export default function ProductPage() {
   const makeCartPayload = (sizeLabel?: string, qty = 1) => ({
     productId: productId as string,
     quantity: qty,
-    selectedSize: requiresSize ? sizeLabel ?? selectedSize : undefined,
+    selectedSize: requiresSize ? (sizeLabel ?? selectedSize) : undefined,
     selectedColor: requiresColor ? selectedColor : undefined,
   });
 
@@ -423,7 +439,7 @@ export default function ProductPage() {
   const getExistingQtyForVariant = (
     pid: string | number,
     size?: string | undefined,
-    color?: string | undefined
+    color?: string | undefined,
   ) => {
     if (!pid) return 0;
     const found = cartItems.find((it: any) => {
@@ -507,7 +523,7 @@ export default function ProductPage() {
     newQuantity: number,
     size?: string | undefined,
     color?: string | undefined,
-    mapKey = String(pid)
+    mapKey = String(pid),
   ) => {
     try {
       setAdding(mapKey, true);
@@ -532,7 +548,7 @@ export default function ProductPage() {
               id: String(pid),
               size,
               color,
-            })
+            }),
           );
         } catch (e) {
           // ignore
@@ -806,7 +822,7 @@ export default function ProductPage() {
               <Box
                 key={`all-colors-${idx}`}
                 onClick={() => {
-                  setMainImage(img), onColorSelectByImage(img);
+                  (setMainImage(img), onColorSelectByImage(img));
                 }}
                 style={{
                   cursor: "pointer",
@@ -936,13 +952,13 @@ export default function ProductPage() {
                       // if band === 0 we keep the cup label as-is (S, M, L, 28, 30)
                       opt.band === 0
                         ? opt.cups.map((cup) => cup)
-                        : opt.cups.map((cup) => `${opt.band}${cup}`)
+                        : opt.cups.map((cup) => `${opt.band}${cup}`),
                     )
                     .filter((label) =>
                       // normalize check against availableSizesSet (availableSizesSet contains uppercase labels)
                       availableSizesSet.size
                         ? availableSizesSet.has(String(label).toUpperCase())
-                        : true
+                        : true,
                     )
                     .map((label) => {
                       const active =
@@ -1128,7 +1144,7 @@ export default function ProductPage() {
                     <li key={idx}>
                       <Text size="sm">{attr}</Text>
                     </li>
-                  )
+                  ),
                 )}
               </ul>
             ) : (

@@ -9,6 +9,7 @@ import {
 } from "../../redux/slices/cartSlice";
 import axiosInstance from "../../api/axiosInstance";
 import { PAGEIMPRESSIONS } from "../../api/api";
+import { trackPixel } from "../../utils/metaPixel";
 
 const normalize = (v?: string | number) =>
   v ? v.toString().trim().toLowerCase() : "";
@@ -68,14 +69,43 @@ export default function CartQuantityControl({
       
     }
   }
+const handleAdd = async () => {
+  setLoading(true);
 
-  const handleAdd = async () => {
-    setLoading(true);
-    dispatch(addToCart({ id, title, price, image, size, color, qty: 1, category }));
-    await delay();
-    await pageLogCreation();
-    setLoading(false);
-  };
+  trackPixel("AddToCart", {
+    content_ids: [id],
+    content_name: title,
+    content_type: "product",
+    value: price,
+    currency: "INR",
+    contents: [
+      {
+        id: id,
+        quantity: 1,
+        item_price: price,
+      },
+    ],
+  });
+
+  // 🛒 Redux cart logic
+  dispatch(
+    addToCart({
+      id,
+      title,
+      price,
+      image,
+      size,
+      color,
+      qty: 1,
+      category,
+    })
+  );
+
+  await delay();
+  await pageLogCreation();
+
+  setLoading(false);
+};
 
   const handlePlus = async () => {
     setLoading(true);
