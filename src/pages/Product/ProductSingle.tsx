@@ -452,72 +452,6 @@ export default function ProductPage() {
     });
     return Number(found?.qty ?? 0);
   };
-
-  // const addToCartApi = async (
-  //   payload: {
-  //     productId: string;
-  //     quantity: number;
-  //     selectedSize?: string;
-  //     selectedColor?: string;
-  //   },
-  //   reduxPayload?: any,
-  //   mapKey = "current"
-  // ) => {
-  //   try {
-  //     setAdding(mapKey, true);
-  //       const reduxItem = reduxPayload ?? {
-  //         id: payload.productId,
-  //         productId: payload.productId,
-  //         imageUrl: mainImage || galleryImages?.[0] || imagesInput?.[0] || "",
-  //         title: titleInput,
-  //         productName: titleInput,
-  //         price: salePriceInput ?? priceInput,
-  //         originalPrice: priceInput,
-  //         rating: 0,
-  //         qty: payload.quantity,
-  //         size: payload.selectedSize,
-  //         color: payload.selectedColor,
-  //         category:productDetails.category,
-  //         silent: true,
-  //       };
-
-  //       dispatch(addToCart(reduxItem));
-
-  //       showNotification({
-  //         title: "Added to cart",
-  //         message: "Item added to cart",
-  //         color: "green",
-  //         icon: <IconCheck size={16} />,
-  //       });
-  //   } catch (err: any) {
-  //     console.error("Add to cart API error:", err);
-
-  //     const status = err?.response?.status;
-  //     const apiMessage =
-  //       err?.response?.data?.message ?? err?.message ?? "Unable to add to cart";
-
-  //     if (status === 401 || status === 403) {
-  //       showNotification({
-  //         title: "Please login",
-  //         message: "You need to login to add items to cart.",
-  //         color: "blue",
-  //         icon: <IconX size={16} />,
-  //         autoClose: 3000,
-  //       });
-  //       navigate("/account");
-  //     } else {
-  //       showNotification({
-  //         title: "Add failed",
-  //         message: apiMessage,
-  //         color: "red",
-  //         icon: <IconX size={16} />,
-  //       });
-  //     }
-  //   } finally {
-  //     setAdding(mapKey, false);
-  //   }
-  // };
-
   const updateLineQuantity = async (
     pid: string | number,
     newQuantity: number,
@@ -1212,10 +1146,10 @@ export default function ProductPage() {
                         loading={!!addingMap[pid]}
                         styles={(theme) => ({
                           root: {
-                            backgroundColor: "#92b775", // main green from root palette
+                            backgroundColor: "#92b775",
                             color: theme.white,
                             "&:hover": {
-                              backgroundColor: theme.colors.green[9], // darker shade on hover
+                              backgroundColor: theme.colors.green[9],
                             },
                           },
                         })}
@@ -1249,48 +1183,93 @@ export default function ProductPage() {
         withCloseButton={false}
         padding="md"
         position={isMobile ? "bottom" : "right"}
-        size={isMobile ? "60%" : 420}
+        size={isMobile ? "100%" : 420}
         overlayOpacity={0.45}
         lockScroll
         title={
-          <Group position="apart" align="center" style={{ width: "100%" }}>
+          <Group
+            position="apart"
+            align="center"
+            style={{ width: "100%", height: "100%" }}
+          >
             <Text fw={700}>QUICK CONTACT : +91 70104 47947</Text>
             <CloseButton onClick={() => setOpenReturnPolicy(false)} />
           </Group>
         }
       >
         <ScrollArea
-          style={{ height: isMobile ? "100%" : 520, paddingRight: 8 }}
+          style={{ height:"100%", paddingRight: 8 }}
         >
           <Stack spacing="md">
-            <Title order={5}>15 DAYS Exchange</Title>
+            <Title order={5}>Return / Exchange Period</Title>
 
             <Stack spacing="sm">
               <Text>
-                1. Product(s) can be exchanged if faulty/damaged or any size
-                issue.
+                1.Return or exchange requests must be made within 15 working
+                days from the date of delivery.
+              </Text>
+
+              <Title order={5}>Exchange Policy</Title>
+
+              <Text>
+                1.⁠Products can be exchanged only in case of size issues or
+                manufacturing defects.
               </Text>
 
               <Text>
-                2. Due to the intimate nature and hygienic standards of certain
-                items, we regret that it is not possible for us to accept
-                returns on Briefs, Panties, Cami Bras and some of the
-                accessories.
+                2.⁠Exchanges are allowed only for the same product in a
+                different size, subject to stock availability.
               </Text>
 
               <Text>
-                3. Exchange / Return request must be made within 15 working days
-                from the date of product delivery.
+                3.⁠Products cannot be exchanged for a different product from our
+                website.
               </Text>
 
               <Text>
-                4. In the interests of hygiene, we may refuse returns where it's
-                obvious that the item has been worn, washed or soiled.
+                4.⁠Exchange shipping charges must be borne by the customer.
+              </Text>
+              <Text>
+                4.⁠If the exchange is due to our mistake (wrong product /
+                defective item), shipping charges will be covered by us.
+              </Text>
+              <Title order={5}>Return Policy</Title>
+
+              <Text>
+                1. ⁠Returns are accepted only for damaged, defective, dirty, or
+                missing items.
+              </Text>
+              <Text>
+                2.⁠An unboxing video is mandatory to claim damage or missing
+                pieces.
               </Text>
 
               <Text>
-                5. If you need your product(s) to be exchanged / Returned, Go To
-                My Orders Section
+                3. ⁠Due to hygiene reasons, we do not accept returns on briefs,
+                panties, and certain accessories.
+              </Text>
+
+              <Text>
+                4.⁠ ⁠In the interest of hygiene, we reserve the right to refuse
+                returns if the item appears to have been worn, washed, or
+                soiled.
+              </Text>
+
+              <Title order={5}>Reverse Pickup</Title>
+
+              <Text>
+                1. ⁠We provide a reverse pick-up facility for most serviceable
+                PIN codes.
+              </Text>
+
+              <Text>
+                2.For non-serviceable PIN codes, customers must self-ship the
+                product to our return address.
+              </Text>
+
+              <Text>
+                For any return or exchange request, customers must contact our
+                customer support team with their Order ID and relevant details.
               </Text>
             </Stack>
 
