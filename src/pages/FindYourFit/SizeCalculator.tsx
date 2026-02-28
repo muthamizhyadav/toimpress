@@ -1,4 +1,3 @@
-// src/components/SizeCalculator.tsx
 import {
   Box,
   Text,
@@ -17,25 +16,22 @@ import { useMemo, useState } from "react";
 import { useMediaQuery } from "@mantine/hooks";
 import BodySize from "../../assets/svg/BodySize.svg";
 
-// ---------------- BRA SIZE LOGIC ----------------
 type CupLetter = "A" | "B" | "C" | "D" | "E" | "F";
 type BandCol = {
   band: 28 | 30 | 32 | 34 | 36 | 38 | 40 | 42 | 44;
-  underBust: [number, number]; // cm
-  overBustByCup: Record<CupLetter, [number, number]>; // cm
+  underBust: [number, number];
+  overBustByCup: Record<CupLetter, [number, number]>;
 };
 
-// small epsilon tolerance to avoid edge mismatches (in cm)
 const EPS_CM = 0.05;
 const inRangeCm = (vCm: number, [lo, hi]: [number, number]) => vCm + EPS_CM >= lo && vCm - EPS_CM <= hi;
 const inchToCm = (inch: number) => +(inch * 2.54).toFixed(1);
 const cmToIn = (cm: number) => +((cm / 2.54)).toFixed(1);
 
-// ---------------- BRA SIZE TABLE (INCH) - matches provided image ----------------
 type BandColInch = {
   band: 28 | 30 | 32 | 34 | 36 | 38 | 40 | 42 | 44;
-  underBustIn: [number, number]; // inches
-  overBustByCupIn: Record<CupLetter, [number, number]>; // inches
+  underBustIn: [number, number];
+  overBustByCupIn: Record<CupLetter, [number, number]>; 
 };
 
 const BAND_TABLE_INCH: BandColInch[] = [
@@ -140,8 +136,6 @@ export default function SizeCalculator({ onSend }: { onSend?: (payload: SendPayl
     return `75–149 cm`;
   }, [unit]);
 
-  // compute bra result:
- // compute bra result:
 const braResult = useMemo(() => {
   if (underBust == null || overBust == null) return null;
 
@@ -149,10 +143,8 @@ const braResult = useMemo(() => {
     const underIn = underBust;
     const overIn = overBust;
 
-    // find band matching under-bust
     let bandCol = BAND_TABLE_INCH.find((b) => inRangeIn(underIn, b.underBustIn));
 
-    // fallback handling: if below smallest, default to 28A; if above largest, use last band
     const smallestBand = BAND_TABLE_INCH[0];
     const largestBand = BAND_TABLE_INCH[BAND_TABLE_INCH.length - 1];
     if (!bandCol) {
@@ -173,7 +165,6 @@ const braResult = useMemo(() => {
         inRangeIn(overIn, bandCol!.overBustByCupIn[c])
       ) ?? null;
 
-    // ✅ if cup can't be determined, default to A (never return bare band)
     if (!cup) {
       return {
         label: `${bandCol.band}A`,
@@ -184,7 +175,6 @@ const braResult = useMemo(() => {
     return { label: `${bandCol.band}${cup}`, note: null as string | null };
   }
 
-  // CM mode
   const underCm = underBust;
   const overCm = overBust;
 
@@ -196,7 +186,6 @@ const braResult = useMemo(() => {
       inRangeCm(overCm, bandCol.overBustByCup[c])
     ) ?? null;
 
-  // ✅ default to A cup when cup not found (never return bare band)
   if (!cup) {
     return {
       label: `${bandCol.band}A`,
@@ -208,7 +197,6 @@ const braResult = useMemo(() => {
 }, [underBust, overBust, unit]);
 
 
-  // panty result:
   const pantyResult = useMemo(() => {
     if (hip == null) return null;
     if (unit === "inch") {

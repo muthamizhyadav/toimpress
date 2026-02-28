@@ -1320,18 +1320,18 @@ export default function Checkout() {
           color: "green",
           icon: <IconCheck size={16} />,
         });
-        trackPixel("Purchase", {
-          content_ids: items.map((item) => item.id),
-          contents: items.map((item) => ({
-            id: item.id,
-            quantity: item.qty,
-            item_price: item.price,
-          })),
-          value: orderTotal,
-          currency: "INR",
-        });
+        // trackPixel("Purchase", {
+        //   content_ids: items.map((item) => item.id),
+        //   contents: items.map((item) => ({
+        //     id: item.id,
+        //     quantity: item.qty,
+        //     item_price: item.price,
+        //   })),
+        //   value: orderTotal,
+        //   currency: "INR",
+        // });
         navigate("/order-success", {
-          state: { order: { paymentMethod: "cod" } },
+          state: { order: { paymentMethod: "cod" }, details:{items:items,orderTotal:orderTotal}  },
         });
         return;
       }
@@ -1433,16 +1433,16 @@ export default function Checkout() {
             }
 
             await handleClearCart();
-            trackPixel("Purchase", {
-              content_ids: items.map((item) => item.id),
-              contents: items.map((item) => ({
-                id: item.id,
-                quantity: item.qty,
-                item_price: item.price,
-              })),
-              value: tokenToCollect,
-              currency: "INR",
-            });
+            // trackPixel("Purchase", {
+            //   content_ids: items.map((item) => item.id),
+            //   contents: items.map((item) => ({
+            //     id: item.id,
+            //     quantity: item.qty,
+            //     item_price: item.price,
+            //   })),
+            //   value: tokenToCollect,
+            //   currency: "INR",
+            // });
             showNotification({
               title: "COD placed",
               message: `Token ₹${tokenToCollect} paid. Remaining ₹${remainingAmount} on delivery.`,
