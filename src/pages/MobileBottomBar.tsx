@@ -1,12 +1,12 @@
 import React from "react";
-import { Box, Text } from "@mantine/core";
+import { Box, Text, rem, useMantineTheme } from "@mantine/core";
 import {
   IconHome,
   IconUser,
   IconCalculator,
   IconCube
 } from "@tabler/icons-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 // Define the props interface for NavLinkItem
 interface NavLinkItemProps {
@@ -14,14 +14,26 @@ interface NavLinkItemProps {
   label: string;
   path: string;
   onClick: (path: string) => void;
+  active?: boolean;
 }
 
 const MobileBottomNavbar: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const handleNavigation = (path: string) => {
-    navigate(path);
-  };
+  const handleNavigation = (path: string) => navigate(path);
+
+ const isActive = (path: string) => {
+  if (path === "/") {
+    return (
+      location.pathname === "/" ||
+      location.pathname.startsWith("/product") ||
+      location.pathname.startsWith("/category")
+    );
+  }
+  return location.pathname.startsWith(path);
+};
+
 
   return (
     <Box
@@ -39,6 +51,7 @@ const MobileBottomNavbar: React.FC = () => {
         left: 0,
         right: 0,
         zIndex: 1000,
+        paddingBottom: "calc(env(safe-area-inset-bottom, 0px))",
       }}
     >
       <NavLinkItem
@@ -46,49 +59,66 @@ const MobileBottomNavbar: React.FC = () => {
         label="Home"
         path="/"
         onClick={handleNavigation}
+        active={isActive("/")}
       />
       <NavLinkItem
         icon={<IconCube size={22} />}
         label="Orders"
         path="/orders"
         onClick={handleNavigation}
+        active={isActive("/orders")}
       />
       <NavLinkItem
         icon={<IconCalculator size={22} />}
         label="Find your fit"
         path="/fit"
         onClick={handleNavigation}
+        active={isActive("/fit")}
       />
       <NavLinkItem
         icon={<IconUser size={22} />}
         label="Account"
         path="/account"
         onClick={handleNavigation}
+        active={isActive("/account")}
       />
     </Box>
   );
 };
 
 // Helper component for each navigation item
-const NavLinkItem: React.FC<NavLinkItemProps> = ({ icon, label, path, onClick }) => {
+const NavLinkItem: React.FC<NavLinkItemProps> = ({ icon, label, path, onClick, active }) => {
+  const theme = useMantineTheme();
+
+  const activeBg = theme.colors.green?.[0] ?? "#f0fff0";
+  const activeColor = theme.colors.green?.[9] ?? "#0f2a12";
+  const inactiveColor = "#006400";
+
   return (
-    <div
+    <button
       onClick={() => onClick(path)}
+      aria-current={active ? "page" : undefined}
       style={{
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         textDecoration: "none",
-        padding: "5px",
-        color: "#006400", // dark green
+        padding: rem(6),
         cursor: "pointer",
+        border: 0,
+        background: active ? activeBg : "transparent",
+        borderRadius: rem(8),
+        transition: "background-color 250ms ease, color 120ms ease",
+        color: active ? activeColor : inactiveColor,
       }}
     >
-      <Box mb={2}>{icon}</Box>
-      <Text fz="xs" style={{ whiteSpace: "nowrap" }}>
+      <Box mb={2} style={{ lineHeight: 0, color: active ? activeColor : inactiveColor }}>
+        {icon}
+      </Box>
+      <Text fz="xs" style={{ whiteSpace: "nowrap", color: active ? activeColor : inactiveColor }}>
         {label}
       </Text>
-    </div>
+    </button>
   );
 };
 

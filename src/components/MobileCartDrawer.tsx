@@ -239,6 +239,7 @@ export function MobileCartDrawer() {
         productId: String(item.id),
         quantity: 0,
         selectedSize: item.size,
+        selectedColor: item.color
       };
 
       const resp = await axiosInstance.post(API_CART, body, {

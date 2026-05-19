@@ -26,6 +26,9 @@ import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { UPDATE_PROFILE } from "../api/api";
 import { persistor } from "../redux/store"; // used to purge persisted store
+import { clearCart } from "../redux/features/cartSlice";
+import { useNavigate } from "react-router-dom";
+
 
 type Address = {
   id: number;
@@ -65,6 +68,7 @@ axiosInstance.interceptors.request.use(
 
 export default function ProfileCard() {
   const isMobile = useMediaQuery("(max-width: 768px)");
+  const navigate = useNavigate()
 
   const { user, userAddress } = useSelector((state: RootState) => {
     const storeUser = state.auth.user as any;
@@ -248,6 +252,9 @@ export default function ProfileCard() {
         setDisplayEmail(addressForStore.email || "No email available");
         setForm(addressForStore);
         setModalOpen(false);
+        window.location.reload()
+        navigate('/')
+
       } else {
         const msg = (response && (response as any).data?.message) || "Failed to save address. Please try again.";
         setErrors({ ...errors, general: msg });
@@ -333,21 +340,33 @@ export default function ProfileCard() {
   }, [fetchAddress]);
 
   const handleLogout = async () => {
-    dispatch(logout());
+  // 1) Clear auth and cart state in Redux
+  dispatch(logout());
+  dispatch(clearCart());
+
+  // 2) Purge persisted store (fallback: remove the persisted root)
+  try {
+    await persistor.purge();
+  } catch (e:any) {
     try {
-      await persistor.purge();
-    } catch (e) {
-      try {
-        localStorage.removeItem("persist:root");
-      } catch {}
-    }
-    try {
-      localStorage.removeItem("user");
-      localStorage.removeItem("token");
-      localStorage.removeItem("refreshToken");
-      localStorage.removeItem("userAddress");
+      localStorage.removeItem("persist:root");
     } catch {}
-  };
+  }
+
+  // 3) Remove tokens/user/address + any cart keys you use locally
+  try {
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("userAddress");
+
+    // common cart keys (keep ones that apply in your app)
+    localStorage.removeItem("cart");
+    localStorage.removeItem("cartItems");
+    localStorage.removeItem("cart_count");
+  } catch {}
+};
+
 
   return (
     <>
@@ -367,9 +386,9 @@ export default function ProfileCard() {
               </Text>
 
               <Group spacing="xs">
-                <Button size="xs" color="gray" leftSection={<IconRefresh size={14} />} onClick={fetchAddress} loading={loadingAddress}>
+                {/* <Button size="xs" color="gray" leftSection={<IconRefresh size={14} />} onClick={fetchAddress} loading={loadingAddress}>
                   Refresh
-                </Button>
+                </Button> */}
 
                 <Button size="xs" color="red" leftSection={<IconLogout size={14} />} onClick={handleLogout}>
                   Logout

@@ -1,39 +1,38 @@
 import axios from "axios";
 import { API_URL } from "./api";
-
-// Step-1: Create a new Axios instance with a custom config.
-// The timeout is set to 10s. If the request takes longer than
-// that, the request will be aborted.
+import { store } from "../redux/store";
+import { logout } from "../redux/features/authSlice";
 
 const axiosInstance = axios.create({
   baseURL: API_URL,
-  timeout: 10000, // 10 seconds timeout
+  timeout: 10000,
 });
 
-// Step-2: Create request, response & error handlers
-const requestHandler = (request:any) => {
-  request.headers["Access-Control-Allow-Origin"] = "*";
-  request.headers.authorization = `Bearer ${localStorage.getItem("token")}`;
+const requestHandler = (request: any) => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    request.headers.authorization = `Bearer ${token}`;
+  }
   return request;
 };
 
-const responseHandler = (response:any) => {
-  return response;
+const errorHandler = (error: any) => {
+  if (error.response?.status === 401) {
+    store.dispatch(logout());
+    window.location.replace("/account");
+  }
+
+  return Promise.reject(error);
 };
 
-const errorHandler = (error:any) => {
-  return Promise.reject(error); // Properly reject the error
-};
-
-// Step-3: Configure request & response interceptors
 axiosInstance.interceptors.request.use(
-  (request:any) => requestHandler(request),
-  (error:any) => errorHandler(error)
+  requestHandler,
+  errorHandler
 );
 
 axiosInstance.interceptors.response.use(
-  (response:any) => responseHandler(response),
-  (error:any) => errorHandler(error)
+  (response) => response,
+  errorHandler
 );
 
 export default axiosInstance;

@@ -19,21 +19,11 @@ import SmallHeader from "../../components/SmallHeader";
 import Header from "../../components/Header";
 import Footer from "../Home/Footer";
 
-/**
- * OrderSuccess page
- *
- * Accepts:
- * - location.state = { order?: any, orderId?: string, paymentMeta?: any }
- * - or ?orderId=... in the URL (optional)
- *
- * If an orderId is available but full order data isn't, we attempt to fetch GET /v1/orders/:id
- */
 export default function OrderSuccess() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // try to read commonly-used places for order info
-  // location.state may be undefined
+
   const locState: any = (location && (location as any).state) || {};
   const initialOrder = locState.order ?? null;
   const initialOrderId = locState.orderId ?? null;
@@ -42,7 +32,33 @@ export default function OrderSuccess() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // try query param orderId if not in location.state
+  useEffect(() => {
+  const details = locState?.details;
+
+  if (!details || !details.items || !details.orderTotal) return;
+
+  const items = details.items;
+  const orderTotal = details.orderTotal;
+
+  if ((window as any).__purchase_tracked) return;
+  (window as any).__purchase_tracked = true;
+
+  if (typeof (window as any).fbq === "function") {
+    (window as any).fbq("track", "Purchase", {
+      content_ids: items.map((item: any) => item.id),
+      contents: items.map((item: any) => ({
+        id: item.id,
+        quantity: item.qty,
+        item_price: item.price,
+      })),
+      value: orderTotal,
+      currency: "INR",
+    });
+
+    console.log("✅ Meta Pixel Purchase event fired");
+  }
+}, []);
+
   useEffect(() => {
     if (order) return;
 
@@ -55,7 +71,6 @@ export default function OrderSuccess() {
     (async () => {
       try {
         setLoading(true);
-        // tolerant: try GET /v1/orders/:id (adjust if your API path differs)
         const { data } = await axiosInstance.get(`/v1/orders/${qOrderId}`);
         if (!mounted) return;
         setOrder(data?.data ?? data ?? null);
@@ -76,7 +91,6 @@ export default function OrderSuccess() {
   const handleViewOrders = () => navigate("/orders");
   const handleContinueShopping = () => navigate("/");
 
-  // Small render helpers
   const renderOrderSummary = (o: any) => {
     const items = o?.items ?? o?.lineItems ?? [];
     const orderId = o?.id ?? o?._id ?? o?.orderId ?? o?.order_number ?? "—";
@@ -86,23 +100,6 @@ export default function OrderSuccess() {
 
     return (
       <Stack spacing="sm">
-        {/* <Group position="apart">
-          <Text size="sm" c="dimmed">Order ID</Text>
-          <Text fw={700}>{orderId}</Text>
-        </Group>
-
-        {amount != null && (
-          <Group position="apart">
-            <Text size="sm" c="dimmed">Amount</Text>
-            <Text fw={700}>₹{amount}</Text>
-          </Group>
-        )}
-
-        <Group position="apart">
-          <Text size="sm" c="dimmed">Payment</Text>
-          <Text>{String(paymentMethod).toUpperCase()}</Text>
-        </Group> */}
-
         {createdAt && (
           <Group position="apart">
             <Text size="sm" c="dimmed">Date</Text>
@@ -111,28 +108,6 @@ export default function OrderSuccess() {
         )}
 
         <Divider />
-
-        {/* <Text size="sm" c="dimmed">Items</Text> */}
-        {/* <Stack spacing="xs">
-          {Array.isArray(items) && items.length ? (
-            items.map((it: any, idx: number) => {
-              const title = it?.title ?? it?.productName ?? it?.name ?? it?.product ?? "Product";
-              const qty = it?.quantity ?? it?.qty ?? it?.itemqty ?? 1;
-              const price = it?.price ?? it?.amount ?? it?.salePrice ?? null;
-              return (
-                <Group key={`${idx}-${title}`} position="apart" noWrap>
-                  <Box style={{ minWidth: 0 }}>
-                    <Text size="sm" lineClamp={1}>{title}</Text>
-                    <Text size="xs" c="dimmed">Qty: {qty}</Text>
-                  </Box>
-                  {price != null && <Text size="sm">₹{price}</Text>}
-                </Group>
-              );
-            })
-          ) : (
-            <Text size="sm" c="dimmed">No item details available.</Text>
-          )}
-        </Stack> */}
       </Stack>
     );
   };
