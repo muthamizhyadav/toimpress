@@ -1053,13 +1053,13 @@ const buildSizeOptionsForProduct = (prod: any): SizeOption[] => {
             ))}
           </Group>
 
-          <Box mt="md">
+          {/* <Box mt="md">
             <Text fw={600}>Features:</Text>
             <ul>
               <li>Made with full cotton</li>
               <li>Slim fit for any body</li>
             </ul>
-          </Box>
+          </Box> */}
         </Tabs.Panel>
       </Tabs>
 
