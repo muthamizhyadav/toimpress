@@ -424,6 +424,17 @@ export default function Checkout() {
 
       await handleClearCart();
 
+        trackPixel("Purchase", {
+        content_ids: paymentData.items.map((item: CartItem) => item.id),
+        contents: paymentData.items.map((item: CartItem) => ({
+          id: item.id,
+          quantity: item.qty,
+          item_price: item.price,
+        })),
+        value: paymentData.amount,
+        currency: "INR",
+      });
+
       localStorage.removeItem("pendingRazorpayPayment");
       localStorage.removeItem("paymentProcessing");
       setRecoveringPayment(false);
@@ -1217,6 +1228,18 @@ export default function Checkout() {
       // Clear cart
       await handleClearCart();
 
+         trackPixel("Purchase", {
+        content_ids: paymentSession.items.map((item: CartItem) => item.id),
+        contents: paymentSession.items.map((item: CartItem) => ({
+          id: item.id,
+          quantity: item.qty,
+          item_price: item.price,
+        })),
+        value: paymentSession.amount,
+        currency: "INR",
+      });
+
+
       // Clean up storage
       localStorage.removeItem("pendingRazorpayPayment");
       localStorage.removeItem("paymentProcessing");
@@ -1320,16 +1343,16 @@ export default function Checkout() {
           color: "green",
           icon: <IconCheck size={16} />,
         });
-        // trackPixel("Purchase", {
-        //   content_ids: items.map((item) => item.id),
-        //   contents: items.map((item) => ({
-        //     id: item.id,
-        //     quantity: item.qty,
-        //     item_price: item.price,
-        //   })),
-        //   value: orderTotal,
-        //   currency: "INR",
-        // });
+        trackPixel("Purchase", {
+          content_ids: items.map((item) => item.id),
+          contents: items.map((item) => ({
+            id: item.id,
+            quantity: item.qty,
+            item_price: item.price,
+          })),
+          value: orderTotal,
+          currency: "INR",
+        });
         navigate("/order-success", {
           state: { order: { paymentMethod: "cod" }, details:{items:items,orderTotal:orderTotal}  },
         });
@@ -1433,21 +1456,21 @@ export default function Checkout() {
             }
 
             await handleClearCart();
-            // trackPixel("Purchase", {
-            //   content_ids: items.map((item) => item.id),
-            //   contents: items.map((item) => ({
-            //     id: item.id,
-            //     quantity: item.qty,
-            //     item_price: item.price,
-            //   })),
-            //   value: tokenToCollect,
-            //   currency: "INR",
-            // });
             showNotification({
               title: "COD placed",
               message: `Token ₹${tokenToCollect} paid. Remaining ₹${remainingAmount} on delivery.`,
               color: "green",
               icon: <IconCheck size={16} />,
+            });
+            trackPixel("Purchase", {
+              content_ids: items.map((item) => item.id),
+              contents: items.map((item) => ({
+                id: item.id,
+                quantity: item.qty,
+                item_price: item.price,
+              })),
+              value: orderTotal,
+              currency: "INR",
             });
             navigate("/order-success", {
               state: {
