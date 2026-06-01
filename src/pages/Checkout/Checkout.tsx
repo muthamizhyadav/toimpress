@@ -46,7 +46,11 @@ import { useAuth } from "../../assets/hooks/useAuth";
 import { useDisclosure } from "@mantine/hooks";
 import LoginOtpModal from "../../components/LoginOtpModal";
 import AddressModal from "../../components/shared/AddressModal";
-import { trackPixel } from "../../utils/metaPixel";
+import {
+  buildPixelEventId,
+  trackPixel,
+  trackPurchase,
+} from "../../utils/metaPixel";
 
 const normalizeColor = (c?: string) =>
   (c ?? "").toString().trim().toLowerCase();
@@ -416,6 +420,11 @@ export default function Checkout() {
               ? paymentData.savedScheme
               : null,
             recovered: true,
+            ...(paymentData.localOrderId
+              ? {
+                  pixelEventId: buildPixelEventId(paymentData.localOrderId),
+                }
+              : {}),
           },
         });
       } catch (orderErr) {
@@ -424,16 +433,15 @@ export default function Checkout() {
 
       await handleClearCart();
 
-        trackPixel("Purchase", {
-        content_ids: paymentData.items.map((item: CartItem) => item.id),
-        contents: paymentData.items.map((item: CartItem) => ({
-          id: item.id,
-          quantity: item.qty,
-          item_price: item.price,
-        })),
-        value: paymentData.amount,
-        currency: "INR",
-      });
+      const recoveryOrderId =
+        paymentData.localOrderId ?? paymentData.orderId ?? paymentData.order?.id;
+      if (recoveryOrderId) {
+        trackPurchase({
+          eventId: buildPixelEventId(recoveryOrderId),
+          items: paymentData.items,
+          value: paymentData.amount,
+        });
+      }
 
       localStorage.removeItem("pendingRazorpayPayment");
       localStorage.removeItem("paymentProcessing");
@@ -876,7 +884,12 @@ export default function Checkout() {
         tax: tax ?? 0,
         discount: discount ?? 0,
         amountToChargeOnDelivery: amountToChargeOnDelivery ?? null,
-        meta: meta ?? {},
+        meta: {
+          ...(meta ?? {}),
+          ...(localOrderId
+            ? { pixelEventId: buildPixelEventId(localOrderId) }
+            : {}),
+        },
       };
 
       let token =
@@ -929,6 +942,7 @@ export default function Checkout() {
                 ? savedScheme
                 : null,
             prePayment: true,
+            pixelEventId: buildPixelEventId(serverOrderId),
           },
           amountToChargeOnDelivery:
             paymentMethod === "COD" ? totals.grandTotal - COD_TOKEN : undefined,
@@ -1228,17 +1242,15 @@ export default function Checkout() {
       // Clear cart
       await handleClearCart();
 
-         trackPixel("Purchase", {
-        content_ids: paymentSession.items.map((item: CartItem) => item.id),
-        contents: paymentSession.items.map((item: CartItem) => ({
-          id: item.id,
-          quantity: item.qty,
-          item_price: item.price,
-        })),
-        value: paymentSession.amount,
-        currency: "INR",
-      });
-
+      const paidOrderId =
+        paymentSession.localOrderId ?? paymentSession.orderId;
+      if (paidOrderId) {
+        trackPurchase({
+          eventId: buildPixelEventId(paidOrderId),
+          items: paymentSession.items,
+          value: paymentSession.amount,
+        });
+      }
 
       // Clean up storage
       localStorage.removeItem("pendingRazorpayPayment");
@@ -1246,12 +1258,15 @@ export default function Checkout() {
       setPaymentInProgress(false);
 
       // Navigate to success page
+      const successOrderId =
+        paymentSession.localOrderId || paymentSession.orderId;
       navigate("/order-success", {
         state: {
-          order: {
-            id: paymentSession.localOrderId || paymentSession.orderId,
-          },
+          order: { id: successOrderId },
           paymentId: response.razorpay_payment_id,
+          ...(successOrderId
+            ? { pixelEventId: buildPixelEventId(successOrderId) }
+            : {}),
         },
       });
     } catch (error) {
@@ -1329,6 +1344,7 @@ export default function Checkout() {
                   ? savedScheme
                   : null,
               orderConfirmed: true,
+              pixelEventId: buildPixelEventId(localOrderId),
             },
             amountToChargeOnDelivery: orderTotal,
           });
@@ -1343,18 +1359,17 @@ export default function Checkout() {
           color: "green",
           icon: <IconCheck size={16} />,
         });
-        trackPixel("Purchase", {
-          content_ids: items.map((item) => item.id),
-          contents: items.map((item) => ({
-            id: item.id,
-            quantity: item.qty,
-            item_price: item.price,
-          })),
+        trackPurchase({
+          eventId: buildPixelEventId(localOrderId),
+          items,
           value: orderTotal,
-          currency: "INR",
         });
         navigate("/order-success", {
-          state: { order: { paymentMethod: "cod" }, details:{items:items,orderTotal:orderTotal}  },
+          state: {
+            order: { paymentMethod: "cod", id: localOrderId },
+            pixelEventId: buildPixelEventId(localOrderId),
+            details: { items, orderTotal },
+          },
         });
         return;
       }
@@ -1448,6 +1463,7 @@ export default function Checkout() {
                       ? savedScheme
                       : null,
                   orderConfirmed: true,
+                  pixelEventId: buildPixelEventId(localOrderId),
                 },
                 amountToChargeOnDelivery: remainingAmount,
               });
@@ -1462,15 +1478,10 @@ export default function Checkout() {
               color: "green",
               icon: <IconCheck size={16} />,
             });
-            trackPixel("Purchase", {
-              content_ids: items.map((item) => item.id),
-              contents: items.map((item) => ({
-                id: item.id,
-                quantity: item.qty,
-                item_price: item.price,
-              })),
+            trackPurchase({
+              eventId: buildPixelEventId(localOrderId),
+              items,
               value: orderTotal,
-              currency: "INR",
             });
             navigate("/order-success", {
               state: {
@@ -1478,6 +1489,8 @@ export default function Checkout() {
                   paymentMethod: "cod_token",
                   id: localOrderId,
                 },
+                pixelEventId: buildPixelEventId(localOrderId),
+                details: { items, orderTotal },
               },
             });
           } catch (e) {
@@ -1618,6 +1631,20 @@ export default function Checkout() {
 
       // Clear cart and navigate
       await handleClearCart();
+
+      const recoveryId =
+        paymentSession.localOrderId ??
+        paymentSession.razorpayOrderId ??
+        createdOrder?.data?.id ??
+        createdOrder?.id;
+      if (recoveryId && paymentSession.items?.length) {
+        trackPurchase({
+          eventId: buildPixelEventId(recoveryId),
+          items: paymentSession.items,
+          value: paymentSession.amount,
+        });
+      }
+
       localStorage.removeItem("pendingPayment");
       localStorage.removeItem("paymentProcessing");
 
@@ -1625,6 +1652,9 @@ export default function Checkout() {
         state: {
           order: createdOrder,
           recovered: true,
+          ...(recoveryId
+            ? { pixelEventId: buildPixelEventId(recoveryId) }
+            : {}),
         },
       });
     } catch (error) {

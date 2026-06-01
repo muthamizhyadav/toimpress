@@ -18,6 +18,7 @@ import axiosInstance from "../../api/axiosInstance";
 import SmallHeader from "../../components/SmallHeader";
 import Header from "../../components/Header";
 import Footer from "../Home/Footer";
+import { buildPixelEventId, trackPurchase } from "../../utils/metaPixel";
 
 export default function OrderSuccess() {
   const location = useLocation();
@@ -32,32 +33,23 @@ export default function OrderSuccess() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Fallback if checkout did not fire Purchase (e.g. hard refresh on success URL).
   useEffect(() => {
-  const details = locState?.details;
+    const details = locState?.details;
+    if (!details?.items || details.orderTotal == null) return;
 
-  if (!details || !details.items || !details.orderTotal) return;
+    const orderId =
+      locState?.pixelEventId?.replace(/^purchase_/, "") ??
+      locState?.order?.id ??
+      locState?.orderId;
+    if (!orderId) return;
 
-  const items = details.items;
-  const orderTotal = details.orderTotal;
-
-  if ((window as any).__purchase_tracked) return;
-  (window as any).__purchase_tracked = true;
-
-  if (typeof (window as any).fbq === "function") {
-    (window as any).fbq("track", "Purchase", {
-      content_ids: items.map((item: any) => item.id),
-      contents: items.map((item: any) => ({
-        id: item.id,
-        quantity: item.qty,
-        item_price: item.price,
-      })),
-      value: orderTotal,
-      currency: "INR",
+    trackPurchase({
+      eventId: locState?.pixelEventId ?? buildPixelEventId(orderId),
+      items: details.items,
+      value: details.orderTotal,
     });
-
-    console.log("✅ Meta Pixel Purchase event fired");
-  }
-}, []);
+  }, []);
 
   useEffect(() => {
     if (order) return;
