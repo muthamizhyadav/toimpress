@@ -942,7 +942,7 @@ export default function Checkout() {
                 ? savedScheme
                 : null,
             prePayment: true,
-            pixelEventId: buildPixelEventId(serverOrderId),
+            // pixelEventId: buildPixelEventId(serverOrderId),
           },
           amountToChargeOnDelivery:
             paymentMethod === "COD" ? totals.grandTotal - COD_TOKEN : undefined,
@@ -967,22 +967,22 @@ export default function Checkout() {
         return { success: false };
       }
 
-      try {
-        const serverOrderId =
-          createdOrder?.data?.id ||
-          createdOrder?.id ||
-          createdOrder?.orderNumber ||
-          createdOrder?.orderId ||
-          createdOrder?.data?.orderNumber ||
-          createdOrder?.data?.orderId ||
-          `ORDER${Date.now()}`;
-      } catch (shipmentError: any) {
-        showApiError(
-          "Shipment Creation Failed",
-          "Something went wrong while creating your shipment. Don't worry, please try again in a moment.",
-        );
-        return { success: false };
-      }
+      // try {
+      //   const serverOrderId =
+      //     createdOrder?.data?.id ||
+      //     createdOrder?.id ||
+      //     createdOrder?.orderNumber ||
+      //     createdOrder?.orderId ||
+      //     createdOrder?.data?.orderNumber ||
+      //     createdOrder?.data?.orderId ||
+      //     `ORDER${Date.now()}`;
+      // } catch (shipmentError: any) {
+      //   showApiError(
+      //     "Shipment Creation Failed",
+      //     "Something went wrong while creating your shipment. Don't worry, please try again in a moment.",
+      //   );
+      //   return { success: false };
+      // }
 
       const finalOrderId =
         createdOrder?.data?.id ||
