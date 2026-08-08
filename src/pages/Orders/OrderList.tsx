@@ -21,7 +21,7 @@ import {
   SimpleGrid,
 } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
-import { IconCircle, IconCheck, IconClock, IconPackage, IconRefresh, IconArrowBackUp } from "@tabler/icons-react";
+import { IconCheck, IconClock, IconPackage } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../api/axiosInstance";
@@ -47,48 +47,12 @@ export default function OrderList() {
 
   const theme = useMantineTheme();
   const isMobile = useMediaQuery("(max-width: 600px)");
-  const { tokens, isAuthenticated }: any = useSelector((state: RootState) => state.auth);
+  const { tokens }: any = useSelector((state: RootState) => state.auth);
 
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [requestMap, setRequestMap] = useState<Record<string, { type: string; status: string }>>({});
-
-  const fetchMyRequests = async () => {
-    try {
-      const [exRes, retRes] = await Promise.allSettled([
-        axiosInstance.get("/exchange-return/exchanges/my-requests?limit=100"),
-        axiosInstance.get("/exchange-return/returns/my-requests?limit=100"),
-      ]);
-      const map: Record<string, { type: string; status: string }> = {};
-      const build = (list: any, type: string) => {
-        (list || []).forEach((r: any) => {
-          const id = r.orderItemId || r.orderItem?._id || r.orderItemId?._id;
-          if (id) map[id] = { type, status: r.status || "" };
-        });
-      };
-      if (exRes.status === "fulfilled") {
-        const d = exRes.value.data?.data || exRes.value.data || [];
-        build(Array.isArray(d) ? d : d?.results || [], "exchange");
-      }
-      if (retRes.status === "fulfilled") {
-        const d = retRes.value.data?.data || retRes.value.data || [];
-        build(Array.isArray(d) ? d : d?.results || [], "return");
-      }
-      setRequestMap(map);
-    } catch (err) {
-      console.error("Failed to fetch exchange/return requests", err);
-    }
-  };
-
-  const getRequestForItem = (itemId: string) => requestMap[itemId] || null;
-
-  const requestButton = (itemId: string) => {
-    const req = getRequestForItem(itemId);
-    if (!req) return null;
-    return req.type === "exchange" ? "Track Exchange" : "Track Return";
-  };
 
   const fetchOrders = async (pageNum: number) => {
     const headers = {
@@ -124,12 +88,6 @@ export default function OrderList() {
   useEffect(() => {
     fetchOrders(page);
   }, [page]);
-
-  useEffect(() => {
-    if (isAuthenticated || localStorage.getItem("token")) {
-      fetchMyRequests();
-    }
-  }, [isAuthenticated]);
 
   const handleClick = (order: any) => {
     setSelectedOrder(order);
@@ -478,51 +436,6 @@ export default function OrderList() {
                               </Text>
                             )}
                           </Group>
-                          <SimpleGrid cols={2} mt={8} spacing="xs">
-                            {getRequestForItem(item._id) ? (
-                              <Button
-                                variant="light"
-                                size="xs"
-                                color="grape"
-                                leftIcon={<IconPackage size={14} />}
-                                fullWidth
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate("/my-requests");
-                                }}
-                              >
-                                {requestButton(item._id)}
-                              </Button>
-                            ) : (
-                              <>
-                                <Button
-                                  variant="light"
-                                  size="xs"
-                                  leftIcon={<IconRefresh size={14} />}
-                                  fullWidth
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigate(`/exchange-return?type=exchange&orderId=${order._id || order.id}&itemId=${item._id}`);
-                                  }}
-                                >
-                                  Exchange
-                                </Button>
-                                <Button
-                                  variant="light"
-                                  size="xs"
-                                  color="red"
-                                  leftIcon={<IconArrowBackUp size={14} />}
-                                  fullWidth
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigate(`/exchange-return?type=return&orderId=${order._id || order.id}&itemId=${item._id}`);
-                                  }}
-                                >
-                                  Return
-                                </Button>
-                              </>
-                            )}
-                          </SimpleGrid>
                         </Box>
                       </Group>
                     ))}
@@ -671,8 +584,6 @@ export default function OrderList() {
               <Text fw={600} mb="sm">Items ({selectedOrder.items.length})</Text>
               <Stack spacing="md">
                 {selectedOrder.items?.map((item: any, idx: number) => {
-                  const orderStatus = (selectedOrder.status || "").toLowerCase();
-                  const isDelivered = orderStatus.includes("delivered") || orderStatus.includes("completed") || orderStatus.includes("fulfilled") || orderStatus.includes("success") || true;
                   return (
                   <Card key={item._id} withBorder radius="md" p="md">
                     <Group noWrap align="flex-start">
@@ -699,44 +610,6 @@ export default function OrderList() {
                           <Text fw={600} size="sm">₹{item.price}</Text>
                           <Text size="sm" c="dimmed">Subtotal: ₹{item.subtotal}</Text>
                         </Group>
-                        {isDelivered && (
-                          <SimpleGrid cols={2} mt="sm" spacing="xs">
-                            {getRequestForItem(item._id) ? (
-                              <Button
-                                variant="light"
-                                size="xs"
-                                color="grape"
-                                leftIcon={<IconPackage size={14} />}
-                                fullWidth
-                                onClick={() => navigate("/my-requests")}
-                              >
-                                {requestButton(item._id)}
-                              </Button>
-                            ) : (
-                              <>
-                                <Button
-                                  variant="light"
-                                  size="xs"
-                                  leftIcon={<IconRefresh size={14} />}
-                                  fullWidth
-                                  onClick={() => navigate(`/exchange-return?type=exchange&orderId=${selectedOrder._id || selectedOrder.id}&itemId=${item._id}`)}
-                                >
-                                  Exchange
-                                </Button>
-                                <Button
-                                  variant="light"
-                                  size="xs"
-                                  color="red"
-                                  leftIcon={<IconArrowBackUp size={14} />}
-                                  fullWidth
-                                  onClick={() => navigate(`/exchange-return?type=return&orderId=${selectedOrder._id || selectedOrder.id}&itemId=${item._id}`)}
-                                >
-                                  Return
-                                </Button>
-                              </>
-                            )}
-                          </SimpleGrid>
-                        )}
                       </Box>
                     </Group>
                   </Card>
