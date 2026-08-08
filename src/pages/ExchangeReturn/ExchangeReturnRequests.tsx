@@ -142,6 +142,7 @@ export default function ExchangeReturnRequests() {
           amount: amountPaise,
           currency: "INR",
           receipt: "exchange_rcpt_" + Date.now(),
+          localOrderId: request._id,
           notes: {
             exchangeRequestId: request._id,
             type: "exchange_processing_charge",
