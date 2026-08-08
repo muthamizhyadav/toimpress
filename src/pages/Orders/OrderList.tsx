@@ -632,91 +632,90 @@ export default function OrderList() {
                 {selectedOrder.items?.map((item: any, idx: number) => {
                   return (
                   <Card key={item._id} withBorder radius="md" p="md">
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", alignItems: "flex-start" }}>
-                      <Box>
-                        <Group noWrap align="flex-start">
-                          <AspectRatio ratio={1} w={80} miw={80}>
-                            <Image
-                              src={item.productUrl || item.productImage || "/placeholder.png"}
-                              radius="md"
-                              alt={item.productTitle}
-                              fit="cover"
-                            />
-                          </AspectRatio>
-                          <Box style={{ flex: 1 }}>
-                            <Text fw={600} size="sm">{item.productTitle}</Text>
-                            <Group spacing="xs" mt={4}>
-                              <Badge variant="outline" size="xs">
-                                Size: {item.selectedSize}
-                              </Badge>
-                              <Badge variant="outline" size="xs">
-                                Qty: {item.quantity}
-                              </Badge>
-                            </Group>
-                            <Group position="apart" mt="sm">
-                              <Text fw={600} size="sm">₹{item.price}</Text>
-                              <Text size="sm" c="dimmed">Subtotal: ₹{item.subtotal}</Text>
-                            </Group>
-                            {!getRequestForItem(item._id) && isOrderDelivered(selectedOrder) && (
-                              <SimpleGrid cols={2} mt="sm" spacing="xs">
-                                <Button
-                                  variant="light"
-                                  size="xs"
-                                  leftIcon={<IconRefresh size={14} />}
-                                  fullWidth
-                                  onClick={() => navigate(`/exchange-return?type=exchange&orderId=${selectedOrder._id || selectedOrder.id}&itemId=${item._id}`)}
-                                >
-                                  Exchange
-                                </Button>
-                                <Button
-                                  variant="light"
-                                  size="xs"
-                                  color="red"
-                                  leftIcon={<IconArrowBackUp size={14} />}
-                                  fullWidth
-                                  onClick={() => navigate(`/exchange-return?type=return&orderId=${selectedOrder._id || selectedOrder.id}&itemId=${item._id}`)}
-                                >
-                                  Return
-                                </Button>
-                              </SimpleGrid>
-                            )}
-                          </Box>
+                    <Group noWrap align="flex-start">
+                      <AspectRatio ratio={1} w={80} miw={80}>
+                        <Image
+                          src={item.productUrl || item.productImage || "/placeholder.png"}
+                          radius="md"
+                          alt={item.productTitle}
+                          fit="cover"
+                        />
+                      </AspectRatio>
+                      <Box style={{ flex: 1 }}>
+                        <Text fw={600} size="sm">{item.productTitle}</Text>
+                        <Group spacing="xs" mt={4}>
+                          <Badge variant="outline" size="xs">
+                            Size: {item.selectedSize}
+                          </Badge>
+                          <Badge variant="outline" size="xs">
+                            Qty: {item.quantity}
+                          </Badge>
                         </Group>
-                      </Box>
-                      {getRequestForItem(item._id) &&
-                        (() => {
-                          const req = getRequestForItem(item._id);
-                          const isExchange = req.type === "exchange";
-                          return (
-                            <Card
-                              withBorder
-                              radius="md"
-                              p="sm"
-                              style={{
-                                background: isExchange
-                                  ? theme.colors.grape[0]
-                                  : theme.colors.orange[0],
-                                borderColor: isExchange
-                                  ? theme.colors.grape[3]
-                                  : theme.colors.orange[3],
-                              }}
+                        <Group position="apart" mt="sm">
+                          <Text fw={600} size="sm">₹{item.price}</Text>
+                          <Text size="sm" c="dimmed">Subtotal: ₹{item.subtotal}</Text>
+                        </Group>
+                        {!getRequestForItem(item._id) && isOrderDelivered(selectedOrder) && (
+                          <SimpleGrid cols={2} mt="sm" spacing="xs">
+                            <Button
+                              variant="light"
+                              size="xs"
+                              leftIcon={<IconRefresh size={14} />}
+                              fullWidth
+                              onClick={() => navigate(`/exchange-return?type=exchange&orderId=${selectedOrder._id || selectedOrder.id}&itemId=${item._id}`)}
                             >
-                              <Group position="apart" spacing={4}>
-                                <Text size="xs" fw={700} c={isExchange ? "grape" : "orange"}>
-                                  {isExchange ? "Exchange" : "Return"} in progress
-                                </Text>
-                                <Badge
-                                  size="sm"
-                                  color={isExchange ? "grape" : "orange"}
-                                  variant="dot"
-                                >
-                                  {req.status || "Requested"}
-                                </Badge>
-                              </Group>
-                            </Card>
-                          );
-                        })()}
-                    </div>
+                              Exchange
+                            </Button>
+                            <Button
+                              variant="light"
+                              size="xs"
+                              color="red"
+                              leftIcon={<IconArrowBackUp size={14} />}
+                              fullWidth
+                              onClick={() => navigate(`/exchange-return?type=return&orderId=${selectedOrder._id || selectedOrder.id}&itemId=${item._id}`)}
+                            >
+                              Return
+                            </Button>
+                          </SimpleGrid>
+                        )}
+                      </Box>
+                    </Group>
+                    {getRequestForItem(item._id) &&
+                      (() => {
+                        const req = getRequestForItem(item._id);
+                        const isExchange = req.type === "exchange";
+                        return (
+                          <Box
+                            mt="sm"
+                            p="sm"
+                            radius="md"
+                            style={{
+                              background: "#f0f5ec",
+                              border: "1px solid #C6D4BC",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              gap: 8,
+                            }}
+                          >
+                            <Text size="sm" fw={700} style={{ color: "#133215" }}>
+                              {isExchange ? "Exchange" : "Return"} in progress
+                            </Text>
+                            <Badge
+                              size="sm"
+                              styles={(theme: any) => ({
+                                root: {
+                                  backgroundColor: "#133215",
+                                  color: "#ffffff",
+                                  textTransform: "capitalize",
+                                },
+                              })}
+                            >
+                              {req.status || "Requested"}
+                            </Badge>
+                          </Box>
+                        );
+                      })()}
                   </Card>
                   );
                 })}
