@@ -21,7 +21,7 @@ import {
   SimpleGrid,
 } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
-import { IconCheck, IconClock, IconPackage } from "@tabler/icons-react";
+import { IconCheck, IconClock, IconPackage, IconRefresh, IconArrowBackUp } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../api/axiosInstance";
@@ -53,6 +53,52 @@ export default function OrderList() {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [requestMap, setRequestMap] = useState<Record<string, { type: string; status: string }>>({});
+
+  const fetchMyRequests = async () => {
+    try {
+      const [exRes, retRes] = await Promise.allSettled([
+        axiosInstance.get("/exchange-return/exchanges/my-requests?limit=100"),
+        axiosInstance.get("/exchange-return/returns/my-requests?limit=100"),
+      ]);
+      const map: Record<string, { type: string; status: string }> = {};
+      const build = (list: any, type: string) => {
+        (list || []).forEach((r: any) => {
+          const id = r.orderItemId || r.orderItem?._id || r.orderItemId?._id;
+          if (id) map[id] = { type, status: r.status || "" };
+        });
+      };
+      if (exRes.status === "fulfilled") {
+        const d = exRes.value.data?.data || exRes.value.data || [];
+        build(Array.isArray(d) ? d : d?.results || [], "exchange");
+      }
+      if (retRes.status === "fulfilled") {
+        const d = retRes.value.data?.data || retRes.value.data || [];
+        build(Array.isArray(d) ? d : d?.results || [], "return");
+      }
+      setRequestMap(map);
+    } catch (err) {
+      console.error("Failed to fetch exchange/return requests", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchMyRequests();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opened]);
+
+  const isOrderDelivered = (order: any) => {
+    const status = (order?.status || "").toLowerCase();
+    if (/delivered|completed|fulfilled|success/.test(status)) return true;
+    const sh = order?.delhiveryDetails;
+    if (sh) {
+      const s = (sh.status || "").toLowerCase();
+      if (/delivered|success/.test(s)) return true;
+    }
+    return false;
+  };
+
+  const getRequestForItem = (itemId: string) => requestMap[itemId] || null;
 
   const fetchOrders = async (pageNum: number) => {
     const headers = {
@@ -610,6 +656,43 @@ export default function OrderList() {
                           <Text fw={600} size="sm">₹{item.price}</Text>
                           <Text size="sm" c="dimmed">Subtotal: ₹{item.subtotal}</Text>
                         </Group>
+                        {getRequestForItem(item._id) ? (
+                          <Button
+                            variant="light"
+                            size="xs"
+                            color="grape"
+                            leftIcon={<IconPackage size={14} />}
+                            fullWidth
+                            mt="sm"
+                            onClick={() => navigate("/my-requests")}
+                          >
+                            {getRequestForItem(item._id).type === "exchange" ? "Track Exchange" : "Track Return"}
+                          </Button>
+                        ) : (
+                          isOrderDelivered(selectedOrder) && (
+                            <SimpleGrid cols={2} mt="sm" spacing="xs">
+                              <Button
+                                variant="light"
+                                size="xs"
+                                leftIcon={<IconRefresh size={14} />}
+                                fullWidth
+                                onClick={() => navigate(`/exchange-return?type=exchange&orderId=${selectedOrder._id || selectedOrder.id}&itemId=${item._id}`)}
+                              >
+                                Exchange
+                              </Button>
+                              <Button
+                                variant="light"
+                                size="xs"
+                                color="red"
+                                leftIcon={<IconArrowBackUp size={14} />}
+                                fullWidth
+                                onClick={() => navigate(`/exchange-return?type=return&orderId=${selectedOrder._id || selectedOrder.id}&itemId=${item._id}`)}
+                              >
+                                Return
+                              </Button>
+                            </SimpleGrid>
+                          )
+                        )}
                       </Box>
                     </Group>
                   </Card>
