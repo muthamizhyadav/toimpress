@@ -87,6 +87,12 @@ export default function OrderList() {
 
   const getRequestForItem = (itemId: string) => requestMap[itemId] || null;
 
+  const requestButton = (itemId: string) => {
+    const req = getRequestForItem(itemId);
+    if (!req) return null;
+    return req.type === "exchange" ? "Track Exchange" : "Track Return";
+  };
+
   const fetchOrders = async (pageNum: number) => {
     const headers = {
       Authorization: `Bearer ${tokens?.access?.token || "s"}`,
@@ -488,7 +494,7 @@ export default function OrderList() {
                                   navigate("/my-requests");
                                 }}
                               >
-                                Track Request
+                                {requestButton(item._id)}
                               </Button>
                             ) : (
                               <>
@@ -707,7 +713,7 @@ export default function OrderList() {
                                 fullWidth
                                 onClick={() => navigate("/my-requests")}
                               >
-                                Track Request
+                                {requestButton(item._id)}
                               </Button>
                             ) : (
                               <>
