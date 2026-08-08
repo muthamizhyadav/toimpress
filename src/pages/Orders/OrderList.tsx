@@ -19,9 +19,10 @@ import {
   Divider,
   Card,
   SimpleGrid,
+  Skeleton,
 } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
-import { IconCheck, IconClock, IconPackage, IconRefresh, IconArrowBackUp } from "@tabler/icons-react";
+import { IconCheck, IconClock, IconPackage, IconRefresh, IconArrowBackUp, IconChevronRight } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../api/axiosInstance";
@@ -250,7 +251,44 @@ export default function OrderList() {
     }
   };
 
-  // UI helper: render the vertical timeline
+  const handleTrackRequest = async (req: any) => {
+    try {
+      setTrackingLoading(true);
+      setTrackingData([]);
+      setSelectedOrder(null);
+      const res = await axiosInstance.get(
+        `/exchange-return/${req.type === "exchange" ? "exchanges" : "returns"}/${req.id}/track`
+      );
+      const data = res.data || {};
+      const tracking = data.tracking || data;
+      const normalized = parseDelhiveryResponse(tracking);
+      setTrackingData(normalized.length ? normalized : []);
+      if (normalized.length === 0) {
+        setTrackingData([
+          {
+            status: (data.exchange?.status || data.returnReq?.status || req.status || "Requested").replace(/_/g, " "),
+            location: "",
+            timestamp: "",
+          },
+        ]);
+      }
+      openTrack();
+    } catch (err) {
+      console.error("Failed to fetch request tracking", err);
+      setTrackingData([
+        {
+          status: (req.status || "Requested").replace(/_/g, " "),
+          location: "",
+          timestamp: "",
+        },
+      ]);
+      openTrack();
+    } finally {
+      setTrackingLoading(false);
+    }
+  };
+
+  // UI helper to show the vertical timeline
   const Timeline = ({ steps }: { steps: typeof trackingData }) => {
     if (!steps || steps.length === 0)
       return (
@@ -509,7 +547,28 @@ export default function OrderList() {
                 </Card>
               ))}
 
-              {loading && (
+              {loading && orders.length === 0 && (
+                <Box px="lg">
+                  {[0, 1, 2].map((s) => (
+                    <Card key={s} withBorder radius="md" mb="md">
+                      <Group position="apart" mb="md" noWrap>
+                        <Skeleton height={16} width={140} radius="sm" />
+                        <Skeleton height={14} width={80} radius="sm" />
+                      </Group>
+                      <Group noWrap align="flex-start" spacing="md">
+                        <Skeleton height={80} width={80} radius="md" />
+                        <Box style={{ flex: 1 }}>
+                          <Skeleton height={14} width="60%" radius="sm" />
+                          <Skeleton height={12} width="40%" radius="sm" mt={8} />
+                          <Skeleton height={12} width="30%" radius="sm" mt={6} />
+                        </Box>
+                      </Group>
+                    </Card>
+                  ))}
+                </Box>
+              )}
+
+              {loading && orders.length !== 0 && (
                 <Center my="lg">
                   <Loader size="md" />
                 </Center>
@@ -546,22 +605,28 @@ export default function OrderList() {
         padding="lg"
       >
         {trackingLoading ? (
-          <Center style={{ height: 200 }}>
-            <Loader />
-          </Center>
+          <Box>
+            <Skeleton height={14} width={160} radius="sm" mb="md" />
+            <Skeleton height={40} radius="md" mb="sm" />
+            <Skeleton height={40} radius="md" mb="sm" />
+            <Skeleton height={40} radius="md" mb="sm" />
+            <Skeleton height={40} radius="md" mb="sm" />
+          </Box>
         ) : (
           <Box>
-            <Group position="apart" mb="md">
-              <Text fw={700}>AWB</Text>
-              <Text size="sm" c="dimmed">
-                {selectedOrder?.delhiveryDetails?.waybill ??
-                  selectedOrder?.awb ??
-                  selectedOrder?.items?.[0]?.awb ??
-                  "-"}
-              </Text>
-            </Group>
+            {selectedOrder && (
+              <Group position="apart" mb="md">
+                <Text fw={700}>AWB</Text>
+                <Text size="sm" c="dimmed">
+                  {selectedOrder?.delhiveryDetails?.waybill ??
+                    selectedOrder?.awb ??
+                    selectedOrder?.items?.[0]?.awb ??
+                    "-"}
+                </Text>
+              </Group>
+            )}
 
-            <Divider mb="sm" />
+            {selectedOrder && <Divider mb="sm" />}
 
             <Timeline steps={trackingData} />
           </Box>
@@ -696,23 +761,33 @@ export default function OrderList() {
                               alignItems: "center",
                               justifyContent: "space-between",
                               gap: 8,
+                              cursor: "pointer",
                             }}
+                            onClick={() => req.id && handleTrackRequest(req)}
                           >
-                            <Text size="sm" fw={700} style={{ color: "#133215" }}>
-                              {isExchange ? "Exchange" : "Return"} in progress
-                            </Text>
-                            <Badge
-                              size="sm"
-                              styles={(theme: any) => ({
-                                root: {
-                                  backgroundColor: "#133215",
-                                  color: "#ffffff",
-                                  textTransform: "capitalize",
-                                },
-                              })}
-                            >
-                              {req.status || "Requested"}
-                            </Badge>
+                            <Group spacing={8} noWrap>
+                              <ThemeIcon size={22} radius="xl" color="darkGreen" variant="filled">
+                                <IconPackage size={13} />
+                              </ThemeIcon>
+                              <Text size="sm" fw={700} style={{ color: "#133215" }}>
+                                {isExchange ? "Exchange" : "Return"} in progress
+                              </Text>
+                            </Group>
+                            <Group spacing={6} noWrap>
+                              <Badge
+                                size="sm"
+                                styles={(theme: any) => ({
+                                  root: {
+                                    backgroundColor: "#133215",
+                                    color: "#ffffff",
+                                    textTransform: "capitalize",
+                                  },
+                                })}
+                              >
+                                {req.status || "Requested"}
+                              </Badge>
+                              <IconChevronRight size={14} />
+                            </Group>
                           </Box>
                         );
                       })()}
