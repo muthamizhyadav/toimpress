@@ -321,7 +321,7 @@ export default function ExchangeReturnRequests() {
                         </Badge>
                       </Group>
                       <Text size="xs" c="dimmed">
-                        {new Date(req.createdAt).toLocaleDateString()}
+                        {req.createdAt ? new Date(req.createdAt).toLocaleDateString() : ""}
                       </Text>
                     </Group>
 
