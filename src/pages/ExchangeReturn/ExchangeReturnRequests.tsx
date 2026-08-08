@@ -43,6 +43,8 @@ const LIGHT_GREEN = "#92B775";
 const EXCHANGE_CHARGE = 1;
 const RAZORPAY_KEY_ID = import.meta.env.VITE_RZP_KEY_ID as string;
 
+const getRequestId = (r: any) => r?._id || r?.id || "";
+
 const STATUS_COLORS: Record<string, string> = {
   requested: "yellow",
   approved: "blue",
@@ -122,9 +124,9 @@ export default function ExchangeReturnRequests() {
           amount: amountPaise,
           currency: "INR",
           receipt: "exchange_rcpt_" + Date.now(),
-          localOrderId: request._id,
+          localOrderId: getRequestId(request),
           notes: {
-            exchangeRequestId: request._id,
+            exchangeRequestId: getRequestId(request),
             type: "exchange_processing_charge",
           },
         }
@@ -165,7 +167,7 @@ export default function ExchangeReturnRequests() {
             }
 
             await axiosInstance.post(
-              `/exchange-return/exchanges/${request._id}/pay`,
+              `/exchange-return/exchanges/${getRequestId(request)}/pay`,
               {
                 paymentId: response.razorpay_payment_id,
                 orderId: response.razorpay_order_id,
@@ -285,7 +287,7 @@ export default function ExchangeReturnRequests() {
               <Stack spacing="md">
                 {requests.map((req) => (
                   <Card
-                    key={req._id}
+                    key={getRequestId(req)}
                     withBorder
                     radius="lg"
                     p="lg"
