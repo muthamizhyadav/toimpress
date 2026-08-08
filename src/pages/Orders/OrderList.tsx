@@ -53,6 +53,39 @@ export default function OrderList() {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [requestMap, setRequestMap] = useState<Record<string, { type: string; status: string }>>({});
+
+  const fetchMyRequests = async () => {
+    try {
+      const headers = {
+        Authorization: `Bearer ${tokens?.access?.token || "s"}`,
+      };
+      const [exRes, retRes] = await Promise.allSettled([
+        axiosInstance.get("/exchange-return/exchanges/my-requests", { headers }),
+        axiosInstance.get("/exchange-return/returns/my-requests", { headers }),
+      ]);
+      const map: Record<string, { type: string; status: string }> = {};
+      const build = (list: any, type: string) => {
+        (list || []).forEach((r: any) => {
+          const id = r.orderItemId || r.orderItem?._id || r.orderItemId?._id;
+          if (id) map[id] = { type, status: r.status || "" };
+        });
+      };
+      if (exRes.status === "fulfilled") {
+        const d = exRes.value.data?.data || exRes.value.data || [];
+        build(Array.isArray(d) ? d : d?.results || [], "exchange");
+      }
+      if (retRes.status === "fulfilled") {
+        const d = retRes.value.data?.data || retRes.value.data || [];
+        build(Array.isArray(d) ? d : d?.results || [], "return");
+      }
+      setRequestMap(map);
+    } catch (err) {
+      console.error("Failed to fetch exchange/return requests", err);
+    }
+  };
+
+  const getRequestForItem = (itemId: string) => requestMap[itemId] || null;
 
   const fetchOrders = async (pageNum: number) => {
     const headers = {
@@ -88,6 +121,12 @@ export default function OrderList() {
   useEffect(() => {
     fetchOrders(page);
   }, [page]);
+
+  useEffect(() => {
+    if (tokens?.access?.token) {
+      fetchMyRequests();
+    }
+  }, [tokens]);
 
   const handleClick = (order: any) => {
     setSelectedOrder(order);
@@ -437,31 +476,49 @@ export default function OrderList() {
                             )}
                           </Group>
                           <SimpleGrid cols={2} mt={8} spacing="xs">
-                            <Button
-                              variant="light"
-                              size="xs"
-                              leftIcon={<IconRefresh size={14} />}
-                              fullWidth
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/exchange-return?type=exchange&orderId=${order._id || order.id}&itemId=${item._id}`);
-                              }}
-                            >
-                              Exchange
-                            </Button>
-                            <Button
-                              variant="light"
-                              size="xs"
-                              color="red"
-                              leftIcon={<IconArrowBackUp size={14} />}
-                              fullWidth
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/exchange-return?type=return&orderId=${order._id || order.id}&itemId=${item._id}`);
-                              }}
-                            >
-                              Return
-                            </Button>
+                            {getRequestForItem(item._id) ? (
+                              <Button
+                                variant="light"
+                                size="xs"
+                                color="grape"
+                                leftIcon={<IconPackage size={14} />}
+                                fullWidth
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate("/my-requests");
+                                }}
+                              >
+                                Track Request
+                              </Button>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="light"
+                                  size="xs"
+                                  leftIcon={<IconRefresh size={14} />}
+                                  fullWidth
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/exchange-return?type=exchange&orderId=${order._id || order.id}&itemId=${item._id}`);
+                                  }}
+                                >
+                                  Exchange
+                                </Button>
+                                <Button
+                                  variant="light"
+                                  size="xs"
+                                  color="red"
+                                  leftIcon={<IconArrowBackUp size={14} />}
+                                  fullWidth
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/exchange-return?type=return&orderId=${order._id || order.id}&itemId=${item._id}`);
+                                  }}
+                                >
+                                  Return
+                                </Button>
+                              </>
+                            )}
                           </SimpleGrid>
                         </Box>
                       </Group>
@@ -641,25 +698,40 @@ export default function OrderList() {
                         </Group>
                         {isDelivered && (
                           <SimpleGrid cols={2} mt="sm" spacing="xs">
-                            <Button
-                              variant="light"
-                              size="xs"
-                              leftIcon={<IconRefresh size={14} />}
-                              fullWidth
-                              onClick={() => navigate(`/exchange-return?type=exchange&orderId=${selectedOrder._id || selectedOrder.id}&itemId=${item._id}`)}
-                            >
-                              Exchange
-                            </Button>
-                            <Button
-                              variant="light"
-                              size="xs"
-                              color="red"
-                              leftIcon={<IconArrowBackUp size={14} />}
-                              fullWidth
-                              onClick={() => navigate(`/exchange-return?type=return&orderId=${selectedOrder._id || selectedOrder.id}&itemId=${item._id}`)}
-                            >
-                              Return
-                            </Button>
+                            {getRequestForItem(item._id) ? (
+                              <Button
+                                variant="light"
+                                size="xs"
+                                color="grape"
+                                leftIcon={<IconPackage size={14} />}
+                                fullWidth
+                                onClick={() => navigate("/my-requests")}
+                              >
+                                Track Request
+                              </Button>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="light"
+                                  size="xs"
+                                  leftIcon={<IconRefresh size={14} />}
+                                  fullWidth
+                                  onClick={() => navigate(`/exchange-return?type=exchange&orderId=${selectedOrder._id || selectedOrder.id}&itemId=${item._id}`)}
+                                >
+                                  Exchange
+                                </Button>
+                                <Button
+                                  variant="light"
+                                  size="xs"
+                                  color="red"
+                                  leftIcon={<IconArrowBackUp size={14} />}
+                                  fullWidth
+                                  onClick={() => navigate(`/exchange-return?type=return&orderId=${selectedOrder._id || selectedOrder.id}&itemId=${item._id}`)}
+                                >
+                                  Return
+                                </Button>
+                              </>
+                            )}
                           </SimpleGrid>
                         )}
                       </Box>
