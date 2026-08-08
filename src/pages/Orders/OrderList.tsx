@@ -53,7 +53,7 @@ export default function OrderList() {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [requestMap, setRequestMap] = useState<Record<string, { type: string; status: string }>>({});
+  const [requestMap, setRequestMap] = useState<Record<string, { type: string; status: string; id?: string }>>({});
 
   const fetchMyRequests = async () => {
     try {
@@ -61,11 +61,11 @@ export default function OrderList() {
         axiosInstance.get("/exchange-return/exchanges/my-requests?limit=100"),
         axiosInstance.get("/exchange-return/returns/my-requests?limit=100"),
       ]);
-      const map: Record<string, { type: string; status: string }> = {};
+      const map: Record<string, { type: string; status: string; id?: string }> = {};
       const build = (list: any, type: string) => {
         (list || []).forEach((r: any) => {
           const id = r.orderItemId || r.orderItem?._id || r.orderItemId?._id;
-          if (id) map[id] = { type, status: r.status || "" };
+          if (id) map[id] = { type, status: r.status || "", id: r._id || r.id || "" };
         });
       };
       if (exRes.status === "fulfilled") {
@@ -334,6 +334,33 @@ export default function OrderList() {
         })}
       </Stack>
     );
+  };
+
+  const handleTrackRequest = async (itemId: string) => {
+    const req = getRequestForItem(itemId);
+    if (!req || !req.id) return;
+    try {
+      setTrackingLoading(true);
+      setTrackingData([]);
+      const base = req.type === "exchange" ? "exchanges" : "returns";
+      const res = await axiosInstance.get(`/exchange-return/${base}/${req.id}/track`);
+      const tracking = res.data?.tracking;
+      const parsed = tracking ? parseDelhiveryResponse(tracking) : [];
+      setTrackingData(
+        parsed.length > 0
+          ? parsed
+          : res.data?.delivered
+          ? [{ status: "Delivered", location: "", timestamp: "" }]
+          : []
+      );
+      openTrack();
+    } catch (err) {
+      console.error("Failed to fetch request tracking", err);
+      setTrackingData([{ status: "Tracking unavailable", location: "", timestamp: "" }]);
+      openTrack();
+    } finally {
+      setTrackingLoading(false);
+    }
   };
 
   // Helper to get order status color
@@ -657,17 +684,50 @@ export default function OrderList() {
                           <Text size="sm" c="dimmed">Subtotal: ₹{item.subtotal}</Text>
                         </Group>
                         {getRequestForItem(item._id) ? (
-                          <Button
-                            variant="light"
-                            size="xs"
-                            color="grape"
-                            leftIcon={<IconPackage size={14} />}
-                            fullWidth
-                            mt="sm"
-                            onClick={() => navigate("/my-requests")}
-                          >
-                            {getRequestForItem(item._id).type === "exchange" ? "Track Exchange" : "Track Return"}
-                          </Button>
+                          (() => {
+                            const req = getRequestForItem(item._id);
+                            const isExchange = req.type === "exchange";
+                            return (
+                              <Box
+                                mt="sm"
+                                p="xs"
+                                radius="md"
+                                style={{
+                                  background: isExchange
+                                    ? theme.colors.grape[0]
+                                    : theme.colors.orange[0],
+                                  border: `1px solid ${
+                                    isExchange
+                                      ? theme.colors.grape[3]
+                                      : theme.colors.orange[3]
+                                  }`,
+                                }}
+                              >
+                                <Group position="apart">
+                                  <Text size="xs" fw={700} c={isExchange ? "grape" : "orange"}>
+                                    {isExchange ? "Exchange" : "Return"} in progress
+                                  </Text>
+                                  <Badge
+                                    size="sm"
+                                    color={isExchange ? "grape" : "orange"}
+                                    variant="dot"
+                                  >
+                                    {req.status || "Requested"}
+                                  </Badge>
+                                </Group>
+                                <Button
+                                  fullWidth
+                                  mt="xs"
+                                  size="xs"
+                                  color={isExchange ? "grape" : "orange"}
+                                  leftIcon={<IconPackage size={14} />}
+                                  onClick={() => handleTrackRequest(item._id)}
+                                >
+                                  Track {isExchange ? "Exchange" : "Return"}
+                                </Button>
+                              </Box>
+                            );
+                          })()
                         ) : (
                           isOrderDelivered(selectedOrder) && (
                             <SimpleGrid cols={2} mt="sm" spacing="xs">
