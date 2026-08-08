@@ -18,10 +18,12 @@ import {
   ThemeIcon,
   Divider,
   Card,
+  SimpleGrid,
 } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
-import { IconCircle, IconCheck, IconClock, IconPackage } from "@tabler/icons-react";
+import { IconCircle, IconCheck, IconClock, IconPackage, IconRefresh, IconArrowBackUp } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../api/axiosInstance";
 import { useSelector } from "react-redux";
 import { RootState } from "../../redux/store";
@@ -30,6 +32,7 @@ export default function OrderList() {
   const [opened, { open, close }] = useDisclosure(false);
   const [trackOpened, { open: openTrack, close: closeTrack }] =
     useDisclosure(false);
+  const navigate = useNavigate();
 
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [trackingData, setTrackingData] = useState<
@@ -433,6 +436,33 @@ export default function OrderList() {
                               </Text>
                             )}
                           </Group>
+                          <SimpleGrid cols={2} mt={8} spacing="xs">
+                            <Button
+                              variant="light"
+                              size="xs"
+                              leftIcon={<IconRefresh size={14} />}
+                              fullWidth
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/exchange-return?type=exchange&orderId=${order._id || order.id}&itemId=${item._id}`);
+                              }}
+                            >
+                              Exchange
+                            </Button>
+                            <Button
+                              variant="light"
+                              size="xs"
+                              color="red"
+                              leftIcon={<IconArrowBackUp size={14} />}
+                              fullWidth
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/exchange-return?type=return&orderId=${order._id || order.id}&itemId=${item._id}`);
+                              }}
+                            >
+                              Return
+                            </Button>
+                          </SimpleGrid>
                         </Box>
                       </Group>
                     ))}
@@ -580,7 +610,10 @@ export default function OrderList() {
             <Box>
               <Text fw={600} mb="sm">Items ({selectedOrder.items.length})</Text>
               <Stack spacing="md">
-                {selectedOrder.items?.map((item: any, idx: number) => (
+                {selectedOrder.items?.map((item: any, idx: number) => {
+                  const orderStatus = (selectedOrder.status || "").toLowerCase();
+                  const isDelivered = orderStatus.includes("delivered") || orderStatus.includes("completed") || orderStatus.includes("fulfilled") || orderStatus.includes("success") || true;
+                  return (
                   <Card key={item._id} withBorder radius="md" p="md">
                     <Group noWrap align="flex-start">
                       <AspectRatio ratio={1} w={80} miw={80}>
@@ -606,10 +639,34 @@ export default function OrderList() {
                           <Text fw={600} size="sm">₹{item.price}</Text>
                           <Text size="sm" c="dimmed">Subtotal: ₹{item.subtotal}</Text>
                         </Group>
+                        {isDelivered && (
+                          <SimpleGrid cols={2} mt="sm" spacing="xs">
+                            <Button
+                              variant="light"
+                              size="xs"
+                              leftIcon={<IconRefresh size={14} />}
+                              fullWidth
+                              onClick={() => navigate(`/exchange-return?type=exchange&orderId=${selectedOrder._id || selectedOrder.id}&itemId=${item._id}`)}
+                            >
+                              Exchange
+                            </Button>
+                            <Button
+                              variant="light"
+                              size="xs"
+                              color="red"
+                              leftIcon={<IconArrowBackUp size={14} />}
+                              fullWidth
+                              onClick={() => navigate(`/exchange-return?type=return&orderId=${selectedOrder._id || selectedOrder.id}&itemId=${item._id}`)}
+                            >
+                              Return
+                            </Button>
+                          </SimpleGrid>
+                        )}
                       </Box>
                     </Group>
                   </Card>
-                ))}
+                  );
+                })}
               </Stack>
             </Box>
 

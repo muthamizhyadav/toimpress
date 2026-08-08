@@ -23,6 +23,8 @@ import ContactUs from "../pages/ContactUs/ContactUs";
 import Checkout from "../pages/Checkout/Checkout";
 import Home from "../pages/Home";
 import OrderSuccess from "../pages/Checkout/OrderSuccess";
+import ExchangeReturnRequest from "../pages/ExchangeReturn/ExchangeReturnRequest";
+import ExchangeReturnRequests from "../pages/ExchangeReturn/ExchangeReturnRequests";
 
 
 // Custom theme
@@ -194,6 +196,22 @@ const AppRoutes = () => {
                 element={
                   <AnimatedRoute>
                     <OrderSuccess />
+                  </AnimatedRoute>
+                }
+              />
+              <Route
+                path="/exchange-return"
+                element={
+                  <AnimatedRoute>
+                    <ExchangeReturnRequest />
+                  </AnimatedRoute>
+                }
+              />
+              <Route
+                path="/my-requests"
+                element={
+                  <AnimatedRoute>
+                    <ExchangeReturnRequests />
                   </AnimatedRoute>
                 }
               />
