@@ -20,6 +20,7 @@ import {
   Card,
   SimpleGrid,
   Skeleton,
+  Collapse,
 } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import { IconCheck, IconClock, IconPackage, IconRefresh, IconArrowBackUp, IconChevronRight } from "@tabler/icons-react";
@@ -55,6 +56,7 @@ export default function OrderList() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [requestMap, setRequestMap] = useState<Record<string, { type: string; status: string; id?: string }>>({});
+  const [expandedSteps, setExpandedSteps] = useState<Record<string, boolean>>({});
 
   const fetchMyRequests = async () => {
     try {
@@ -251,41 +253,40 @@ export default function OrderList() {
     }
   };
 
-  const handleTrackRequest = async (req: any) => {
-    try {
-      setTrackingLoading(true);
-      setTrackingData([]);
-      setSelectedOrder(null);
-      const res = await axiosInstance.get(
-        `/exchange-return/${req.type === "exchange" ? "exchanges" : "returns"}/${req.id}/track`
-      );
-      const data = res.data || {};
-      const tracking = data.tracking || data;
-      const normalized = parseDelhiveryResponse(tracking);
-      setTrackingData(normalized.length ? normalized : []);
-      if (normalized.length === 0) {
-        setTrackingData([
-          {
-            status: (data.exchange?.status || data.returnReq?.status || req.status || "Requested").replace(/_/g, " "),
-            location: "",
-            timestamp: "",
-          },
-        ]);
-      }
-      openTrack();
-    } catch (err) {
-      console.error("Failed to fetch request tracking", err);
-      setTrackingData([
-        {
-          status: (req.status || "Requested").replace(/_/g, " "),
-          location: "",
-          timestamp: "",
-        },
-      ]);
-      openTrack();
-    } finally {
-      setTrackingLoading(false);
+  const getRequestSteps = (req: any) => {
+    const status = req.status || "";
+    const isExchange = req.type === "exchange";
+    const done = (list: string[]) =>
+      list.some((s) => s === status) || list.includes(status);
+
+    const steps = isExchange
+      ? [
+          { label: "Request Submitted", done: true },
+          { label: "Approved", done: done(["approved", "payment_pending", "payment_completed", "pickup_scheduled", "product_received", "replacement_dispatched", "exchange_completed"]) },
+          { label: "Payment Completed", done: done(["payment_pending", "payment_completed", "pickup_scheduled", "product_received", "replacement_dispatched", "exchange_completed"]) },
+          { label: "Pickup Scheduled", done: done(["pickup_scheduled", "product_received", "replacement_dispatched", "exchange_completed"]) },
+          { label: "Product Received at Warehouse", done: done(["product_received", "replacement_dispatched", "exchange_completed"]) },
+          { label: "Replacement Dispatched", done: done(["replacement_dispatched", "exchange_completed"]) },
+          { label: "Exchange Completed", done: status === "exchange_completed" },
+        ]
+      : [
+          { label: "Return Requested", done: true },
+          { label: "Approved", done: done(["approved", "pickup_scheduled", "product_received", "quality_inspection", "refund_initiated", "refund_credited", "return_completed"]) },
+          { label: "Pickup Scheduled", done: done(["pickup_scheduled", "product_received", "quality_inspection", "refund_initiated", "refund_credited", "return_completed"]) },
+          { label: "Product Received", done: done(["product_received", "quality_inspection", "refund_initiated", "refund_credited", "return_completed"]) },
+          { label: "Quality Inspection", done: done(["quality_inspection", "refund_initiated", "refund_credited", "return_completed"]) },
+          { label: "Refund Initiated", done: done(["refund_initiated", "refund_credited", "return_completed"]) },
+          { label: "Refund Credited", done: done(["refund_credited", "return_completed"]) },
+          { label: "Return Completed", done: status === "return_completed" },
+        ];
+
+    if (status === "rejected") {
+      steps.forEach((s, i) => {
+        if (i < 2) s.done = true;
+        else s.done = false;
+      });
     }
+    return steps;
   };
 
   // UI helper to show the vertical timeline
@@ -645,6 +646,152 @@ export default function OrderList() {
       >
         {selectedOrder && (
           <Stack spacing="lg">
+            {/* Request Status Section (top of drawer) */}
+            {selectedOrder.items?.some((it: any) => getRequestForItem(it._id)) && (
+              <Card withBorder radius="md" p="md">
+                <Text fw={600} mb="sm">Request Status</Text>
+                <Stack spacing="sm">
+                  {selectedOrder.items.map((item: any) => {
+                    const req = getRequestForItem(item._id);
+                    if (!req) return null;
+                    const isExchange = req.type === "exchange";
+                    return (
+                      <Box key={item._id}>
+                        <Box
+                          p="sm"
+                          // radius="xl"
+                          style={{
+                            background: "#f0f5ec",
+                            border: "1px solid #C6D4BC",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 8,
+                            cursor: "pointer",
+                            borderRadius: theme.radius.md,
+                          }}
+                          onClick={() =>
+                            setExpandedSteps((prev) => ({ ...prev, [item._id]: !prev[item._id] }))
+                          }
+                        >
+                          <Group spacing={8} noWrap  style={{   borderRadius: theme.radius.md,}}>
+                            <ThemeIcon size={22} radius="xl" color="darkGreen" variant="filled">
+                              <IconPackage size={13} />
+                            </ThemeIcon>
+                            <Box>
+                              <Text size="sm" fw={700} style={{ color: "#133215" }}>
+                                {isExchange ? "Exchange" : "Return"} in progress
+                              </Text>
+                              <Text size="xs" c="dimmed" lineClamp={1}>
+                                {item.productTitle}
+                              </Text>
+                            </Box>
+                          </Group>
+                          <Group spacing={6} noWrap >
+                            <Badge
+                              size="sm"
+                              styles={(theme: any) => ({
+                                root: {
+                                  backgroundColor: "#133215",
+                                  color: "#ffffff",
+                                  textTransform: "capitalize",
+                                  borderRadius: theme.radius.sm,
+                                },
+                              })}
+                            >
+                              {req.status || "Requested"}
+                            </Badge>
+                            <Box
+                              style={{
+                                transition: "transform 0.2s",
+                                transform: expandedSteps[item._id]
+                                  ? "rotate(90deg)"
+                                  : "rotate(0deg)",
+                              }}
+                            >
+                              <IconChevronRight size={14} />
+                            </Box>
+                          </Group>
+                        </Box>
+                        <Collapse
+                          in={expandedSteps[item._id]}
+                          transitionDuration={250}
+                          transitionTimingFunction="ease"
+                          mt={expandedSteps[item._id] ? "sm" : 0}
+                        >
+                          <Box
+                            p="sm"
+                            radius="xl"
+                            style={{
+                              background: "#f0f5ec",
+                              border: "1px solid #C6D4BC",
+                              borderRadius: theme.radius.md,
+                            }}
+                          >
+                            <Stack spacing={10}>
+                              {getRequestSteps(req).map((step, si) => {
+                                const isLastStep = si === getRequestSteps(req).length - 1;
+                                return (
+                                  <Group key={si} align="flex-start" spacing="sm" noWrap>
+                                    <Box
+                                      style={{
+                                        width: 22,
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        alignItems: "center",
+                                        position: "relative",
+                                        marginTop: 2,
+                                      }}
+                                    >
+                                      <ThemeIcon
+                                        radius="xl"
+                                        size={22}
+                                        variant={step.done ? "filled" : "light"}
+                                        color="darkGreen"
+                                      >
+                                        {step.done ? (
+                                          <IconCheck size={13} />
+                                        ) : (
+                                          <IconClock size={13} />
+                                        )}
+                                      </ThemeIcon>
+                                      {!isLastStep && (
+                                        <Box
+                                          style={{
+                                            width: 2,
+                                            background: step.done
+                                              ? "#133215"
+                                              : theme.colors.gray[3],
+                                            flex: 1,
+                                            marginTop: 6,
+                                            alignSelf: "center",
+                                            minHeight: 22,
+                                          }}
+                                        />
+                                      )}
+                                    </Box>
+                                    <Text
+                                      size="sm"
+                                      fw={step.done ? 700 : 500}
+                                      style={{
+                                        color: step.done ? "#133215" : theme.colors.gray[6],
+                                      }}
+                                    >
+                                      {step.label}
+                                    </Text>
+                                  </Group>
+                                );
+                              })}
+                            </Stack>
+                          </Box>
+                        </Collapse>
+                      </Box>
+                    );
+                  })}
+                </Stack>
+              </Card>
+            )}
+
             {/* Order Summary */}
             <Card withBorder radius="md">
               <Group position="apart" mb="sm">
@@ -745,52 +892,6 @@ export default function OrderList() {
                         )}
                       </Box>
                     </Group>
-                    {getRequestForItem(item._id) &&
-                      (() => {
-                        const req = getRequestForItem(item._id);
-                        const isExchange = req.type === "exchange";
-                        return (
-                          <Box
-                            mt="sm"
-                            p="sm"
-                            radius="md"
-                            style={{
-                              background: "#f0f5ec",
-                              border: "1px solid #C6D4BC",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              gap: 8,
-                              cursor: "pointer",
-                            }}
-                            onClick={() => req.id && handleTrackRequest(req)}
-                          >
-                            <Group spacing={8} noWrap>
-                              <ThemeIcon size={22} radius="xl" color="darkGreen" variant="filled">
-                                <IconPackage size={13} />
-                              </ThemeIcon>
-                              <Text size="sm" fw={700} style={{ color: "#133215" }}>
-                                {isExchange ? "Exchange" : "Return"} in progress
-                              </Text>
-                            </Group>
-                            <Group spacing={6} noWrap>
-                              <Badge
-                                size="sm"
-                                styles={(theme: any) => ({
-                                  root: {
-                                    backgroundColor: "#133215",
-                                    color: "#ffffff",
-                                    textTransform: "capitalize",
-                                  },
-                                })}
-                              >
-                                {req.status || "Requested"}
-                              </Badge>
-                              <IconChevronRight size={14} />
-                            </Group>
-                          </Box>
-                        );
-                      })()}
                   </Card>
                   );
                 })}
@@ -810,10 +911,6 @@ export default function OrderList() {
                 </Stack>
               </Card>
             )}
-
-            <Button fullWidth onClick={close} mt="md">
-              Close
-            </Button>
           </Stack>
         )}
       </Drawer>
