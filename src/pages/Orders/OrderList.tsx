@@ -47,7 +47,7 @@ export default function OrderList() {
 
   const theme = useMantineTheme();
   const isMobile = useMediaQuery("(max-width: 600px)");
-  const { tokens }: any = useSelector((state: RootState) => state.auth);
+  const { tokens, isAuthenticated }: any = useSelector((state: RootState) => state.auth);
 
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -57,12 +57,9 @@ export default function OrderList() {
 
   const fetchMyRequests = async () => {
     try {
-      const headers = {
-        Authorization: `Bearer ${tokens?.access?.token || "s"}`,
-      };
       const [exRes, retRes] = await Promise.allSettled([
-        axiosInstance.get("/exchange-return/exchanges/my-requests", { headers }),
-        axiosInstance.get("/exchange-return/returns/my-requests", { headers }),
+        axiosInstance.get("/exchange-return/exchanges/my-requests?limit=100"),
+        axiosInstance.get("/exchange-return/returns/my-requests?limit=100"),
       ]);
       const map: Record<string, { type: string; status: string }> = {};
       const build = (list: any, type: string) => {
@@ -129,10 +126,10 @@ export default function OrderList() {
   }, [page]);
 
   useEffect(() => {
-    if (tokens?.access?.token) {
+    if (isAuthenticated || localStorage.getItem("token")) {
       fetchMyRequests();
     }
-  }, [tokens]);
+  }, [isAuthenticated]);
 
   const handleClick = (order: any) => {
     setSelectedOrder(order);
