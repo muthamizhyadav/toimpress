@@ -115,12 +115,18 @@ export default function ExchangeReturnRequest() {
     if (!itemId) return;
     try {
       setCheckingExisting(true);
-      const url =
-        type === "exchange"
-          ? "/exchange-return/exchanges/my-requests"
-          : "/exchange-return/returns/my-requests";
-      const res = await axiosInstance.get(url);
-      const list = res.data?.data || res.data || [];
+      const [exRes, retRes] = await Promise.allSettled([
+        axiosInstance.get("/exchange-return/exchanges/my-requests"),
+        axiosInstance.get("/exchange-return/returns/my-requests"),
+      ]);
+      const list = [
+        ...(exRes.status === "fulfilled"
+          ? exRes.value.data?.data || exRes.value.data || []
+          : []),
+        ...(retRes.status === "fulfilled"
+          ? retRes.value.data?.data || retRes.value.data || []
+          : []),
+      ];
       const found = list.find(
         (r: any) =>
           r.orderItemId === itemId ||
