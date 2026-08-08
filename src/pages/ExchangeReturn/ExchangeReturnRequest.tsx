@@ -139,12 +139,32 @@ export default function ExchangeReturnRequest() {
   const REQUEST_STATUS_LABELS: Record<string, string> = {
     requested: "Requested",
     approved: "Approved",
+    payment_pending: "Payment Pending",
+    payment_completed: "Payment Done",
+    pickup_scheduled: "Pickup Scheduled",
+    product_received: "Product Received",
+    quality_inspection: "Quality Inspection",
+    replacement_dispatched: "Replacement Dispatched",
+    refund_initiated: "Refund Initiated",
+    refund_credited: "Refund Credited",
+    exchange_completed: "Exchange Completed",
+    return_completed: "Return Completed",
     rejected: "Rejected",
   };
 
   const REQUEST_STATUS_COLORS: Record<string, string> = {
     requested: "yellow",
     approved: "blue",
+    payment_pending: "yellow",
+    payment_completed: "green",
+    pickup_scheduled: "teal",
+    product_received: "indigo",
+    quality_inspection: "grape",
+    replacement_dispatched: "violet",
+    refund_initiated: "orange",
+    refund_credited: "green",
+    exchange_completed: "gray",
+    return_completed: "green",
     rejected: "red",
   };
 

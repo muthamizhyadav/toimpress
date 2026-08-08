@@ -50,6 +50,14 @@ const STATUS_COLORS: Record<string, string> = {
   approved: "blue",
   payment_pending: "yellow",
   payment_completed: "green",
+  pickup_scheduled: "teal",
+  product_received: "indigo",
+  quality_inspection: "grape",
+  replacement_dispatched: "violet",
+  refund_initiated: "orange",
+  refund_credited: "green",
+  exchange_completed: "gray",
+  return_completed: "green",
   rejected: "red",
 };
 
@@ -58,6 +66,14 @@ const STATUS_LABELS: Record<string, string> = {
   approved: "Approved",
   payment_pending: "Payment Pending",
   payment_completed: "Payment Done",
+  pickup_scheduled: "Pickup Scheduled",
+  product_received: "Product Received",
+  quality_inspection: "Quality Inspection",
+  replacement_dispatched: "Replacement Dispatched",
+  refund_initiated: "Refund Initiated",
+  refund_credited: "Refund Credited",
+  exchange_completed: "Exchange Completed",
+  return_completed: "Return Completed",
   rejected: "Rejected",
 };
 
@@ -221,15 +237,25 @@ export default function ExchangeReturnRequests() {
     const steps = isExchange
       ? [
           { label: "Request Submitted", done: true },
-          { label: "Approved", done: ["approved", "payment_pending", "payment_completed"].includes(status) },
+          { label: "Approved", done: ["approved", "payment_pending", "payment_completed", "pickup_scheduled", "product_received", "replacement_dispatched", "exchange_completed"].includes(status) },
           {
             label: "Payment Completed",
-            done: ["payment_pending", "payment_completed"].includes(status),
+            done: ["payment_pending", "payment_completed", "pickup_scheduled", "product_received", "replacement_dispatched", "exchange_completed"].includes(status),
           },
+          { label: "Pickup Scheduled", done: ["pickup_scheduled", "product_received", "replacement_dispatched", "exchange_completed"].includes(status) },
+          { label: "Product Received at Warehouse", done: ["product_received", "replacement_dispatched", "exchange_completed"].includes(status) },
+          { label: "Replacement Dispatched", done: ["replacement_dispatched", "exchange_completed"].includes(status) },
+          { label: "Exchange Completed", done: status === "exchange_completed" },
         ]
       : [
           { label: "Return Requested", done: true },
-          { label: "Approved", done: ["approved", "refund_initiated", "refund_credited", "return_completed"].includes(status) },
+          { label: "Approved", done: ["approved", "pickup_scheduled", "product_received", "quality_inspection", "refund_initiated", "refund_credited", "return_completed"].includes(status) },
+          { label: "Pickup Scheduled", done: ["pickup_scheduled", "product_received", "quality_inspection", "refund_initiated", "refund_credited", "return_completed"].includes(status) },
+          { label: "Product Received", done: ["product_received", "quality_inspection", "refund_initiated", "refund_credited", "return_completed"].includes(status) },
+          { label: "Quality Inspection", done: ["quality_inspection", "refund_initiated", "refund_credited", "return_completed"].includes(status) },
+          { label: "Refund Initiated", done: ["refund_initiated", "refund_credited", "return_completed"].includes(status) },
+          { label: "Refund Credited", done: ["refund_credited", "return_completed"].includes(status) },
+          { label: "Return Completed", done: status === "return_completed" },
         ];
 
     return steps;
