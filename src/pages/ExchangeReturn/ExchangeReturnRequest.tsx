@@ -1,4 +1,5 @@
 import {
+  Badge,
   Box,
   Button,
   Card,
@@ -72,6 +73,8 @@ export default function ExchangeReturnRequest() {
   const [submitting, setSubmitting] = useState(false);
   const [orderItem, setOrderItem] = useState<any>(null);
   const [orderData, setOrderData] = useState<any>(null);
+  const [existingRequest, setExistingRequest] = useState<any>(null);
+  const [checkingExisting, setCheckingExisting] = useState(false);
 
   // Form state
   const [reason, setReason] = useState<string>("");
@@ -88,11 +91,233 @@ export default function ExchangeReturnRequest() {
 
   const totalSteps = type === "exchange" ? 5 : 4;
 
+  const TERMINAL_STATUSES = [
+    "rejected",
+    "exchange_completed",
+    "return_completed",
+    "refund_credited",
+  ];
+
+  const isTerminalStatus = (status: string) =>
+    TERMINAL_STATUSES.includes(status);
+
   useEffect(() => {
     if (orderId && itemId) {
       fetchOrderItem();
+      checkExistingRequest();
+    } else {
+      setCheckingExisting(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId, itemId]);
+
+  const checkExistingRequest = async () => {
+    if (!itemId) return;
+    try {
+      setCheckingExisting(true);
+      const url =
+        type === "exchange"
+          ? "/exchange-return/exchanges/my-requests"
+          : "/exchange-return/returns/my-requests";
+      const res = await axiosInstance.get(url);
+      const list = res.data?.data || res.data || [];
+      const found = list.find(
+        (r: any) =>
+          r.orderItemId === itemId ||
+          r.orderItem?._id === itemId ||
+          r.orderItemId?._id === itemId
+      );
+      setExistingRequest(found || null);
+    } catch (err) {
+      console.error("Failed to check existing request", err);
+      setExistingRequest(null);
+    } finally {
+      setCheckingExisting(false);
+    }
+  };
+
+  const REQUEST_STATUS_LABELS: Record<string, string> = {
+    requested: "Requested",
+    under_review: "Under Review",
+    approved: "Approved",
+    payment_pending: "Payment Pending",
+    payment_completed: "Payment Done",
+    pickup_scheduled: "Pickup Scheduled",
+    product_received: "Product Received",
+    replacement_dispatched: "Replacement Dispatched",
+    exchange_completed: "Exchange Completed",
+    return_requested: "Return Requested",
+    return_approved: "Return Approved",
+    refund_initiated: "Refund Initiated",
+    refund_credited: "Refund Credited",
+    return_completed: "Return Completed",
+    rejected: "Rejected",
+  };
+
+  const REQUEST_STATUS_COLORS: Record<string, string> = {
+    requested: "yellow",
+    under_review: "orange",
+    approved: "blue",
+    payment_pending: "yellow",
+    payment_completed: "green",
+    pickup_scheduled: "teal",
+    product_received: "indigo",
+    replacement_dispatched: "violet",
+    exchange_completed: "green",
+    return_requested: "yellow",
+    return_approved: "blue",
+    refund_initiated: "teal",
+    refund_credited: "green",
+    return_completed: "green",
+    rejected: "red",
+  };
+
+  const renderExistingRequest = () => {
+    if (!existingRequest) return null;
+    return (
+      <Card withBorder radius="lg" p="xl">
+        <Stack spacing="lg">
+          <Center>
+            <ThemeIcon size={64} radius="xl" variant="light" color="green">
+              <IconCheck size={32} />
+            </ThemeIcon>
+          </Center>
+          <Title order={3} ta="center">
+            Request Already Submitted
+          </Title>
+          <Text c="dimmed" ta="center">
+            You have already submitted a request for this item. It is currently{" "}
+            <b>
+              {REQUEST_STATUS_LABELS[existingRequest.status] ||
+                existingRequest.status}
+            </b>
+            .
+          </Text>
+
+          {orderItem && (
+            <Card withBorder radius="md" p="md" bg={theme.colors.gray[0]}>
+              <Group align="flex-start" spacing="md">
+                <Image
+                  src={orderItem.productUrl || orderItem.productImage}
+                  w={80}
+                  h={80}
+                  radius="md"
+                  fit="cover"
+                />
+                <Box>
+                  <Text fw={600}>{orderItem.productTitle}</Text>
+                  <Group spacing="xs" mt={4}>
+                    <Text size="sm" c="dimmed">
+                      Size: {orderItem.selectedSize}
+                    </Text>
+                    <Text size="sm" c="dimmed">
+                      • Qty: {orderItem.quantity}
+                    </Text>
+                  </Group>
+                </Box>
+              </Group>
+            </Card>
+          )}
+
+          <Group position="apart" w="100%">
+            <Text size="sm" fw={600}>
+              Current Size
+            </Text>
+            <Text size="sm">{existingRequest.currentSize || orderItem?.selectedSize}</Text>
+          </Group>
+          {type === "exchange" && (
+            <Group position="apart" w="100%">
+              <Text size="sm" fw={600}>
+                Requested Size
+              </Text>
+              <Text size="sm">{existingRequest.newSize || newSize}</Text>
+            </Group>
+          )}
+          <Group position="apart" w="100%">
+            <Text size="sm" fw={600}>
+              Reason
+            </Text>
+            <Text size="sm">{existingRequest.reason}</Text>
+          </Group>
+          <Group position="apart" w="100%">
+            <Text size="sm" fw={600}>
+              Status
+            </Text>
+            <Badge
+              color={REQUEST_STATUS_COLORS[existingRequest.status] || "gray"}
+              variant="light"
+            >
+              {REQUEST_STATUS_LABELS[existingRequest.status] ||
+                existingRequest.status}
+            </Badge>
+          </Group>
+
+          <Group position="apart">
+            <Button variant="outline" onClick={() => navigate("/orders")}>
+              View Orders
+            </Button>
+            <Button
+              onClick={() => navigate("/my-requests")}
+              style={{ backgroundColor: DARK_GREEN }}
+            >
+              Track Request
+            </Button>
+          </Group>
+        </Stack>
+      </Card>
+    );
+  };
+
+  const resolveProductId = (item: any): string => {
+    if (!item) return "";
+    if (typeof item.product === "string" && item.product.trim())
+      return item.product.trim();
+    return (
+      item.product?._id ||
+      item.product?.id ||
+      item.productId ||
+      item.product_id ||
+      ""
+    );
+  };
+
+  const searchProductSizes = async (title: string) => {
+    try {
+      const res = await axiosInstance.get(
+        `/products/global/search?searchkey=${encodeURIComponent(title)}`
+      );
+      const products = Array.isArray(res.data?.data)
+        ? res.data.data
+        : Array.isArray(res.data)
+          ? res.data
+          : [];
+      const first = products[0];
+      if (!first) return;
+      if (first._id) {
+        fetchProductSizes(first._id);
+        return;
+      }
+      const sizes =
+        first?.selectedSizes || first?.sizes || first?.availableSizes || [];
+      applySizes(sizes);
+    } catch (err) {
+      console.error("Failed to search product sizes", err);
+    }
+  };
+
+  const applySizes = (sizes: any[]) => {
+    const labels = (sizes || [])
+      .map((s: any) =>
+        typeof s === "string" ? s : s?.size || s?.name || ""
+      )
+      .filter(Boolean) as string[];
+    setAvailableSizes(labels);
+    const stock: Record<string, boolean> = {};
+    labels.forEach((s: any) => {
+      stock[s] = true;
+    });
+    setStockInfo(stock);
+  };
 
   const fetchOrderItem = async () => {
     try {
@@ -106,8 +331,13 @@ export default function ExchangeReturnRequest() {
       const item = order?.items?.find((i: any) => i._id === itemId);
       if (item) {
         setOrderItem(item);
-        if (type === "exchange" && (item.product || item.productId)) {
-          fetchProductSizes(item.product || item.productId);
+        if (type === "exchange") {
+          const productId = resolveProductId(item);
+          if (productId) {
+            fetchProductSizes(productId);
+          } else if (item.productTitle) {
+            searchProductSizes(item.productTitle);
+          }
         }
       }
     } catch (err) {
@@ -125,16 +355,29 @@ export default function ExchangeReturnRequest() {
   const fetchProductSizes = async (productId: string) => {
     try {
       const res = await axiosInstance.get(`/products/product/detail/${productId}`);
-      const raw = res.data?.data || res.data;
-      const product = raw?.product || raw;
-      const sizes = product?.selectedSizes || product?.sizes || product?.availableSizes || [];
-      setAvailableSizes(sizes);
-      const stock: Record<string, boolean> = {};
-      sizes.forEach((s: any) => {
-        const sizeLabel = typeof s === "string" ? s : s.size || s.name;
-        stock[sizeLabel] = true;
-      });
-      setStockInfo(stock);
+      const data =
+        res?.data?.product ||
+        res?.data?.data?.product ||
+        res?.data?.data ||
+        res?.data ||
+        {};
+      let sizes: any[] =
+        data?.selectedSizes || data?.sizes || data?.availableSizes || [];
+      if (!sizes.length && data?.colorData && typeof data.colorData === "object") {
+        const agg = new Map<string, string[] | null>();
+        Object.keys(data.colorData).forEach((c) => {
+          const entry = data.colorData[c];
+          const arr = entry?.sizes || entry?.selectedSizes || entry?.availableSizes;
+          if (Array.isArray(arr)) {
+            arr.forEach((s: any) => {
+              const label = typeof s === "string" ? s : s?.size || s?.name;
+              if (label) agg.set(label, null);
+            });
+          }
+        });
+        sizes = Array.from(agg.keys());
+      }
+      applySizes(sizes);
     } catch (err) {
       console.error("Failed to fetch product sizes", err);
     }
@@ -201,6 +444,7 @@ export default function ExchangeReturnRequest() {
 
       if (type === "exchange") {
         payload.newSize = newSize;
+        payload.currentSize = orderItem?.selectedSize || "";
       }
 
       const res = await axiosInstance.post(
@@ -535,7 +779,7 @@ export default function ExchangeReturnRequest() {
                     Back
                   </Button>
                   <Button
-                    onClick={() => setStep(5)}
+                    onClick={handleSubmitRequest}
                     loading={submitting}
                     style={{ backgroundColor: DARK_GREEN }}
                   >
@@ -690,7 +934,7 @@ export default function ExchangeReturnRequest() {
     }
   };
 
-  if (loading) {
+  if (loading || checkingExisting) {
     return (
       <div>
         <SmallHeader />
@@ -716,36 +960,42 @@ export default function ExchangeReturnRequest() {
               {type === "exchange" ? "Exchange" : "Return"} Request
             </Title>
 
-            {/* Progress indicator */}
-            <Group position="center" mb="xl">
-              {Array.from({ length: totalSteps }, (_, i) => (
-                <Group key={i} spacing="xs" align="center">
-                  <ThemeIcon
-                    size={32}
-                    radius="xl"
-                    variant={step > i + 1 ? "filled" : step === i + 1 ? "filled" : "outline"}
-                    color={step >= i + 1 ? "green" : "gray"}
-                  >
-                    {step > i + 1 ? <IconCheck size={14} /> : i + 1}
-                  </ThemeIcon>
-                  {i < totalSteps - 1 && (
-                    <Box
-                      w={40}
-                      h={3}
-                      style={{
-                        backgroundColor:
-                          step > i + 1
-                            ? theme.colors.green[5]
-                            : theme.colors.gray[3],
-                        borderRadius: 2,
-                      }}
-                    />
-                  )}
+            {existingRequest && !isTerminalStatus(existingRequest.status) ? (
+              renderExistingRequest()
+            ) : (
+              <>
+                {/* Progress indicator */}
+                <Group position="center" mb="xl">
+                  {Array.from({ length: totalSteps }, (_, i) => (
+                    <Group key={i} spacing="xs" align="center">
+                      <ThemeIcon
+                        size={32}
+                        radius="xl"
+                        variant={step > i + 1 ? "filled" : step === i + 1 ? "filled" : "outline"}
+                        color={step >= i + 1 ? "green" : "gray"}
+                      >
+                        {step > i + 1 ? <IconCheck size={14} /> : i + 1}
+                      </ThemeIcon>
+                      {i < totalSteps - 1 && (
+                        <Box
+                          w={40}
+                          h={3}
+                          style={{
+                            backgroundColor:
+                              step > i + 1
+                                ? theme.colors.green[5]
+                                : theme.colors.gray[3],
+                            borderRadius: 2,
+                          }}
+                        />
+                      )}
+                    </Group>
+                  ))}
                 </Group>
-              ))}
-            </Group>
 
-            {renderStepContent()}
+                {renderStepContent()}
+              </>
+            )}
           </Box>
         </Center>
       </Box>

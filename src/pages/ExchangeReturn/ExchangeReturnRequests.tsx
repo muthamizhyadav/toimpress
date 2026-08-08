@@ -10,6 +10,7 @@ import {
   SimpleGrid,
   Stack,
   Text,
+  Title,
   Badge,
   Timeline,
   useMantineTheme,
@@ -366,21 +367,22 @@ export default function ExchangeReturnRequests() {
                       </Box>
                     </Group>
 
-                    {req.status === "payment_pending" && req._type === "exchange" && (
-                      <Button
-                        mt="md"
-                        fullWidth
-                        size="lg"
-                        loading={paying}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handlePayExchangeCharge(req);
-                        }}
-                        style={{ backgroundColor: DARK_GREEN }}
-                      >
-                        Pay ₹{EXCHANGE_CHARGE} Now
-                      </Button>
-                    )}
+                    {(req.status === "approved" || req.status === "payment_pending") &&
+                      req._type === "exchange" && (
+                        <Button
+                          mt="md"
+                          fullWidth
+                          size="lg"
+                          loading={paying}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePayExchangeCharge(req);
+                          }}
+                          style={{ backgroundColor: DARK_GREEN }}
+                        >
+                          Pay ₹{EXCHANGE_CHARGE} Now
+                        </Button>
+                      )}
                   </Card>
                 ))}
               </Stack>
@@ -500,7 +502,7 @@ export default function ExchangeReturnRequests() {
               ))}
             </Timeline>
 
-            {selectedRequest.status === "payment_pending" &&
+            {(selectedRequest.status === "approved" || selectedRequest.status === "payment_pending") &&
               selectedRequest._type === "exchange" && (
                 <Button
                   fullWidth
