@@ -45,37 +45,17 @@ const RAZORPAY_KEY_ID = import.meta.env.VITE_RZP_KEY_ID as string;
 
 const STATUS_COLORS: Record<string, string> = {
   requested: "yellow",
-  under_review: "orange",
   approved: "blue",
   payment_pending: "yellow",
   payment_completed: "green",
-  pickup_scheduled: "teal",
-  product_received: "indigo",
-  replacement_dispatched: "violet",
-  exchange_completed: "green",
-  return_requested: "yellow",
-  return_approved: "blue",
-  refund_initiated: "teal",
-  refund_credited: "green",
-  return_completed: "green",
   rejected: "red",
 };
 
 const STATUS_LABELS: Record<string, string> = {
   requested: "Requested",
-  under_review: "Under Review",
   approved: "Approved",
   payment_pending: "Payment Pending",
   payment_completed: "Payment Done",
-  pickup_scheduled: "Pickup Scheduled",
-  product_received: "Product Received",
-  replacement_dispatched: "Replacement Dispatched",
-  exchange_completed: "Exchange Completed",
-  return_requested: "Return Requested",
-  return_approved: "Return Approved",
-  refund_initiated: "Refund Initiated",
-  refund_credited: "Refund Credited",
-  return_completed: "Return Completed",
   rejected: "Rejected",
 };
 
@@ -235,21 +215,15 @@ export default function ExchangeReturnRequests() {
     const steps = isExchange
       ? [
           { label: "Request Submitted", done: true },
-          { label: "Under Review", done: ["under_review", "approved", "payment_pending", "payment_completed", "pickup_scheduled", "product_received", "replacement_dispatched", "exchange_completed"].includes(status) },
-          { label: "Approved", done: ["approved", "payment_pending", "payment_completed", "pickup_scheduled", "product_received", "replacement_dispatched", "exchange_completed"].includes(status) },
-          { label: "Payment Completed", done: ["payment_completed", "pickup_scheduled", "product_received", "replacement_dispatched", "exchange_completed"].includes(status) },
-          { label: "Pickup Scheduled", done: ["pickup_scheduled", "product_received", "replacement_dispatched", "exchange_completed"].includes(status) },
-          { label: "Replacement Dispatched", done: ["replacement_dispatched", "exchange_completed"].includes(status) },
-          { label: "Exchange Completed", done: status === "exchange_completed" },
+          { label: "Approved", done: ["approved", "payment_pending", "payment_completed"].includes(status) },
+          {
+            label: "Payment Completed",
+            done: ["payment_pending", "payment_completed"].includes(status),
+          },
         ]
       : [
           { label: "Return Requested", done: true },
-          { label: "Under Review", done: ["under_review", "return_approved", "pickup_scheduled", "product_received", "refund_initiated", "refund_credited", "return_completed"].includes(status) },
-          { label: "Approved", done: ["return_approved", "pickup_scheduled", "product_received", "refund_initiated", "refund_credited", "return_completed"].includes(status) },
-          { label: "Pickup Scheduled", done: ["pickup_scheduled", "product_received", "refund_initiated", "refund_credited", "return_completed"].includes(status) },
-          { label: "Product Received", done: ["product_received", "refund_initiated", "refund_credited", "return_completed"].includes(status) },
-          { label: "Refund Initiated", done: ["refund_initiated", "refund_credited", "return_completed"].includes(status) },
-          { label: "Refund Credited", done: ["refund_credited", "return_completed"].includes(status) },
+          { label: "Approved", done: ["approved", "refund_initiated", "refund_credited", "return_completed"].includes(status) },
         ];
 
     return steps;
