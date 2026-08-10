@@ -34,6 +34,7 @@ import { useSelector } from "react-redux";
 import { RootState } from "../../redux/store";
 import SmallHeader from "../../components/SmallHeader";
 import Header from "../../components/Header";
+import UploadedImagePreview from "../../components/shared/UploadedImagePreview";
 import Footer from "../Home/Footer";
 import MobileBottomNavbar from "../MobileBottomBar";
 import { loadRazorpay } from "../../utils/loadRazorpay";
@@ -44,6 +45,9 @@ const EXCHANGE_CHARGE = 150;
 const RAZORPAY_KEY_ID = import.meta.env.VITE_RZP_KEY_ID as string;
 
 const getRequestId = (r: any) => r?._id || r?.id || "";
+
+const isChargeWaived = (r?: string) =>
+  String(r || "").trim().toLowerCase() === "defective product";
 
 const STATUS_COLORS: Record<string, string> = {
   requested: "yellow",
@@ -240,7 +244,7 @@ export default function ExchangeReturnRequests() {
           { label: "Approved", done: ["approved", "payment_pending", "payment_completed", "pickup_scheduled", "product_received", "replacement_dispatched", "exchange_completed"].includes(status) },
           {
             label: "Payment Completed",
-            done: ["payment_pending", "payment_completed", "pickup_scheduled", "product_received", "replacement_dispatched", "exchange_completed"].includes(status),
+            done: isChargeWaived(request.reason) || ["payment_pending", "payment_completed", "pickup_scheduled", "product_received", "replacement_dispatched", "exchange_completed"].includes(status),
           },
           { label: "Pickup Scheduled", done: ["pickup_scheduled", "product_received", "replacement_dispatched", "exchange_completed"].includes(status) },
           { label: "Product Received at Warehouse", done: ["product_received", "replacement_dispatched", "exchange_completed"].includes(status) },
@@ -375,7 +379,8 @@ export default function ExchangeReturnRequests() {
                     </Group>
 
                     {(req.status === "approved" || req.status === "payment_pending") &&
-                      req._type === "exchange" && (
+                      req._type === "exchange" &&
+                      !isChargeWaived(req.reason) && (
                         <Button
                           mt="md"
                           fullWidth
@@ -472,13 +477,7 @@ export default function ExchangeReturnRequests() {
                 </Text>
                 <SimpleGrid cols={3} spacing="sm">
                   {selectedRequest.images.map((url: string, i: number) => (
-                    <Image
-                      key={i}
-                      src={url}
-                      h={80}
-                      radius="md"
-                      fit="cover"
-                    />
+                    <UploadedImagePreview key={i} src={url} h={80} />
                   ))}
                 </SimpleGrid>
               </Card>
@@ -510,7 +509,8 @@ export default function ExchangeReturnRequests() {
             </Timeline>
 
             {(selectedRequest.status === "approved" || selectedRequest.status === "payment_pending") &&
-              selectedRequest._type === "exchange" && (
+              selectedRequest._type === "exchange" &&
+              !isChargeWaived(selectedRequest.reason) && (
                 <Button
                   fullWidth
                   size="lg"

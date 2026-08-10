@@ -36,6 +36,7 @@ import { showNotification } from "@mantine/notifications";
 import axiosInstance from "../../api/axiosInstance";
 import SmallHeader from "../../components/SmallHeader";
 import Header from "../../components/Header";
+import UploadedImagePreview from "../../components/shared/UploadedImagePreview";
 import Footer from "../Home/Footer";
 import MobileBottomNavbar from "../MobileBottomBar";
 import { useMediaQuery } from "@mantine/hooks";
@@ -58,6 +59,9 @@ const RETURN_REASONS = [
   "Quality Issue",
   "Other",
 ];
+
+const isChargeWaived = (r?: string) =>
+  String(r || "").trim().toLowerCase() === "defective product";
 
 export default function ExchangeReturnRequest() {
   const theme = useMantineTheme();
@@ -423,10 +427,10 @@ export default function ExchangeReturnRequest() {
       return;
     }
 
-    if (type === "return" && imagesUploaded.length === 0) {
+    if (imagesUploaded.length === 0) {
       showNotification({
         title: "Required",
-        message: "Please upload at least one image for return request",
+        message: "Please upload at least one image to submit the request",
         color: "yellow",
       });
       return;
@@ -603,6 +607,16 @@ export default function ExchangeReturnRequest() {
 
       case 3:
         if (type === "exchange") {
+          const orderedSizeLabel =
+            typeof orderItem?.selectedSize === "string"
+              ? orderItem.selectedSize.trim()
+              : orderItem?.selectedSize
+                ? String(orderItem.selectedSize)
+                : "";
+          const sizeChoices = orderedSizeLabel
+            ? [...new Set([orderedSizeLabel, ...availableSizes])]
+            : availableSizes;
+
           return (
             <Card withBorder radius="lg" p="xl">
               <Stack spacing="lg">
@@ -618,15 +632,39 @@ export default function ExchangeReturnRequest() {
                   </Box>
                 </Group>
 
-                <Text size="sm" c="dimmed">
-                  Current size: <b>{orderItem?.selectedSize}</b>
+                <Card
+                  withBorder
+                  radius="md"
+                  p="md"
+                  bg="#f0f5ec"
+                  style={{ borderColor: LIGHT_GREEN }}
+                >
+                  <Group position="apart">
+                    <Box>
+                      <Text size="xs" fw={600} c="dimmed" tt="uppercase">
+                        Ordered Size
+                      </Text>
+                      <Text fw={700} size="xl" style={{ color: DARK_GREEN }}>
+                        {orderedSizeLabel || "—"}
+                      </Text>
+                    </Box>
+                    <Badge color="green" variant="light" size="lg">
+                      Your Current Size
+                    </Badge>
+                  </Group>
+                </Card>
+
+                <Text size="sm" fw={600}>
+                  Select New Size
                 </Text>
 
                 <SimpleGrid cols={isMobile ? 3 : 5} spacing="sm">
-                  {availableSizes.map((s) => {
+                  {sizeChoices.map((s) => {
                     const sizeLabel =
                       typeof s === "string" ? s : s.size || s.name;
                     const inStock = stockInfo[sizeLabel] !== false;
+                    const isOrdered =
+                      !!orderedSizeLabel && sizeLabel === orderedSizeLabel;
                     const isSelected = newSize === sizeLabel;
                     return (
                       <Card
@@ -635,24 +673,50 @@ export default function ExchangeReturnRequest() {
                         radius="md"
                         p="sm"
                         style={{
-                          cursor: inStock ? "pointer" : "not-allowed",
-                          borderColor: isSelected
-                            ? DARK_GREEN
-                            : theme.colors.gray[3],
-                          backgroundColor: isSelected
-                            ? "#f0f5ec"
+                          cursor: isOrdered
+                            ? "not-allowed"
                             : inStock
-                              ? "white"
-                              : theme.colors.gray[1],
+                              ? "pointer"
+                              : "not-allowed",
+                          borderColor: isOrdered
+                            ? LIGHT_GREEN
+                            : isSelected
+                              ? DARK_GREEN
+                              : theme.colors.gray[3],
+                          backgroundColor: isOrdered
+                            ? "#eaf3e4"
+                            : isSelected
+                              ? "#f0f5ec"
+                              : inStock
+                                ? "white"
+                                : theme.colors.gray[1],
                           opacity: inStock ? 1 : 0.5,
                         }}
-                        onClick={() => inStock && setNewSize(sizeLabel)}
+                        onClick={() => {
+                          if (isOrdered) {
+                            showNotification({
+                              title: "Current Size",
+                              message: `Size ${sizeLabel} is your ordered size. Please select a new size for the exchange.`,
+                              color: "yellow",
+                            });
+                            return;
+                          }
+                          if (inStock) setNewSize(sizeLabel);
+                        }}
                       >
                         <Text ta="center" fw={isSelected ? 700 : 400}>
                           {sizeLabel}
                         </Text>
-                        <Text ta="center" size="xs" c={inStock ? "green" : "red"}>
-                          {inStock ? "In Stock" : "Out of Stock"}
+                        <Text
+                          ta="center"
+                          size="xs"
+                          c={isOrdered || inStock ? "green" : "red"}
+                        >
+                          {isOrdered
+                            ? "Your Size"
+                            : inStock
+                              ? "In Stock"
+                              : "Out of Stock"}
                         </Text>
                       </Card>
                     );
@@ -702,12 +766,10 @@ export default function ExchangeReturnRequest() {
               {imagesUploaded.length > 0 && (
                 <SimpleGrid cols={3} spacing="sm">
                   {imagesUploaded.map((url, i) => (
-                    <Image
+                    <UploadedImagePreview
                       key={i}
                       src={url}
-                      h={100}
-                      radius="md"
-                      fit="cover"
+                      fileName={images[i]?.name}
                     />
                   ))}
                 </SimpleGrid>
@@ -740,9 +802,9 @@ export default function ExchangeReturnRequest() {
                     <IconPhoto size={24} />
                   </ThemeIcon>
                   <Box>
-                    <Title order={4}>Upload Images (Optional)</Title>
+                    <Title order={4}>Upload Images</Title>
                     <Text size="sm" c="dimmed">
-                      Add photos to support your request
+                      Upload clear photos of the product (required)
                     </Text>
                   </Box>
                 </Group>
@@ -758,23 +820,23 @@ export default function ExchangeReturnRequest() {
                 {imagesUploaded.length > 0 && (
                   <SimpleGrid cols={3} spacing="sm">
                     {imagesUploaded.map((url, i) => (
-                      <Image
+                      <UploadedImagePreview
                         key={i}
                         src={url}
-                        h={100}
-                        radius="md"
-                        fit="cover"
+                        fileName={images[i]?.name}
                       />
                     ))}
                   </SimpleGrid>
                 )}
 
-                <Card withBorder radius="md" bg="#fff8e1">
-                  <Text size="sm" fw={600} color="yellow">
-                    Note: ₹{EXCHANGE_CHARGE} Exchange Processing Charge will be
-                    charged after approval.
-                  </Text>
-                </Card>
+                {!isChargeWaived(reason) && (
+                  <Card withBorder radius="md" bg="#fff8e1">
+                    <Text size="sm" fw={600} color="yellow">
+                      Note: ₹{EXCHANGE_CHARGE} Exchange Processing Charge will be
+                      charged after approval.
+                    </Text>
+                  </Card>
+                )}
 
                 <Group position="apart">
                   <Button variant="outline" onClick={() => setStep(3)}>
@@ -783,6 +845,7 @@ export default function ExchangeReturnRequest() {
                   <Button
                     onClick={handleSubmitRequest}
                     loading={submitting}
+                    disabled={imagesUploaded.length === 0}
                     style={{ backgroundColor: DARK_GREEN }}
                   >
                     Submit Request
@@ -859,7 +922,9 @@ export default function ExchangeReturnRequest() {
 
               <Text c="dimmed" ta="center" size="sm">
                 {type === "exchange"
-                  ? "Once approved, you'll need to pay ₹150 processing charge to proceed."
+                  ? isChargeWaived(reason)
+                    ? "No processing charge applicable. Once approved, reverse pickup will be scheduled and your replacement will be shipped after quality inspection."
+                    : "Once approved, you'll need to pay ₹150 processing charge to proceed."
                   : "Once approved, reverse pickup will be scheduled and refund will be processed after quality inspection."}
               </Text>
 
@@ -881,7 +946,7 @@ export default function ExchangeReturnRequest() {
                     Admin will review your request
                   </Text>
                 </Timeline.Item>
-                {type === "exchange" && (
+                {type === "exchange" && !isChargeWaived(reason) && (
                   <Timeline.Item
                     bullet={<IconClock size={12} />}
                     title="Payment Required"

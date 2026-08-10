@@ -1189,75 +1189,119 @@ export default function ProductPage() {
           style={{ height:"100%", paddingRight: 8 }}
         >
           <Stack spacing="md">
-            <Title order={5}>Return / Exchange Period</Title>
+            <Title order={5}>Exchange &amp; Return Policy</Title>
 
             <Stack spacing="sm">
-              <Text>
-                1.Return or exchange requests must be made within 15 working
-                days from the date of delivery.
-              </Text>
-
               <Title order={5}>Exchange Policy</Title>
 
               <Text>
-                1.⁠Products can be exchanged only in case of size issues or
-                manufacturing defects.
+                1. Exchange requests can be raised within 7 days from the date
+                of delivery.
               </Text>
 
               <Text>
-                2.⁠Exchanges are allowed only for the same product in a
-                different size, subject to stock availability.
+                2. Exchanges are allowed only for size issues, damaged
+                products, manufacturing defects, or incorrect products
+                received.
               </Text>
 
               <Text>
-                3.⁠Products cannot be exchanged for a different product from our
-                website.
+                3. A fixed ₹150 Exchange Processing Charge is applicable only
+                after the exchange request is approved.
               </Text>
 
               <Text>
-                4.⁠Exchange shipping charges must be borne by the customer.
+                4. The ₹150 charge covers reverse pickup and replacement
+                shipping.
               </Text>
+
               <Text>
-                4.⁠If the exchange is due to our mistake (wrong product /
-                defective item), shipping charges will be covered by us.
+                5. Products must be unused, unwashed, and returned with all
+                original tags, packaging, and accessories intact.
               </Text>
+
+              <Text>
+                6. Exchange is subject to product availability. If the
+                requested size is unavailable, our support team will contact
+                you with available options.
+              </Text>
+
+              <Text>
+                7. Products that do not pass the quality inspection may not be
+                eligible for exchange.
+              </Text>
+
               <Title order={5}>Return Policy</Title>
 
               <Text>
-                1. ⁠Returns are accepted only for damaged, defective, dirty, or
-                missing items.
-              </Text>
-              <Text>
-                2.⁠An unboxing video is mandatory to claim damage or missing
-                pieces.
+                1. Return requests can be raised within 7 days from the date of
+                delivery.
               </Text>
 
               <Text>
-                3. ⁠Due to hygiene reasons, we do not accept returns on briefs,
-                panties, and certain accessories.
+                2. Returns are accepted only for damaged, defective, or
+                incorrect products received.
               </Text>
 
               <Text>
-                4.⁠ ⁠In the interest of hygiene, we reserve the right to refuse
-                returns if the item appears to have been worn, washed, or
-                soiled.
-              </Text>
-
-              <Title order={5}>Reverse Pickup</Title>
-
-              <Text>
-                1. ⁠We provide a reverse pick-up facility for most serviceable
-                PIN codes.
+                3. Returns will not be accepted for size-related issues. Please
+                use the Exchange option instead.
               </Text>
 
               <Text>
-                2.For non-serviceable PIN codes, customers must self-ship the
-                product to our return address.
+                4. Products must be unused, unwashed, and returned with all
+                original tags, packaging, and accessories intact.
               </Text>
 
               <Text>
-                For any return or exchange request, customers must contact our
-                customer support team with their Order ID and relevant details.
+                5. Products that fail the quality inspection may not be
+                eligible for a refund.
+              </Text>
+
+              <Title order={5}>Refund Policy</Title>
+
+              <Text>
+                1. Refunds are processed only after the returned product passes
+                our quality inspection.
+              </Text>
+
+              <Text>
+                2. Approved refunds will be credited to the original payment
+                method (UPI, Credit Card, Debit Card, Net Banking, or Bank
+                Account).
+              </Text>
+
+              <Text>
+                3. Refunds are generally processed within 3–7 business days
+                after the return is approved and verified.
+              </Text>
+
+              <Text>
+                4. The actual credit timeline may vary depending on your bank
+                or payment provider.
+              </Text>
+
+              <Title order={5}>Important Notes</Title>
+
+              <Text>
+                1. Exchange and return requests can only be initiated from My
+                Account → My Orders.
+              </Text>
+
+              <Text>
+                2. Requests submitted after the eligible period will not be
+                accepted.
+              </Text>
+
+              <Text>
+                3. Products purchased during special clearance or final sale
+                promotions may not be eligible for exchange or return unless
+                received damaged or incorrect.
+              </Text>
+
+              <Text>
+                4. The company reserves the right to approve or reject any
+                exchange or return request after product verification.
               </Text>
             </Stack>
 
