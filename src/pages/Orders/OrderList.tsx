@@ -23,12 +23,18 @@ import {
   Collapse,
 } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
-import { IconCheck, IconClock, IconPackage, IconRefresh, IconArrowBackUp, IconChevronRight } from "@tabler/icons-react";
+import { IconCheck, IconClock, IconPackage, IconRefresh, IconArrowBackUp, IconChevronRight, IconX, IconCash } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { showNotification } from "@mantine/notifications";
 import axiosInstance from "../../api/axiosInstance";
 import { useSelector } from "react-redux";
 import { RootState } from "../../redux/store";
+import { loadRazorpay } from "../../utils/loadRazorpay";
+
+const DARK_GREEN = "#133215";
+const EXCHANGE_CHARGE = 150;
+const RAZORPAY_KEY_ID = import.meta.env.VITE_RZP_KEY_ID as string;
 
 export default function OrderList() {
   const [opened, { open, close }] = useDisclosure(false);
@@ -55,8 +61,10 @@ export default function OrderList() {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [requestMap, setRequestMap] = useState<Record<string, { type: string; status: string; id?: string }>>({});
+  const [requestMap, setRequestMap] = useState<Record<string, { type: string; status: string; id?: string; reason?: string }>>({});
   const [expandedSteps, setExpandedSteps] = useState<Record<string, boolean>>({});
+  const [deliveryStatusMap, setDeliveryStatusMap] = useState<Record<string, string>>({});
+  const [payingId, setPayingId] = useState<string | null>(null);
 
   const fetchMyRequests = async () => {
     try {
@@ -64,11 +72,11 @@ export default function OrderList() {
         axiosInstance.get("/exchange-return/exchanges/my-requests?limit=100"),
         axiosInstance.get("/exchange-return/returns/my-requests?limit=100"),
       ]);
-      const map: Record<string, { type: string; status: string; id?: string }> = {};
+      const map: Record<string, { type: string; status: string; id?: string; reason?: string }> = {};
       const build = (list: any, type: string) => {
         (list || []).forEach((r: any) => {
           const id = r.orderItemId || r.orderItem?._id || r.orderItemId?._id;
-          if (id) map[id] = { type, status: r.status || "", id: r._id || r.id || "" };
+          if (id) map[id] = { type, status: r.status || "", id: r._id || r.id || "", reason: r.reason || "" };
         });
       };
       if (exRes.status === "fulfilled") {
@@ -91,6 +99,14 @@ export default function OrderList() {
   }, [opened]);
 
   const isOrderDelivered = (order: any) => {
+    // Prefer live Delhivery tracking status (fetched from the track API)
+    const key = order?._id || order?.id;
+    const live = key ? deliveryStatusMap[key] : undefined;
+    if (live) {
+      const s = String(live).toLowerCase();
+      return /delivered|success/.test(s);
+    }
+
     const status = (order?.status || "").toLowerCase();
     if (/delivered|completed|fulfilled|success/.test(status)) return true;
     const sh = order?.delhiveryDetails;
@@ -101,7 +117,139 @@ export default function OrderList() {
     return false;
   };
 
+  const checkDeliveryStatus = async (order: any) => {
+    const key = order?._id || order?.id;
+    if (!key || deliveryStatusMap[key] !== undefined) return;
+
+    const waybill =
+      order?.delhiveryDetails?.waybill ??
+      order?.awb ??
+      order?.items?.[0]?.awb;
+    if (!waybill) return;
+
+    try {
+      const res = await axiosInstance.get(
+        `delhivery/track?waybill=${waybill}`,
+        {
+          headers: { Authorization: `Bearer ${tokens?.access?.token}` },
+        }
+      );
+      const shipment = res.data?.ShipmentData?.[0]?.Shipment;
+      const status =
+        shipment?.Status?.Status ??
+        shipment?.Status?.status ??
+        shipment?.Status?.State ??
+        "";
+      setDeliveryStatusMap((prev) => ({ ...prev, [key]: status }));
+    } catch (err) {
+      console.error("Failed to fetch delivery status", err);
+    }
+  };
+
   const getRequestForItem = (itemId: string) => requestMap[itemId] || null;
+
+  const isChargeWaived = (req: any) =>
+    String(req?.reason || "").trim().toLowerCase() === "defective product";
+
+  const handlePayRequestCharge = async (req: any) => {
+    try {
+      setPayingId(req.id);
+
+      const amountPaise = EXCHANGE_CHARGE * 100;
+      const isExchange = req.type === "exchange";
+      const reqType = isExchange ? "exchange" : "return";
+
+      const { data: order } = await axiosInstance.post(
+        "/payments/razorpay/order",
+        {
+          amount: amountPaise,
+          currency: "INR",
+          receipt: `${reqType}_rcpt_` + Date.now(),
+          localOrderId: req.id,
+          notes: {
+            exchangeRequestId: req.id,
+            type: `${reqType}_processing_charge`,
+          },
+        }
+      );
+
+      if (!order?.id || !order?.amount) {
+        showNotification({
+          title: "Payment error",
+          message: "Couldn't initialize payment. Please try again.",
+          color: "red",
+        });
+        return;
+      }
+
+      await loadRazorpay();
+
+      const rzp = new (window as any).Razorpay({
+        key: RAZORPAY_KEY_ID,
+        amount: order.amount,
+        currency: order.currency,
+        name: "TO IMPRESS",
+        description: `${isExchange ? "Exchange" : "Return"} Processing Charge`,
+        order_id: order.id,
+        theme: { color: DARK_GREEN },
+        handler: async (response: any) => {
+          try {
+            try {
+              await axiosInstance.post("/payments/razorpay/verify", {
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_signature: response.razorpay_signature,
+              });
+            } catch (err) {
+              console.warn("Signature verify failed, continuing", err);
+            }
+
+            await axiosInstance.post(
+              `/exchange-return/${isExchange ? "exchanges" : "returns"}/${req.id}/pay`,
+              {
+                paymentId: response.razorpay_payment_id,
+                orderId: response.razorpay_order_id,
+              }
+            );
+
+            showNotification({
+              title: "Payment Successful",
+              message: `${isExchange ? "Exchange" : "Return"} processing charge paid successfully`,
+              color: "green",
+              icon: <IconCheck size={16} />,
+            });
+
+            fetchMyRequests();
+          } catch (err) {
+            showNotification({
+              title: "Error",
+              message: "Payment verified but status update failed. Contact support.",
+              color: "yellow",
+            });
+          }
+        },
+      });
+
+      rzp.on("payment.failed", (e: any) => {
+        showNotification({
+          title: "Payment Failed",
+          message: e?.error?.description || "Please try again",
+          color: "red",
+          icon: <IconX size={16} />,
+        });
+      });
+
+      rzp.open();
+    } catch (err) {
+      showNotification({
+        title: "Error",
+        message: "Failed to initiate payment",
+        color: "red",
+      });
+    } finally {
+      setPayingId(null);
+    }
+  };
 
   const fetchOrders = async (pageNum: number) => {
     const headers = {
@@ -140,6 +288,7 @@ export default function OrderList() {
 
   const handleClick = (order: any) => {
     setSelectedOrder(order);
+    checkDeliveryStatus(order);
     open();
   };
 
@@ -271,7 +420,8 @@ export default function OrderList() {
         ]
       : [
           { label: "Return Requested", done: true },
-          { label: "Approved", done: done(["approved", "pickup_scheduled", "product_received", "quality_inspection", "refund_initiated", "refund_credited", "return_completed"]) },
+          { label: "Approved", done: done(["approved", "payment_pending", "payment_completed", "pickup_scheduled", "product_received", "quality_inspection", "refund_initiated", "refund_credited", "return_completed"]) },
+          { label: "Payment Completed", done: done(["payment_pending", "payment_completed", "pickup_scheduled", "product_received", "quality_inspection", "refund_initiated", "refund_credited", "return_completed"]) },
           { label: "Pickup Scheduled", done: done(["pickup_scheduled", "product_received", "quality_inspection", "refund_initiated", "refund_credited", "return_completed"]) },
           { label: "Product Received", done: done(["product_received", "quality_inspection", "refund_initiated", "refund_credited", "return_completed"]) },
           { label: "Quality Inspection", done: done(["quality_inspection", "refund_initiated", "refund_credited", "return_completed"]) },
@@ -785,6 +935,20 @@ export default function OrderList() {
                             </Stack>
                           </Box>
                         </Collapse>
+                        {(req.status === "approved" || req.status === "payment_pending") &&
+                          !isChargeWaived(req) && (
+                            <Button
+                              fullWidth
+                              size="sm"
+                              mt={8}
+                              loading={payingId === req.id}
+                              leftSection={<IconCash size={14} />}
+                              onClick={() => handlePayRequestCharge(req)}
+                              style={{ backgroundColor: DARK_GREEN }}
+                            >
+                              Pay ₹{EXCHANGE_CHARGE} Processing Charge
+                            </Button>
+                          )}
                       </Box>
                     );
                   })}

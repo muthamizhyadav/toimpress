@@ -137,17 +137,19 @@ export default function ExchangeReturnRequests() {
       setPaying(true);
 
       const amountPaise = EXCHANGE_CHARGE * 100;
+      const isExchange = request._type === "exchange";
+      const reqType = isExchange ? "exchange" : "return";
 
       const { data: order } = await axiosInstance.post(
         "/payments/razorpay/order",
         {
           amount: amountPaise,
           currency: "INR",
-          receipt: "exchange_rcpt_" + Date.now(),
+          receipt: `${reqType}_rcpt_` + Date.now(),
           localOrderId: getRequestId(request),
           notes: {
             exchangeRequestId: getRequestId(request),
-            type: "exchange_processing_charge",
+            type: `${reqType}_processing_charge`,
           },
         }
       );
@@ -168,7 +170,7 @@ export default function ExchangeReturnRequests() {
         amount: order.amount,
         currency: order.currency,
         name: "TO IMPRESS",
-        description: "Exchange Processing Charge",
+        description: `${isExchange ? "Exchange" : "Return"} Processing Charge`,
         order_id: order.id,
         theme: { color: DARK_GREEN },
         handler: async (response: any) => {
@@ -187,7 +189,7 @@ export default function ExchangeReturnRequests() {
             }
 
             await axiosInstance.post(
-              `/exchange-return/exchanges/${getRequestId(request)}/pay`,
+              `/exchange-return/${isExchange ? "exchanges" : "returns"}/${getRequestId(request)}/pay`,
               {
                 paymentId: response.razorpay_payment_id,
                 orderId: response.razorpay_order_id,
@@ -196,7 +198,7 @@ export default function ExchangeReturnRequests() {
 
             showNotification({
               title: "Payment Successful",
-              message: "Exchange processing charge paid successfully",
+              message: `${isExchange ? "Exchange" : "Return"} processing charge paid successfully`,
               color: "green",
               icon: <IconCheck size={16} />,
             });
@@ -253,7 +255,11 @@ export default function ExchangeReturnRequests() {
         ]
       : [
           { label: "Return Requested", done: true },
-          { label: "Approved", done: ["approved", "pickup_scheduled", "product_received", "quality_inspection", "refund_initiated", "refund_credited", "return_completed"].includes(status) },
+          { label: "Approved", done: ["approved", "payment_pending", "payment_completed", "pickup_scheduled", "product_received", "quality_inspection", "refund_initiated", "refund_credited", "return_completed"].includes(status) },
+          {
+            label: "Payment Completed",
+            done: isChargeWaived(request.reason) || ["payment_pending", "payment_completed", "pickup_scheduled", "product_received", "quality_inspection", "refund_initiated", "refund_credited", "return_completed"].includes(status),
+          },
           { label: "Pickup Scheduled", done: ["pickup_scheduled", "product_received", "quality_inspection", "refund_initiated", "refund_credited", "return_completed"].includes(status) },
           { label: "Product Received", done: ["product_received", "quality_inspection", "refund_initiated", "refund_credited", "return_completed"].includes(status) },
           { label: "Quality Inspection", done: ["quality_inspection", "refund_initiated", "refund_credited", "return_completed"].includes(status) },
@@ -379,7 +385,6 @@ export default function ExchangeReturnRequests() {
                     </Group>
 
                     {(req.status === "approved" || req.status === "payment_pending") &&
-                      req._type === "exchange" &&
                       !isChargeWaived(req.reason) && (
                         <Button
                           mt="md"
@@ -509,7 +514,6 @@ export default function ExchangeReturnRequests() {
             </Timeline>
 
             {(selectedRequest.status === "approved" || selectedRequest.status === "payment_pending") &&
-              selectedRequest._type === "exchange" &&
               !isChargeWaived(selectedRequest.reason) && (
                 <Button
                   fullWidth

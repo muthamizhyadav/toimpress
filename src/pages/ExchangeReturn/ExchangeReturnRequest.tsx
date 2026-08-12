@@ -888,6 +888,13 @@ export default function ExchangeReturnRequest() {
                 </Stack>
               </Card>
 
+              <Card withBorder radius="md" bg="#fff8e1">
+                <Text size="sm" fw={600} color="yellow">
+                  Note: ₹{EXCHANGE_CHARGE} Return Processing Charge will be
+                  charged after approval.
+                </Text>
+              </Card>
+
               <Group position="apart">
                 <Button variant="outline" onClick={() => setStep(3)}>
                   Back
@@ -924,8 +931,10 @@ export default function ExchangeReturnRequest() {
                 {type === "exchange"
                   ? isChargeWaived(reason)
                     ? "No processing charge applicable. Once approved, reverse pickup will be scheduled and your replacement will be shipped after quality inspection."
-                    : "Once approved, you'll need to pay ₹150 processing charge to proceed."
-                  : "Once approved, reverse pickup will be scheduled and refund will be processed after quality inspection."}
+                    : `Once approved, you'll need to pay ₹${EXCHANGE_CHARGE} processing charge to proceed.`
+                  : isChargeWaived(reason)
+                    ? "No processing charge applicable. Once approved, reverse pickup will be scheduled and refund will be processed after quality inspection."
+                    : `Once approved, you'll need to pay ₹${EXCHANGE_CHARGE} processing charge to proceed. Reverse pickup will be scheduled and your refund will be processed after quality inspection.`}
               </Text>
 
               <Timeline active={1} mt="md" style={{ width: "100%" }}>
