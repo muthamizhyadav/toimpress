@@ -33,7 +33,7 @@ import { RootState } from "../../redux/store";
 import { loadRazorpay } from "../../utils/loadRazorpay";
 
 const DARK_GREEN = "#133215";
-const EXCHANGE_CHARGE = 150;
+const EXCHANGE_CHARGE = 1;
 const RAZORPAY_KEY_ID = import.meta.env.VITE_RZP_KEY_ID as string;
 
 export default function OrderList() {

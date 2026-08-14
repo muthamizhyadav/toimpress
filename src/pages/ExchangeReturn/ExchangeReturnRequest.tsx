@@ -43,7 +43,7 @@ import { useMediaQuery } from "@mantine/hooks";
 
 const DARK_GREEN = "#133215";
 const LIGHT_GREEN = "#92B775";
-const EXCHANGE_CHARGE = 150;
+const EXCHANGE_CHARGE = 1;
 
 const EXCHANGE_REASONS = [
   "Size Too Small",
