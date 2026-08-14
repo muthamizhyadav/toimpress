@@ -41,7 +41,7 @@ import { loadRazorpay } from "../../utils/loadRazorpay";
 
 const DARK_GREEN = "#133215";
 const LIGHT_GREEN = "#92B775";
-const EXCHANGE_CHARGE = 1;
+const EXCHANGE_CHARGE = 150;
 const RAZORPAY_KEY_ID = import.meta.env.VITE_RZP_KEY_ID as string;
 
 const getRequestId = (r: any) => r?._id || r?.id || "";
