@@ -389,7 +389,7 @@ export default function OrderList() {
       setTrackingMeta(null);
 
       if (!waybill) {
-        setTrackingError("No tracking ID available for this order yet.");
+        setTrackingError("Order placed");
         openTrack();
         return;
       }
@@ -588,7 +588,6 @@ export default function OrderList() {
 
   // UI helper to show the rich journey + detailed scan history
   const Timeline = ({ steps }: { steps: typeof trackingData }) => {
-    const [showAll, setShowAll] = useState(false);
     const isEmpty = !steps || steps.length === 0;
     const journey = buildJourney(selectedOrder, steps || []);
     const sorted = [...(steps || [])].sort(
@@ -596,7 +595,6 @@ export default function OrderList() {
         new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
     const latest = sorted[sorted.length - 1];
-    const visible = showAll ? sorted : sorted.slice(-4);
 
     return (
       <Stack spacing="md">
@@ -750,79 +748,112 @@ export default function OrderList() {
           </Stack>
         </Card>
 
-        {/* Detailed scan history */}
+        {/* Tracking tree grouped by location */}
         {!isEmpty && (
-        <Card withBorder radius="md" p="md">
-          <Group position="apart" mb="sm">
-            <Text fw={600} size="sm">
-              Tracking History ({sorted.length})
-            </Text>
-            {sorted.length > 4 && (
-              <Anchor size="xs" onClick={() => setShowAll((v) => !v)} c="blue">
-                {showAll ? "Show less" : "View all"}
-              </Anchor>
-            )}
-          </Group>
-          <Stack spacing="sm">
-            {visible.map((step, idx) => {
-              const isLast = idx === visible.length - 1;
-              const lower = (step.status || "").toLowerCase();
-              const isDelivered = lower.includes("delivered");
-              const color = isDelivered ? "green" : "darkGreen";
-              return (
-                <Group key={idx} align="flex-start" spacing="sm" noWrap>
-                  <Box
-                    style={{
-                      width: 20,
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      marginTop: 2,
-                    }}
-                  >
-                    <ThemeIcon radius="xl" size={20} variant="light" color={color}>
-                      {isDelivered ? (
-                        <IconCheck size={11} />
-                      ) : (
-                        <IconClock size={11} />
-                      )}
-                    </ThemeIcon>
-                    {!isLast && (
-                      <Box
-                        style={{
-                          width: 2,
-                          background: theme.colors.gray[3],
-                          flex: 1,
-                          marginTop: 4,
-                          minHeight: 16,
-                        }}
-                      />
-                    )}
-                  </Box>
-                  <Box style={{ flex: 1 }}>
-                    <Text size="sm" fw={600}>
-                      {step.status}
-                    </Text>
-                    <Text size="xs" c="dimmed">
-                      {new Date(step.timestamp).toLocaleString()}
-                    </Text>
-                    {step.location ? (
-                      <Text size="xs" c="dimmed">
-                        {step.location}
-                      </Text>
-                    ) : null}
-                    {step.instructions && step.instructions !== step.status ? (
-                      <Text size="xs" mt={2}>
-                        {step.instructions}
-                      </Text>
-                    ) : null}
-                  </Box>
-                </Group>
-              );
-            })}
-          </Stack>
-        </Card>
+          <Card withBorder radius="md" p="md">
+            <Group position="apart" mb="sm">
+              <Text fw={600} size="sm">
+                Tracking Tree ({sorted.length})
+              </Text>
+            </Group>
+            <TrackingTree steps={sorted} />
+          </Card>
         )}
+      </Stack>
+    );
+  };
+
+  // Tree view of tracking events grouped by location
+  const TrackingTree = ({ steps }: { steps: typeof trackingData }) => {
+    const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+    const groups: { location: string; items: typeof trackingData }[] = [];
+    const groupIndex: Record<string, number> = {};
+    (steps || []).forEach((s) => {
+      const loc = s.location || "General";
+      if (!(loc in groupIndex)) {
+        groupIndex[loc] = groups.length;
+        groups.push({ location: loc, items: [] });
+      }
+      groups[groupIndex[loc]].items.push(s);
+    });
+
+    const isOpen = (loc: string) => expanded[loc] ?? true;
+
+    return (
+      <Stack spacing={6}>
+        {groups.map((g, gi) => {
+          const open = isOpen(g.location);
+          return (
+            <Box key={gi} style={{ borderRadius: theme.radius.md }}>
+              <Group
+                spacing="xs"
+                noWrap
+                onClick={() =>
+                  setExpanded((prev) => ({
+                    ...prev,
+                    [g.location]: !isOpen(g.location),
+                  }))
+                }
+                sx={{ cursor: "pointer" }}
+              >
+                <Box
+                  style={{
+                    transition: "transform 0.2s",
+                    transform: open ? "rotate(90deg)" : "rotate(0deg)",
+                    color: theme.colors.gray[6],
+                    display: "flex",
+                  }}
+                >
+                  <IconChevronRight size={16} />
+                </Box>
+                <ThemeIcon size={24} radius="xl" color="darkGreen" variant="filled">
+                  <IconMapPin size={13} />
+                </ThemeIcon>
+                <Box style={{ flex: 1 }}>
+                  <Text size="sm" fw={700} style={{ color: "#133215" }}>
+                    {g.location}
+                  </Text>
+                </Box>
+                <Badge size="xs" variant="light" color="gray">
+                  {g.items.length} event{g.items.length > 1 ? "s" : ""}
+                </Badge>
+              </Group>
+              <Collapse in={open} transitionDuration={200}>
+                <Stack spacing={8} mt={6} style={{ paddingLeft: 34 }}>
+                  {g.items.map((step, si) => {
+                    const lower = (step.status || "").toLowerCase();
+                    const isDelivered = lower.includes("delivered");
+                    const color = isDelivered ? "green" : "darkGreen";
+                    return (
+                      <Group key={si} align="flex-start" spacing="sm" noWrap>
+                        <ThemeIcon radius="xl" size={22} variant="light" color={color}>
+                          {isDelivered ? (
+                            <IconCheck size={12} />
+                          ) : (
+                            <IconClock size={12} />
+                          )}
+                        </ThemeIcon>
+                        <Box style={{ flex: 1 }}>
+                          <Text size="sm" fw={600}>
+                            {step.status}
+                          </Text>
+                          <Text size="xs" c="dimmed">
+                            {new Date(step.timestamp).toLocaleString()}
+                          </Text>
+                          {step.instructions && step.instructions !== step.status ? (
+                            <Text size="xs" mt={2}>
+                              {step.instructions}
+                            </Text>
+                          ) : null}
+                        </Box>
+                      </Group>
+                    );
+                  })}
+                </Stack>
+              </Collapse>
+            </Box>
+          );
+        })}
       </Stack>
     );
   };
