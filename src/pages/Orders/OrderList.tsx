@@ -23,7 +23,7 @@ import {
   Collapse,
 } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
-import { IconCheck, IconClock, IconPackage, IconRefresh, IconArrowBackUp, IconChevronRight, IconX, IconCash } from "@tabler/icons-react";
+import { IconCheck, IconClock, IconPackage, IconRefresh, IconArrowBackUp, IconChevronRight, IconX, IconCash, IconShoppingCart, IconTruck, IconRoute, IconMapPin, IconPackageOff, IconPackageImport } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { showNotification } from "@mantine/notifications";
@@ -52,6 +52,8 @@ export default function OrderList() {
     }[]
   >([]);
   const [trackingLoading, setTrackingLoading] = useState(false);
+  const [trackingError, setTrackingError] = useState("");
+  const [trackingMeta, setTrackingMeta] = useState<any>(null);
 
   const theme = useMantineTheme();
   const isMobile = useMediaQuery("(max-width: 600px)");
@@ -368,6 +370,14 @@ export default function OrderList() {
     return [];
   };
 
+  const resolveWaybill = (order: any) =>
+    order?.delhiveryDetails?.waybill ??
+    order?.delhiveryDetails?.awb ??
+    order?.awb ??
+    order?.items?.find((it: any) => it.awb)?.awb ??
+    order?.items?.[0]?.awb ??
+    "";
+
   const handleTrackOrder = async (
     waybill: string | undefined,
     refnum: string | undefined
@@ -375,28 +385,57 @@ export default function OrderList() {
     try {
       setTrackingLoading(true);
       setTrackingData([]);
-      // call your delhivery tracking endpoint (constructed query params as you had)
+      setTrackingError("");
+      setTrackingMeta(null);
+
+      if (!waybill) {
+        setTrackingError("No tracking ID available for this order yet.");
+        openTrack();
+        return;
+      }
+
       const res = await axiosInstance.get(
-        `delhivery/track?waybill=${waybill ?? ""}&ref_ids=${refnum ?? ""}`,
+        `delhivery/track?waybill=${waybill}`,
         {
           headers: { Authorization: `Bearer ${tokens?.access?.token}` },
         }
       );
 
-      // Normalize response
-      const normalized = parseDelhiveryResponse(res.data);
-      // if normalized is empty but your API returns nested structure in res.data (like res.data.ShipmentData) handle that too:
-      if (normalized.length === 0 && res.data?.ShipmentData) {
-        // attempt second pass
-        const alt = parseDelhiveryResponse(res.data);
-        setTrackingData(alt);
-      } else {
-        setTrackingData(normalized);
+      const raw = res.data;
+      if (raw?.Success === false) {
+        setTrackingError(raw?.Error || "No tracking information found for this order.");
+        openTrack();
+        return;
+      }
+
+      const normalized = parseDelhiveryResponse(raw);
+      setTrackingData(normalized);
+
+      // Extract shipment meta (origin / destination / latest status)
+      const shipment = raw?.ShipmentData?.[0]?.Shipment ?? null;
+      if (shipment) {
+        setTrackingMeta({
+          origin: shipment.Origin ?? "",
+          destination: shipment.Destination ?? "",
+          waybill: shipment.AWB ?? waybill,
+          referenceNo: shipment.ReferenceNo ?? refnum ?? "",
+          orderType: shipment.OrderType ?? "",
+          status: shipment.Status?.Status ?? shipment.Status?.status ?? "",
+          statusLocation: shipment.Status?.StatusLocation ?? shipment.Status?.Status ?? "",
+          statusDateTime: shipment.Status?.StatusDateTime ?? "",
+          scansCount: Array.isArray(shipment.Scans) ? shipment.Scans.length : 0,
+        });
       }
 
       openTrack();
     } catch (err) {
       console.error("Failed to fetch tracking", err);
+      setTrackingError(
+        err?.response?.status === 401 || err?.response?.status === 403
+          ? "Session expired. Please login and try again."
+          : "Failed to load tracking. Please try again."
+      );
+      openTrack();
     } finally {
       setTrackingLoading(false);
     }
@@ -439,88 +478,351 @@ export default function OrderList() {
     return steps;
   };
 
-  // UI helper to show the vertical timeline
+  // Build a rich "Ordered -> Delivered" journey from raw scans
+  const buildJourney = (order: any, steps: typeof trackingData) => {
+    const lower = (s: string) => (s || "").toLowerCase();
+    const match = (re: RegExp) =>
+      steps.find((s) => re.test(lower(s.status) + " " + lower(s.instructions)));
+
+    const firstOf = (re: RegExp) => {
+      const s = match(re);
+      return s
+        ? { timestamp: s.timestamp, location: s.location }
+        : { timestamp: "", location: "" };
+    };
+
+    const milestones = [
+      {
+        key: "placed",
+        label: "Order Placed",
+        sub: "Order has been confirmed",
+        icon: IconShoppingCart,
+        info: firstOf(/order placed|booked|manifest/),
+      },
+      {
+        key: "packed",
+        label: "Packed & Shipped",
+        sub: "Handed over to courier partner",
+        icon: IconPackageImport,
+        info: firstOf(/manifest|packed|shipped|dispatched|handed over/),
+      },
+      {
+        key: "transit",
+        label: "In Transit",
+        sub: "Moving towards destination",
+        icon: IconRoute,
+        info: firstOf(/in transit|transit|reached|arrived|departed|hub/),
+      },
+      {
+        key: "outfordelivery",
+        label: "Out for Delivery",
+        sub: "Courier is on the way",
+        icon: IconTruck,
+        info: firstOf(/out for delivery|out-for-delivery|on the way/),
+      },
+      {
+        key: "delivered",
+        label: "Delivered",
+        sub: "Package delivered to you",
+        icon: IconCheck,
+        info: firstOf(/delivered|successful delivery|delivery completed/),
+      },
+    ];
+
+    const statusText = lower(
+      `${trackingMeta?.status ?? ""} ${
+        steps.length ? steps[steps.length - 1].status : ""
+      }`
+    );
+    const isDelivered =
+      /delivered/.test(statusText) || order?.status === "delivered";
+    const isRto = /rto|returned to origin|undelivered/.test(statusText);
+
+    let doneCount = 0;
+    if (isRto) {
+      doneCount = milestones.length; // show full journey, mark delivered as skipped later
+    } else if (isDelivered) {
+      doneCount = milestones.length;
+    } else {
+      // count how many milestones have matching scans
+      const keys = [
+        "placed",
+        "packed",
+        "transit",
+        "outfordelivery",
+        "delivered",
+      ];
+      for (const k of keys) {
+        if (match(
+          k === "placed"
+            ? /order placed|booked|manifest/
+            : k === "packed"
+            ? /manifest|packed|shipped|dispatched|handed over/
+            : k === "transit"
+            ? /in transit|transit|reached|arrived|departed|hub/
+            : k === "outfordelivery"
+            ? /out for delivery|out-for-delivery|on the way/
+            : /delivered|successful delivery|delivery completed/
+        )) {
+          doneCount++;
+        } else {
+          break;
+        }
+      }
+      // at minimum, order is placed
+      if (doneCount === 0) doneCount = 1;
+    }
+
+    return {
+      milestones: milestones.map((m, idx) => ({
+        ...m,
+        done: idx < doneCount,
+        current: idx === doneCount - 1,
+        skipped: isRto && m.key === "delivered",
+      })),
+      isDelivered,
+      isRto,
+      doneCount,
+    };
+  };
+
+  // UI helper to show the rich journey + detailed scan history
   const Timeline = ({ steps }: { steps: typeof trackingData }) => {
-    if (!steps || steps.length === 0)
-      return (
-        <Center style={{ height: 200 }}>
-          <Text c="dimmed">No tracking updates yet</Text>
-        </Center>
-      );
+    const [showAll, setShowAll] = useState(false);
+    const isEmpty = !steps || steps.length === 0;
+    const journey = buildJourney(selectedOrder, steps || []);
+    const sorted = [...(steps || [])].sort(
+      (a, b) =>
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+    const latest = sorted[sorted.length - 1];
+    const visible = showAll ? sorted : sorted.slice(-4);
 
     return (
-      <Stack spacing={8} style={{ position: "relative", paddingLeft: 28 }}>
-        {steps.map((step, idx) => {
-          const isLast = idx === steps.length - 1;
-          // choose icon: if 'Order placed' or 'Manifest uploaded' -> check; otherwise clock
-          const lower = (step.status || "").toLowerCase();
-          const isDone =
-            lower.includes("delivered") ||
-            lower.includes("delivered") ||
-            lower.includes("delivered");
-          const isPlaced =
-            lower.includes("order placed") || lower.includes("manifest");
-          const icon = isPlaced ? (
-            <IconCheck size={14} />
-          ) : (
-            <IconClock size={14} />
-          );
+      <Stack spacing="md">
+        {/* Current status banner */}
+        <Box
+          p="md"
+          style={{
+            background: journey.isDelivered
+              ? "#e9f6ec"
+              : journey.isRto
+              ? "#fdecea"
+              : "#f0f5ec",
+            borderRadius: theme.radius.md,
+            border: `1px solid ${
+              journey.isDelivered
+                ? "#b7e0c2"
+                : journey.isRto
+                ? "#f2c4c0"
+                : "#C6D4BC"
+            }`,
+          }}
+        >
+          <Group position="apart" noWrap>
+            <Box>
+              <Text fw={700} style={{ color: "#133215" }}>
+                {journey.isDelivered
+                  ? "Delivered"
+                  : journey.isRto
+                  ? "Returning to origin (RTO)"
+                  : isEmpty
+                  ? "Ordered"
+                  : latest?.status || "In Transit"}
+              </Text>
+              <Text size="xs" c="dimmed" mt={2}>
+                {isEmpty
+                  ? new Date(selectedOrder?.createdAt).toLocaleString()
+                  : latest?.location
+                  ? `${latest.location} • ${new Date(latest.timestamp).toLocaleString()}`
+                  : new Date(latest.timestamp).toLocaleString()}
+              </Text>
+            </Box>
+            <ThemeIcon
+              radius="xl"
+              size={44}
+              color={journey.isDelivered ? "green" : journey.isRto ? "red" : "darkGreen"}
+              variant="filled"
+            >
+              {journey.isDelivered ? (
+                <IconCheck size={22} />
+              ) : journey.isRto ? (
+                <IconRefresh size={22} />
+              ) : isEmpty ? (
+                <IconShoppingCart size={22} />
+              ) : (
+                <IconTruck size={22} />
+              )}
+            </ThemeIcon>
+          </Group>
+        </Box>
 
-          return (
-            <Group key={idx} align="flex-start" spacing="sm" noWrap>
-              {/* left column: icon + vertical line */}
-              <Box
-                style={{
-                  width: 24,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  position: "relative",
-                  marginTop: 2,
-                }}
-              >
-                <ThemeIcon
-                  radius="xl"
-                  size={24}
-                  variant="light"
-                  color={isPlaced ? "green" : "gray"}
-                >
-                  {icon}
-                </ThemeIcon>
-
-                {/* vertical line under the icon (not for last item) */}
-                {!isLast && (
+        {/* Journey milestones */}
+        <Card withBorder radius="md" p="md">
+          <Text fw={600} size="sm" mb="sm">
+            Delivery Journey
+          </Text>
+          <Stack spacing={0}>
+            {journey.milestones.map((m, idx) => {
+              const isLast = idx === journey.milestones.length - 1;
+              return (
+                <Group key={m.key} align="flex-start" spacing="sm" noWrap>
                   <Box
                     style={{
-                      width: 2,
-                      background: theme.colors.gray[3],
-                      flex: 1,
-                      marginTop: 6,
-                      alignSelf: "center",
-                      minHeight: 24,
+                      width: 32,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      position: "relative",
+                      marginTop: 4,
                     }}
-                  />
-                )}
-              </Box>
+                  >
+                    <ThemeIcon
+                      radius="xl"
+                      size={32}
+                      variant={m.done ? "filled" : "light"}
+                      color={
+                        m.skipped
+                          ? "red"
+                          : m.done
+                          ? m.current
+                            ? "darkGreen"
+                            : "lightGreen"
+                          : "gray"
+                      }
+                      style={
+                        m.current && !m.done
+                          ? { boxShadow: `0 0 0 4px ${theme.colors.lightGreen[1]}` }
+                          : undefined
+                      }
+                    >
+                      <m.icon size={16} />
+                    </ThemeIcon>
+                    {!isLast && (
+                      <Box
+                        style={{
+                          width: 2,
+                          background: m.done
+                            ? theme.colors.lightGreen[6]
+                            : theme.colors.gray[3],
+                          flex: 1,
+                          marginTop: 6,
+                          alignSelf: "center",
+                          minHeight: 26,
+                        }}
+                      />
+                    )}
+                  </Box>
+                  <Box style={{ flex: 1 }} pb={isLast ? 0 : "md"}>
+                    <Group position="apart" noWrap>
+                      <Text fw={m.done ? 700 : 500} size="sm">
+                        {m.label}
+                      </Text>
+                      {m.current && (
+                        <Badge
+                          size="xs"
+                          styles={(t: any) => ({
+                            root: {
+                              backgroundColor: "#133215",
+                              color: "#ffffff",
+                              textTransform: "uppercase",
+                              borderRadius: t.radius.sm,
+                            },
+                          })}
+                        >
+                          Current
+                        </Badge>
+                      )}
+                    </Group>
+                    <Text size="xs" c="dimmed">
+                      {m.sub}
+                    </Text>
+                    {m.done && m.info.timestamp && (
+                      <Text size="xs" fw={500} mt={2} style={{ color: "#5a6e55" }}>
+                        {new Date(m.info.timestamp).toLocaleString()}
+                        {m.info.location ? ` • ${m.info.location}` : ""}
+                      </Text>
+                    )}
+                  </Box>
+                </Group>
+              );
+            })}
+          </Stack>
+        </Card>
 
-              {/* right column: content */}
-              <Box style={{ flex: 1 }}>
-                <Text fw={700}>{step.status}</Text>
-                <Text size="xs" c="dimmed">
-                  {step.location} •{" "}
-                  {step.timestamp
-                    ? new Date(step.timestamp).toLocaleString()
-                    : ""}
-                </Text>
-                {step.instructions ? (
-                  <Text size="xs" mt={4}>
-                    {step.instructions}
-                  </Text>
-                ) : null}
-              </Box>
-            </Group>
-          );
-        })}
+        {/* Detailed scan history */}
+        {!isEmpty && (
+        <Card withBorder radius="md" p="md">
+          <Group position="apart" mb="sm">
+            <Text fw={600} size="sm">
+              Tracking History ({sorted.length})
+            </Text>
+            {sorted.length > 4 && (
+              <Anchor size="xs" onClick={() => setShowAll((v) => !v)} c="blue">
+                {showAll ? "Show less" : "View all"}
+              </Anchor>
+            )}
+          </Group>
+          <Stack spacing="sm">
+            {visible.map((step, idx) => {
+              const isLast = idx === visible.length - 1;
+              const lower = (step.status || "").toLowerCase();
+              const isDelivered = lower.includes("delivered");
+              const color = isDelivered ? "green" : "darkGreen";
+              return (
+                <Group key={idx} align="flex-start" spacing="sm" noWrap>
+                  <Box
+                    style={{
+                      width: 20,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      marginTop: 2,
+                    }}
+                  >
+                    <ThemeIcon radius="xl" size={20} variant="light" color={color}>
+                      {isDelivered ? (
+                        <IconCheck size={11} />
+                      ) : (
+                        <IconClock size={11} />
+                      )}
+                    </ThemeIcon>
+                    {!isLast && (
+                      <Box
+                        style={{
+                          width: 2,
+                          background: theme.colors.gray[3],
+                          flex: 1,
+                          marginTop: 4,
+                          minHeight: 16,
+                        }}
+                      />
+                    )}
+                  </Box>
+                  <Box style={{ flex: 1 }}>
+                    <Text size="sm" fw={600}>
+                      {step.status}
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      {new Date(step.timestamp).toLocaleString()}
+                    </Text>
+                    {step.location ? (
+                      <Text size="xs" c="dimmed">
+                        {step.location}
+                      </Text>
+                    ) : null}
+                    {step.instructions && step.instructions !== step.status ? (
+                      <Text size="xs" mt={2}>
+                        {step.instructions}
+                      </Text>
+                    ) : null}
+                  </Box>
+                </Group>
+              );
+            })}
+          </Stack>
+        </Card>
+        )}
       </Stack>
     );
   };
@@ -599,11 +901,7 @@ export default function OrderList() {
                         underline
                         onClick={(e) => {
                           e.stopPropagation();
-                          const waybill =
-                            order?.delhiveryDetails?.waybill ??
-                            order?.awb ??
-                            order?.items?.[0]?.awb ??
-                            order?.id;
+                          const waybill = resolveWaybill(order);
                           const refnum =
                             order?.delhiveryDetails?.refnum ??
                             order?.referenceNo ??
@@ -769,17 +1067,40 @@ export default function OrderList() {
               <Group position="apart" mb="md">
                 <Text fw={700}>AWB</Text>
                 <Text size="sm" c="dimmed">
-                  {selectedOrder?.delhiveryDetails?.waybill ??
-                    selectedOrder?.awb ??
-                    selectedOrder?.items?.[0]?.awb ??
-                    "-"}
+                  {trackingMeta?.waybill ?? (resolveWaybill(selectedOrder) || "-")}
                 </Text>
               </Group>
             )}
 
+            {trackingMeta?.origin || trackingMeta?.destination ? (
+              <Group position="apart" mb="md">
+                <Box>
+                  <Text size="xs" c="dimmed">Origin</Text>
+                  <Text size="sm" fw={500} lineClamp={1}>{trackingMeta.origin || "-"}</Text>
+                </Box>
+                <IconChevronRight size={14} color={theme.colors.gray[5]} />
+                <Box>
+                  <Text size="xs" c="dimmed">Destination</Text>
+                  <Text size="sm" fw={500} lineClamp={1}>{trackingMeta.destination || "-"}</Text>
+                </Box>
+              </Group>
+            ) : null}
+
             {selectedOrder && <Divider mb="sm" />}
 
-            <Timeline steps={trackingData} />
+            {trackingError ? (
+              <Center style={{ height: 220 }}>
+                <Box ta="center">
+                  <IconPackageOff size={40} color={theme.colors.gray[4]} />
+                  <Text mt="sm" fw={600}>{trackingError}</Text>
+                  <Text size="xs" c="dimmed" mt={4}>
+                    AWB {trackingMeta?.waybill ?? (resolveWaybill(selectedOrder) || "-")}
+                  </Text>
+                </Box>
+              </Center>
+            ) : (
+              <Timeline steps={trackingData} />
+            )}
           </Box>
         )}
       </Drawer>
