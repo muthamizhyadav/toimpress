@@ -54,6 +54,7 @@ const EXCHANGE_REASONS = [
 ];
 
 const RETURN_REASONS = [
+  "Defective Product",
   "Damaged Product",
   "Wrong Product Received",
   "Quality Issue",
@@ -888,12 +889,14 @@ export default function ExchangeReturnRequest() {
                 </Stack>
               </Card>
 
-              <Card withBorder radius="md" bg="#fff8e1">
-                <Text size="sm" fw={600} color="yellow">
-                  Note: ₹{EXCHANGE_CHARGE} Return Processing Charge will be
-                  charged after approval.
-                </Text>
-              </Card>
+              {!isChargeWaived(reason) && (
+                <Card withBorder radius="md" bg="#fff8e1">
+                  <Text size="sm" fw={600} color="yellow">
+                    Note: ₹{EXCHANGE_CHARGE} Return Processing Charge will be
+                    charged after approval.
+                  </Text>
+                </Card>
+              )}
 
               <Group position="apart">
                 <Button variant="outline" onClick={() => setStep(3)}>
