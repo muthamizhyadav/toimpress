@@ -23,6 +23,7 @@ const Home = () => {
   const [banners, setBanners] = useState([]);
   const [SecondaryBanner, setSecondaryBanners] = useState([]);
   const [ThirdBanner, setThirdBanner] = useState([]);
+  const [PricingBanners, setPricingBanners] = useState([]);
 
   const getAllBanners = async () => {
     try {
@@ -35,8 +36,12 @@ const Home = () => {
         const thirdBanners = response.data.filter(
           (banner: any) => banner.pagePosition === "third"
         );
+        const pricingBanners = response.data.filter(
+          (banner: any) => banner.pagePosition === "pricing"
+        );
         setThirdBanner(thirdBanners);
         setSecondaryBanners(secondaryBanners);
+        setPricingBanners(pricingBanners);
       }
     } catch (error) {
       console.error("Failed to fetch banners:", error);
@@ -56,7 +61,7 @@ const Home = () => {
       {isMobile && <CategoriesHomeMobile />}
       <TopCategories />
       <CategorySlider banners={SecondaryBanner} />
-      <PromoBanners />
+      <PromoBanners banners={PricingBanners} />
       <ShopBySize />
       <CategorySlider banners={ThirdBanner} />
       <FindYourFitt />

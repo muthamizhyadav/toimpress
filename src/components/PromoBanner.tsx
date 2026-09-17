@@ -8,25 +8,43 @@ type Banner = {
   percent: string;
   tail: string;
   label: string;
-  price:string
+  price: string;
+  reDirectionUrl?: string;
+};
+
+export type PricingBanner = {
+  _id: string;
+  title: string;
+  category?: string;
+  price?: string;
+  reDirectionUrl?: string;
+  active?: boolean;
 };
 
 const DARK = "#133215";
 const LIGHT = "#92B775";
 
-const cards: Banner[] = [
-  { headline: "FLAT @", percent: "₹ 399", price: "399",  tail: "", label: "Combo" },
-  { headline: "FLAT @", percent: "₹ 699", price: "699",  tail: "", label: "Combo" },
-  { headline: "FLAT @", percent: "₹ 799", price: "799",  tail: "", label: "Combo" },
-  { headline: "FLAT @", percent: "₹ 999", price: "999",  tail: "", label: "Combo" },
+const fallbackCards: Banner[] = [
+  { headline: "FLAT @", percent: "₹ 399", price: "399", tail: "", label: "Combo" },
+  { headline: "FLAT @", percent: "₹ 699", price: "699", tail: "", label: "Combo" },
+  { headline: "FLAT @", percent: "₹ 799", price: "799", tail: "", label: "Combo" },
+  { headline: "FLAT @", percent: "₹ 999", price: "999", tail: "", label: "Combo" },
 ];
 
-function BannerCard({ headline, percent, tail, label, price }: Banner) {
+function BannerCard({ headline, percent, tail, label, price, reDirectionUrl }: Banner) {
   const navigate = useNavigate();
+
+  const handleClick = () => {
+    if (reDirectionUrl) {
+      navigate(reDirectionUrl);
+    } else {
+      navigate(`/category?price=${price}&name=${label}`); // 👈 navigate on click
+    }
+  };
 
   return (
     <Box
-      onClick={() => navigate(`/category?price=${price}&name=${label}`)} // 👈 navigate on click
+      onClick={handleClick}
       style={{
         background: DARK,
         borderRadius: 16,
@@ -60,7 +78,7 @@ function BannerCard({ headline, percent, tail, label, price }: Banner) {
         }}
       >
         <Text fw={600} size="lg" style={{ color: LIGHT, letterSpacing: 1.2 }}>
-          {headline}
+          {headline} @
         </Text>
         <Text
           fw={900}
@@ -100,8 +118,25 @@ function BannerCard({ headline, percent, tail, label, price }: Banner) {
   );
 }
 
-export default function PromoBanners() {
+export default function PromoBanners({
+  banners,
+}: {
+  banners?: PricingBanner[];
+}) {
   const isMobile = useMediaQuery("(max-width: 640px)");
+
+  const cards: Banner[] = (banners ?? [])
+    .filter((b) => b.active !== false)
+    .map((b) => ({
+      headline: b.title,
+      percent: `₹ ${b.price}`,
+      tail: "",
+      label: b.category ?? "",
+      price: b.price ?? "",
+      reDirectionUrl: b.reDirectionUrl,
+    }));
+
+  const data = cards.length > 0 ? cards : fallbackCards;
 
   return (
     <Box
@@ -126,8 +161,8 @@ export default function PromoBanners() {
       </Text>
 
       <SimpleGrid cols={{ base: 2, md: 4 }} spacing={{ base: 14, md: 18 }}>
-        {cards.map((c) => (
-          <BannerCard key={c.label} {...c} />
+        {data.map((c, i) => (
+          <BannerCard key={c.reDirectionUrl ?? i} {...c} />
         ))}
       </SimpleGrid>
     </Box>
