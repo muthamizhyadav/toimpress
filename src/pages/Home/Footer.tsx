@@ -10,7 +10,13 @@ import {
   Divider,
   Image,
 } from "@mantine/core";
-import { IconPhone, IconMail, IconLocation } from "@tabler/icons-react";
+import {
+  IconPhone,
+  IconMail,
+  IconLocation,
+  IconBrandFacebook,
+  IconBrandInstagram,
+} from "@tabler/icons-react";
 import Logo from "/logo.png"
 
 
@@ -102,10 +108,64 @@ export default function Footer() {
         <Divider my="xl" />
 
         {/* Bottom row */}
-        <Group position="apart" align="center" spacing="xl" noWrap mb={2} >
+        <Group position="apart" align="center" spacing="xl" noWrap mb={2}>
           <Text size="xs" color="dimmed">
             © {endYear} To Impress by Ponpreatha Textiles. All rights reserved.
           </Text>
+
+          <Group spacing="sm" align="center">
+            <Anchor
+              component="a"
+              href="https://www.facebook.com/profile.php?id=61570456796688"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Facebook"
+              title="Follow us on Facebook"
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 36,
+                height: 36,
+                borderRadius: "50%",
+                color: "#1877F2",
+                background: "rgba(24, 119, 242, 0.1)",
+                transition: "background 0.2s ease, transform 0.2s ease",
+                "&:hover": {
+                  background: "rgba(24, 119, 242, 0.2)",
+                  transform: "translateY(-2px)",
+                },
+              }}
+            >
+              <IconBrandFacebook size={20} stroke={1.6} />
+            </Anchor>
+
+            <Anchor
+              component="a"
+              href="https://www.instagram.com/to_impress_clothing?stkn=MXR0anU4Mm81Ym11dw=="
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Instagram"
+              title="Follow us on Instagram"
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 36,
+                height: 36,
+                borderRadius: "50%",
+                color: "#E4405F",
+                background: "rgba(228, 64, 95, 0.1)",
+                transition: "background 0.2s ease, transform 0.2s ease",
+                "&:hover": {
+                  background: "rgba(228, 64, 95, 0.2)",
+                  transform: "translateY(-2px)",
+                },
+              }}
+            >
+              <IconBrandInstagram size={20} stroke={1.6} />
+            </Anchor>
+          </Group>
         </Group>
       </Container>
     </Box>
