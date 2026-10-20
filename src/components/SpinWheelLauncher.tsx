@@ -291,13 +291,6 @@ const SpinWheelLauncher = () => {
         if (!alive || !list.length) return;
 
         setSpinner(list[0]);
-
-        if (!sessionStorage.getItem("spin-win-popup-seen")) {
-          sessionStorage.setItem("spin-win-popup-seen", "1");
-          window.setTimeout(() => {
-            if (alive) setOpened(true);
-          }, 2200);
-        }
       } catch {
         // The wheel is a bonus feature - never break the page if it is offline.
       }
@@ -662,28 +655,6 @@ const SpinWheelLauncher = () => {
               <div className="text-[11px] text-[#5C6B57]">{offerHint(result.segment)}</div>
             </div>
           )}
-
-          <div className="mt-4 border-t border-[#E7DFD1] pt-3">
-            <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#6B7A66]">
-              Today&apos;s offers
-            </div>
-            <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
-              {segments.map((segment, index) => (
-                <div key={`${segment.label}-${index}`} className="flex items-center gap-1.5">
-                  <span
-                    className="h-2.5 w-2.5 shrink-0 rounded-full"
-                    style={{
-                      background: segment.color || SEGMENT_COLORS[index % SEGMENT_COLORS.length],
-                      border: "1px solid rgba(18,47,21,0.2)",
-                    }}
-                  />
-                  <span className="truncate text-[10px] font-semibold text-[#40503C]">
-                    {segment.label}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </Modal>
 

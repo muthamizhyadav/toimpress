@@ -32,7 +32,7 @@ import { loadRazorpay } from "../../utils/loadRazorpay";
 import { showNotification } from "@mantine/notifications";
 import { IconCheck, IconX } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
-import { API_GET_UPDATE, API_CART } from "../../api/api";
+import { API_GET_UPDATE, API_CART, API_SPINNER_REWARD } from "../../api/api";
 import { useSelector, useDispatch } from "react-redux";
 
 import * as storeModule from "../../redux/store";
@@ -75,6 +75,57 @@ const COD_SHIPPING = 50;
 // Colour tokens requested
 const DARK_GREEN = "#133215";
 const LIGHT_GREEN = "#92B775";
+
+type SpinnerReward = {
+  spinnerId: string;
+  spinnerName?: string;
+  segmentIndex: number;
+  label: string;
+  rewardType: string;
+  value?: string;
+  minOrderAmount?: number;
+  color?: string;
+  spunAt?: string;
+};
+
+const rewardText = (reward: SpinnerReward) => {
+  const value = Number.parseFloat(reward.value ?? "") || 0;
+  switch (reward.rewardType) {
+    case "percent_discount":
+      return `${value}% OFF`;
+    case "flat_discount":
+    case "threshold_discount":
+      return `₹${value} OFF`;
+    case "free_shipping":
+      return "FREE SHIPPING";
+    case "coupon":
+      return reward.value ? `COUPON ${reward.value}` : "COUPON";
+    case "points":
+      return `${value} POINTS`;
+    default:
+      return reward.label;
+  }
+};
+
+// The reward is always calculated on the cart total, never on a single item.
+const rewardDiscount = (reward: SpinnerReward | null, total: number) => {
+  if (!reward || total <= 0) return 0;
+
+  const minOrderAmount = Number(reward.minOrderAmount) || 0;
+  if (minOrderAmount > 0 && total < minOrderAmount) return 0;
+
+  const value = Number.parseFloat(reward.value ?? "") || 0;
+
+  switch (reward.rewardType) {
+    case "percent_discount":
+      return Math.min(total, Math.round((total * value) / 100));
+    case "flat_discount":
+    case "threshold_discount":
+      return Math.min(total, Math.round(value));
+    default:
+      return 0;
+  }
+};
 
 type CartItem = {
   selectedSize: any;
@@ -340,6 +391,32 @@ export default function Checkout() {
   } | null>(null);
 
   const [savedScheme, setSavedScheme] = useState<any>(null);
+  const [spinnerReward, setSpinnerReward] = useState<SpinnerReward | null>(
+    null,
+  );
+
+  // Load the customer's unused spin reward so checkout can apply it to the total.
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setSpinnerReward(null);
+      return undefined;
+    }
+
+    let alive = true;
+
+    axiosInstance
+      .get(API_SPINNER_REWARD)
+      .then((response) => {
+        if (alive) setSpinnerReward(response.data?.reward ?? null);
+      })
+      .catch(() => {
+        if (alive) setSpinnerReward(null);
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [isAuthenticated]);
 
   const getCouponDetails = async (data: any) => {
     const resp = await axiosInstance.post(
@@ -785,6 +862,25 @@ export default function Checkout() {
     };
   }, [items, savedScheme, paymentMethod, offerAmount]);
 
+  // Spin & Win reward, calculated on the cart total (product value).
+  const spinnerDiscount = useMemo(
+    () => rewardDiscount(spinnerReward, totals.subtotal),
+    [spinnerReward, totals.subtotal],
+  );
+
+  const spinnerShortfall = useMemo(() => {
+    if (!spinnerReward) return 0;
+    const minOrderAmount = Number(spinnerReward.minOrderAmount) || 0;
+    if (minOrderAmount <= 0 || totals.subtotal >= minOrderAmount) return 0;
+    return Math.ceil(minOrderAmount - totals.subtotal);
+  }, [spinnerReward, totals.subtotal]);
+
+  const totalDiscountAmount = offerAmount + spinnerDiscount;
+  const payableAmount = Math.max(
+    0,
+    totals.subtotal + totals.shipping - totalDiscountAmount,
+  );
+
   const promo = useMemo(() => {
     if (
       savedScheme &&
@@ -855,6 +951,8 @@ export default function Checkout() {
     discount,
     meta,
     amountToChargeOnDelivery,
+    spinnerId,
+    spinnerSegmentIndex,
   }: {
     items: CartItem[];
     shippingAddress?: any;
@@ -867,6 +965,8 @@ export default function Checkout() {
     discount?: number;
     meta?: any;
     amountToChargeOnDelivery?: number;
+    spinnerId?: string;
+    spinnerSegmentIndex?: number;
   }) {
     try {
       const payload = {
@@ -884,6 +984,10 @@ export default function Checkout() {
         tax: tax ?? 0,
         discount: discount ?? 0,
         amountToChargeOnDelivery: amountToChargeOnDelivery ?? null,
+        // The backend verifies and calculates the spin reward from the cart total.
+        ...(spinnerId
+          ? { spinnerId, spinnerSegmentIndex: spinnerSegmentIndex ?? 0 }
+          : {}),
         meta: {
           ...(meta ?? {}),
           ...(localOrderId
@@ -936,6 +1040,12 @@ export default function Checkout() {
           shippingCost: totals.shipping,
           tax: totals.gst,
           discount: totals.totalDiscounts,
+          ...(spinnerReward && spinnerDiscount > 0
+            ? {
+                spinnerId: spinnerReward.spinnerId,
+                spinnerSegmentIndex: spinnerReward.segmentIndex,
+              }
+            : {}),
           meta: {
             savedScheme:
               savedScheme && savedScheme.isDiscountApplicable
@@ -1044,9 +1154,11 @@ export default function Checkout() {
       const localOrderId = apiValidation.orderId;
       const amountToCollect = Math.max(
         0,
-        Math.round(savedScheme?.finalAmount ?? totals.grandTotal),
+        Math.round(
+          (savedScheme?.finalAmount ?? totals.grandTotal) - spinnerDiscount,
+        ),
       );
-      const amountPaise = (totals.subtotal - offerAmount) * 100;
+      const amountPaise = (totals.subtotal - totalDiscountAmount) * 100;
 
       if (amountPaise <= 0) {
         showNotification({
@@ -1317,9 +1429,9 @@ export default function Checkout() {
       console.log("Using orderId for COD:", localOrderId);
 
       const baseFinal =
-        savedScheme && savedScheme.isDiscountApplicable
+        (savedScheme && savedScheme.isDiscountApplicable
           ? Number(savedScheme.finalAmount ?? totals.grandTotal)
-          : totals.grandTotal;
+          : totals.grandTotal) - spinnerDiscount;
 
       const orderTotal = Math.round(baseFinal + COD_SHIPPING);
       const tokenToCollect = COD_TOKEN;
@@ -1889,6 +2001,39 @@ export default function Checkout() {
                     />
                   </Stack>
 
+                  {spinnerReward && (
+                    <Paper
+                      radius="md"
+                      p="12px"
+                      mb="12px"
+                      style={{
+                        backgroundColor: "#FFF8E1",
+                        border: "1px solid #E3C55B",
+                      }}
+                    >
+                      <Group justify="space-between" align="center">
+                        <Text size="sm" fw={700} style={{ color: DARK_GREEN }}>
+                          🎉 Spin &amp; Win reward
+                        </Text>
+                        <Badge
+                          style={{
+                            backgroundColor: DARK_GREEN,
+                            color: "#FFF8E1",
+                          }}
+                        >
+                          {rewardText(spinnerReward)}
+                        </Badge>
+                      </Group>
+                      <Text size="xs" c="dimmed" mt={6}>
+                        {spinnerDiscount > 0
+                          ? `₹${spinnerDiscount} off applied on your cart total of ₹${totals.subtotal}`
+                          : spinnerShortfall > 0
+                            ? `Add ₹${spinnerShortfall} more to apply this reward`
+                            : "This reward will be applied automatically on your cart total."}
+                      </Text>
+                    </Paper>
+                  )}
+
                   {savedScheme && savedScheme.isDiscountApplicable && (
                     <Paper
                       radius="md"
@@ -1957,9 +2102,20 @@ export default function Checkout() {
                     </Group>
                   )}
 
+                  {spinnerDiscount > 0 && spinnerReward && (
+                    <Group justify="space-between" mb="xs">
+                      <Text c="dimmed">
+                        Spin &amp; Win ({rewardText(spinnerReward)})
+                      </Text>
+                      <Text style={{ color: LIGHT_GREEN, fontWeight: 700 }}>
+                        -₹{spinnerDiscount}
+                      </Text>
+                    </Group>
+                  )}
+
                   <Group justify="space-between" mb="xs">
                     <Text c="dimmed">Cart Subtotal</Text>
-                    <Text>₹{Math.max(0, totals.subtotal - offerAmount)}</Text>
+                    <Text>₹{Math.max(0, totals.subtotal - totalDiscountAmount)}</Text>
                   </Group>
 
                   <Group justify="space-between" mb="xs">
@@ -1978,12 +2134,7 @@ export default function Checkout() {
                   <Divider my="sm" />
                   <Group justify="space-between" mb="md">
                     <Text fw={700}>You Pay</Text>
-                    <Text fw={700}>
-                      ₹
-                      {totals.subtotal +
-                        (paymentMethod === "COD" ? COD_SHIPPING : 0) -
-                        offerAmount}
-                    </Text>
+                    <Text fw={700}>₹{payableAmount}</Text>
                   </Group>
 
                   {paymentMethod === "COD" && (
@@ -2009,9 +2160,9 @@ export default function Checkout() {
                       <div>
                         <Text size="sm" style={{ color: DARK_GREEN }}>
                           Your Savings ₹
-                          {savedScheme && savedScheme.isDiscountApplicable
+                          {(savedScheme && savedScheme.isDiscountApplicable
                             ? Math.round(savedScheme.minusValue)
-                            : totals.totalDiscounts}
+                            : totals.totalDiscounts) + spinnerDiscount}
                         </Text>
                         {/* <Text size="xs" c="dimmed">
                           {savedScheme && savedScheme.isDiscountApplicable
@@ -2069,11 +2220,7 @@ export default function Checkout() {
                   <div>
                     <Text fw={700} size="lg" style={{ lineHeight: 1 }}>
                       ₹
-                      {Math.round(
-                        totals.subtotal +
-                          (paymentMethod === "COD" ? COD_SHIPPING : 0) -
-                          offerAmount,
-                      )}
+                      {Math.round(payableAmount)}
                     </Text>
                     <Text size="xs" c="dimmed">
                       View Price Details
@@ -2103,9 +2250,9 @@ export default function Checkout() {
                     <Text size="sm">Your Savings</Text>
                     <Text fw={700} style={{ color: LIGHT_GREEN }}>
                       ₹
-                      {savedScheme && savedScheme.isDiscountApplicable
+                      {(savedScheme && savedScheme.isDiscountApplicable
                         ? Math.round(savedScheme.minusValue)
-                        : totals.totalDiscounts}
+                        : totals.totalDiscounts) + spinnerDiscount}
                     </Text>
                   </div>
                 </div>

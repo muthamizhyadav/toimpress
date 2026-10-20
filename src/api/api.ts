@@ -39,3 +39,4 @@ export const PAGEIMPRESSIONS = API_URL + "page-impressions";
 
 export const API_LIVE_SPINNERS = API_URL + "spinners/live";
 export const API_SPINNERS = API_URL + "spinners";
+export const API_SPINNER_REWARD = API_URL + "spinners/reward";
