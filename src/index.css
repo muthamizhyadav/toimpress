@@ -13,3 +13,14 @@
   --color-sandle: #eadfcc;
   --color-lightgreen: #8bb06e;
 }
+
+@keyframes spin-confetti-fall {
+  0% {
+    transform: translate3d(0, -12px, 0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(0, 320px, 0) rotate(640deg);
+    opacity: 0;
+  }
+}

@@ -17,6 +17,7 @@ import TopCategories from "./Home/TopCategories";
 import MobileBottomNavbar from "./MobileBottomBar";
 import Reviews from "./Home/Reviews";
 import PromoBanners from "../components/PromoBanner";
+import SpinWheelLauncher from "../components/SpinWheelLauncher";
 
 const Home = () => {
   const isMobile = useMediaQuery("(max-width: 640px)");
@@ -71,6 +72,7 @@ const Home = () => {
       {/* <SubscriptionBanner /> */}
       <Footer />
       <MobileBottomNavbar />
+      <SpinWheelLauncher />
     </div>
   );
 };

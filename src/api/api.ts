@@ -36,3 +36,6 @@ export const API_ADD_TO_CART = "cart";
 export const LOGIN = API_URL + "auth/login";
 
 export const PAGEIMPRESSIONS = API_URL + "page-impressions";
+
+export const API_LIVE_SPINNERS = API_URL + "spinners/live";
+export const API_SPINNERS = API_URL + "spinners";
