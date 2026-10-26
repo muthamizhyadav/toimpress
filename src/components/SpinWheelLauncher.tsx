@@ -3,6 +3,7 @@ import { Button, Loader, Modal, Text } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { showNotification } from "@mantine/notifications";
 import { IconCheck, IconCopy, IconSparkles, IconTicket, IconX } from "@tabler/icons-react";
+import { useNavigate } from "react-router-dom";
 import axiosInstance from "../api/axiosInstance";
 import { API_LIVE_SPINNERS, API_SPINNERS } from "../api/api";
 import { useAuth } from "../assets/hooks/useAuth";
@@ -20,6 +21,11 @@ type Segment = {
   value?: string;
   minOrderAmount?: number;
   color?: string;
+  mapType?: "none" | "category" | "product" | string;
+  categoryId?: string;
+  categoryName?: string;
+  productId?: string;
+  productName?: string;
 };
 
 type Spinner = {
@@ -286,6 +292,40 @@ const offerHint = (segment?: Segment | null) => {
   return "On your next order";
 };
 
+const segmentMapLabel = (segment?: Segment | null) => {
+  if (!segment) return "";
+  if (segment.mapType === "category") {
+    return segment.categoryName || "Category";
+  }
+  if (segment.mapType === "product") {
+    return segment.productName || "Product";
+  }
+  return "";
+};
+
+const segmentDestination = (segment?: Segment | null): string | null => {
+  if (!segment) return null;
+
+  if (segment.mapType === "category") {
+    if (segment.categoryName) {
+      return `/category?name=${encodeURIComponent(segment.categoryName)}${
+        segment.categoryId
+          ? `&id=${encodeURIComponent(segment.categoryId)}`
+          : ""
+      }`;
+    }
+    if (segment.categoryId) {
+      return `/category?id=${encodeURIComponent(segment.categoryId)}`;
+    }
+  }
+
+  if (segment.mapType === "product" && segment.productId) {
+    return `/product/?id=${encodeURIComponent(segment.productId)}`;
+  }
+
+  return null;
+};
+
 function Wheel({
   segments,
   size,
@@ -409,6 +449,7 @@ function Wheel({
 
 const SpinWheelLauncher = () => {
   const { isAuthenticated, user } = useAuth();
+  const navigate = useNavigate();
   const isMobile = useMediaQuery("(max-width: 640px)");
   const wheelSize = isMobile ? 250 : 300;
 
@@ -439,6 +480,13 @@ const SpinWheelLauncher = () => {
   );
 
   const segments = useMemo(() => spinner?.segments ?? [], [spinner]);
+
+  const wonSegment =
+    result?.segment ??
+    (status?.lastSpin ? segments[status.lastSpin.segmentIndex] : null) ??
+    null;
+  const wonDestination = segmentDestination(wonSegment);
+  const wonMapLabel = segmentMapLabel(wonSegment);
 
   const targetRotation = (index: number, current: number) => {
     const count = Math.max(segments.length, 1);
@@ -593,7 +641,9 @@ const SpinWheelLauncher = () => {
 
       setRotation((current) => targetRotation(index, current));
 
-      const winningSegment: Segment | null = data.segment ?? segments[index] ?? null;
+      const winningSegment: Segment | null = data.segment
+        ? { ...(segments[index] || {}), ...data.segment }
+        : segments[index] ?? null;
 
       resultTimer.current = window.setTimeout(() => {
         setSpinning(false);
@@ -689,12 +739,11 @@ const SpinWheelLauncher = () => {
         : "Your reward is saved and will be applied automatically at checkout.",
       color: "green",
     });
-  };
 
-  const wonSegment =
-    result?.segment ??
-    (status?.lastSpin && segments[status.lastSpin.segmentIndex]) ??
-    null;
+    if (wonDestination) {
+      navigate(wonDestination);
+    }
+  };
 
   const hasAlreadyPlayed = !!status && !status.canSpin && !!status.lastSpin;
 
@@ -856,6 +905,30 @@ const SpinWheelLauncher = () => {
               <p className="mt-2 text-[11px] text-gray-500">
                 You have already used your spin. Come back for the next campaign!
               </p>
+              {wonDestination && (
+                <Button
+                  fullWidth
+                  radius="xl"
+                  size="sm"
+                  mt="md"
+                  onClick={() => {
+                    closeModal();
+                    navigate(wonDestination);
+                  }}
+                  leftSection={<IconTicket size={16} />}
+                  styles={{
+                    root: {
+                      background: `linear-gradient(135deg, ${GOLD}, #FFB800)`,
+                      color: DARK_GREEN,
+                      fontWeight: 800,
+                      letterSpacing: "0.06em",
+                      border: `2px solid ${DARK_GREEN}`,
+                    },
+                  }}
+                >
+                  SHOP {wonMapLabel.toUpperCase()}
+                </Button>
+              )}
             </div>
           ) : status && !status.canSpin ? (
             <div className="text-center">
@@ -906,6 +979,11 @@ const SpinWheelLauncher = () => {
                 {rewardDisplay(result.segment)}
               </div>
               <div className="text-[11px] text-[#5C6B57]">{offerHint(result.segment)}</div>
+              {segmentMapLabel(result.segment) && (
+                <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#5C6B57]">
+                  Valid on {segmentMapLabel(result.segment)}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -964,6 +1042,11 @@ const SpinWheelLauncher = () => {
               <div className="mt-1 text-[11px] text-[#F5E8C8]">
                 {wonSegment ? offerHint(wonSegment) : "On your next order"}
               </div>
+              {wonMapLabel && (
+                <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#FFE9A8]">
+                  Valid on {wonMapLabel}
+                </div>
+              )}
             </div>
 
             <div className="diwali-coupon mt-4">
@@ -1004,11 +1087,13 @@ const SpinWheelLauncher = () => {
                 },
               }}
             >
-              CLAIM MY REWARD
+              {wonDestination ? `CLAIM & SHOP ${wonMapLabel.toUpperCase()}` : "CLAIM MY REWARD"}
             </Button>
 
             <p className="mt-3 text-[10px] leading-relaxed text-[#C9B6E4]">
-              Saved to your account and applied automatically at checkout on your next order.
+              {wonDestination
+                ? `Saved to your account. We will take you to the ${wonMapLabel.toLowerCase()} page so you can use it right away.`
+                : "Saved to your account and applied automatically at checkout on your next order."}
             </p>
 
             <button
