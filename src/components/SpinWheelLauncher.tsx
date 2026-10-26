@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Button, Loader, Modal, Text } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { showNotification } from "@mantine/notifications";
-import { IconSparkles, IconTicket, IconX } from "@tabler/icons-react";
+import { IconCheck, IconCopy, IconSparkles, IconTicket, IconX } from "@tabler/icons-react";
 import axiosInstance from "../api/axiosInstance";
 import { API_LIVE_SPINNERS, API_SPINNERS } from "../api/api";
 import { useAuth } from "../assets/hooks/useAuth";
@@ -47,12 +47,174 @@ type SpinStatus = {
 };
 
 type SpinResult = {
-  segment: Segment;
+  segment?: Segment;
   segmentIndex: number;
   remainingSpins: number;
 };
 
 const SEGMENT_COLORS = [DARK_GREEN, LIGHT_GREEN, CREAM, MID_GREEN, GOLD, "#2E9E4F"];
+
+const DIWALI_SPARK_COLORS = ["#FFD700", "#FF7A18", "#FF3D81", "#39D0FF", "#7CFF6B", "#C77DFF"];
+
+const DIWALI_BURSTS = [
+  { top: "6%", left: "10%", color: DIWALI_SPARK_COLORS[0], delay: "0s" },
+  { top: "14%", left: "80%", color: DIWALI_SPARK_COLORS[2], delay: "0.45s" },
+  { top: "42%", left: "90%", color: DIWALI_SPARK_COLORS[3], delay: "1.1s" },
+  { top: "34%", left: "4%", color: DIWALI_SPARK_COLORS[4], delay: "0.8s" },
+  { top: "72%", left: "16%", color: DIWALI_SPARK_COLORS[5], delay: "1.5s" },
+  { top: "64%", left: "84%", color: DIWALI_SPARK_COLORS[1], delay: "2s" },
+];
+
+const DIWALI_STARS = Array.from({ length: 22 }).map((_, index) => ({
+  top: `${(index * 37) % 94}%`,
+  left: `${(index * 61) % 94}%`,
+  delay: `${(index % 9) * 0.28}s`,
+  size: 2 + (index % 3),
+  color: DIWALI_SPARK_COLORS[index % DIWALI_SPARK_COLORS.length],
+}));
+
+const hashString = (value: string) => {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
+  }
+  return hash.toString(36).toUpperCase().padStart(4, "0").slice(-4);
+};
+
+const resolveCouponCode = ({
+  response,
+  segment,
+  spinnerId,
+  segmentIndex,
+  userKey,
+}: {
+  response?: {
+    couponCode?: string;
+    claimCode?: string;
+    code?: string;
+  };
+  segment?: Segment | null;
+  spinnerId: string;
+  segmentIndex: number;
+  userKey: string;
+}) => {
+  // Prefer a real code if the backend ever sends one, then the configured
+  // coupon value, then a stable Diwali code generated for this customer.
+  const fromApi = response?.couponCode || response?.claimCode || response?.code;
+  if (fromApi) return String(fromApi).toUpperCase();
+
+  if (segment?.rewardType === "coupon" && segment.value && /[A-Za-z]/.test(segment.value)) {
+    return String(segment.value).toUpperCase();
+  }
+
+  const storageKey = `spin-coupon:${spinnerId}:${segmentIndex}:${userKey}`;
+  try {
+    const stored = localStorage.getItem(storageKey);
+    if (stored) return stored;
+  } catch {
+    // localStorage can be unavailable in private mode.
+  }
+
+  const amount = String(segment?.value ?? "").replace(/[^0-9]/g, "").slice(0, 3);
+  const code = `DIWALI${amount ? `-${amount}` : ""}-${hashString(
+    `${spinnerId}:${segmentIndex}:${userKey}`
+  )}`;
+
+  try {
+    localStorage.setItem(storageKey, code);
+  } catch {
+    // Ignore storage errors - the code is still shown for this visit.
+  }
+  return code;
+};
+
+const copyToClipboard = async (value: string) => {
+  if (!value) return false;
+  try {
+    await navigator.clipboard.writeText(value);
+    return true;
+  } catch {
+    try {
+      const input = document.createElement("textarea");
+      input.value = value;
+      input.setAttribute("readonly", "");
+      input.style.position = "fixed";
+      input.style.opacity = "0";
+      document.body.appendChild(input);
+      input.select();
+      const copied = document.execCommand("copy");
+      document.body.removeChild(input);
+      return copied;
+    } catch {
+      return false;
+    }
+  }
+};
+
+function DiwaliCelebration() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div className="diwali-glow diwali-glow-left" />
+      <div className="diwali-glow diwali-glow-right" />
+
+      {DIWALI_STARS.map((star, index) => (
+        <span
+          key={`star-${index}`}
+          className="diwali-star"
+          style={{
+            top: star.top,
+            left: star.left,
+            width: star.size,
+            height: star.size,
+            color: star.color,
+            animationDelay: star.delay,
+          }}
+        />
+      ))}
+
+      {DIWALI_BURSTS.map((burst, burstIndex) => (
+        <div
+          key={`burst-${burstIndex}`}
+          className="absolute"
+          style={{ top: burst.top, left: burst.left, color: burst.color }}
+        >
+          <span className="diwali-burst-core" style={{ animationDelay: burst.delay }} />
+          {Array.from({ length: 14 }).map((_, sparkIndex) => {
+            const angle = (sparkIndex * 360) / 14 + burstIndex * 11;
+            const distance = 24 + (sparkIndex % 4) * 8;
+            const radians = (angle * Math.PI) / 180;
+            return (
+              <span
+                key={`spark-${sparkIndex}`}
+                className="diwali-spark"
+                style={
+                  {
+                    "--dx": `${Math.round(Math.cos(radians) * distance)}px`,
+                    "--dy": `${Math.round(Math.sin(radians) * distance)}px`,
+                    animationDelay: burst.delay,
+                    animationDuration: `${2 + (sparkIndex % 3) * 0.3}s`,
+                  } as CSSProperties
+                }
+              />
+            );
+          })}
+        </div>
+      ))}
+
+      <div className="diwali-diya-row">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <span
+            key={`diya-${index}`}
+            className="diwali-diya"
+            style={{ animationDelay: `${index * 0.25}s`, opacity: index === 2 ? 1 : 0.8 }}
+          >
+            🪔
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const readableText = (hex?: string) => {
   if (!hex || !/^#[0-9A-Fa-f]{6}$/.test(hex)) return "#FFFFFF";
@@ -246,7 +408,7 @@ function Wheel({
 }
 
 const SpinWheelLauncher = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const isMobile = useMediaQuery("(max-width: 640px)");
   const wheelSize = isMobile ? 250 : 300;
 
@@ -255,13 +417,26 @@ const SpinWheelLauncher = () => {
   const [loginOpened, setLoginOpened] = useState(false);
   const [status, setStatus] = useState<SpinStatus | null>(null);
   const [statusLoading, setStatusLoading] = useState(false);
+  const [statusChecked, setStatusChecked] = useState(false);
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [result, setResult] = useState<SpinResult | null>(null);
   const [confetti, setConfetti] = useState(false);
+  const [rewardOpened, setRewardOpened] = useState(false);
+  const [couponCode, setCouponCode] = useState("");
+  const [codeCopied, setCodeCopied] = useState(false);
 
   const resultTimer = useRef<number | null>(null);
   const confettiTimer = useRef<number | null>(null);
+  const copyTimer = useRef<number | null>(null);
+  const autoOpened = useRef(false);
+
+  const userKey = String(
+    (user as { _id?: string; id?: string; mobile?: string } | null)?._id ||
+      (user as { _id?: string; id?: string; mobile?: string } | null)?.id ||
+      (user as { _id?: string; id?: string; mobile?: string } | null)?.mobile ||
+      "customer"
+  );
 
   const segments = useMemo(() => spinner?.segments ?? [], [spinner]);
 
@@ -303,17 +478,20 @@ const SpinWheelLauncher = () => {
     };
   }, []);
 
-  // Load this customer's spin state whenever the modal opens or they log in.
+  // Load this customer's spin state on page load and whenever they log in. The
+  // result also decides whether the wheel should open automatically.
   useEffect(() => {
-    if (!opened || !spinner) return undefined;
+    if (!spinner) return undefined;
 
     if (!isAuthenticated) {
       setStatus(null);
+      setStatusChecked(false);
       return undefined;
     }
 
     let alive = true;
     setStatusLoading(true);
+    setStatusChecked(false);
 
     axiosInstance
       .get(`${API_SPINNERS}/${spinner.id}/status`)
@@ -342,19 +520,44 @@ const SpinWheelLauncher = () => {
         // Leave the spin button enabled - the server still enforces the limit.
       })
       .finally(() => {
-        if (alive) setStatusLoading(false);
+        if (alive) {
+          setStatusLoading(false);
+          setStatusChecked(true);
+        }
       });
 
     return () => {
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [opened, spinner?.id, isAuthenticated]);
+  }, [spinner?.id, isAuthenticated]);
+
+  // Show the wheel as soon as the customer lands on the page: always for
+  // guests, and for logged-in customers who have not claimed their spin yet.
+  // Customers who already spun only see the floating "View offer" button.
+  useEffect(() => {
+    if (!spinner || autoOpened.current) return;
+
+    if (!isAuthenticated) {
+      autoOpened.current = true;
+      setOpened(true);
+      return;
+    }
+
+    // Wait until we know whether this customer already spun or cannot spin.
+    if (!statusChecked) return;
+
+    autoOpened.current = true;
+    if (!status || status.canSpin) {
+      setOpened(true);
+    }
+  }, [spinner, isAuthenticated, statusChecked, status]);
 
   useEffect(() => {
     return () => {
       if (resultTimer.current) window.clearTimeout(resultTimer.current);
       if (confettiTimer.current) window.clearTimeout(confettiTimer.current);
+      if (copyTimer.current) window.clearTimeout(copyTimer.current);
     };
   }, []);
 
@@ -390,13 +593,25 @@ const SpinWheelLauncher = () => {
 
       setRotation((current) => targetRotation(index, current));
 
+      const winningSegment: Segment | null = data.segment ?? segments[index] ?? null;
+
       resultTimer.current = window.setTimeout(() => {
         setSpinning(false);
         setResult({
-          segment: data.segment,
+          segment: winningSegment ?? undefined,
           segmentIndex: index,
           remainingSpins: data.remainingSpins ?? 0,
         });
+        setCouponCode(
+          resolveCouponCode({
+            response: data,
+            segment: winningSegment,
+            spinnerId: spinner.id,
+            segmentIndex: index,
+            userKey,
+          })
+        );
+        setCodeCopied(false);
         setStatus((current) =>
           current
             ? {
@@ -414,6 +629,10 @@ const SpinWheelLauncher = () => {
               }
             : current
         );
+
+        // Swap the wheel for the celebration popup with the coupon code.
+        setOpened(false);
+        setRewardOpened(true);
 
         setConfetti(true);
         confettiTimer.current = window.setTimeout(() => setConfetti(false), 3200);
@@ -436,6 +655,40 @@ const SpinWheelLauncher = () => {
   const closeModal = () => {
     setOpened(false);
     setLoginOpened(false);
+  };
+
+  const closeRewardModal = () => {
+    setRewardOpened(false);
+    setCodeCopied(false);
+  };
+
+  const handleCopyCode = async () => {
+    const copied = await copyToClipboard(couponCode);
+    if (!copied) {
+      showNotification({
+        title: "Copy failed",
+        message: "Long-press the coupon code to copy it manually.",
+        color: "orange",
+      });
+      return;
+    }
+
+    setCodeCopied(true);
+    if (copyTimer.current) window.clearTimeout(copyTimer.current);
+    copyTimer.current = window.setTimeout(() => setCodeCopied(false), 2200);
+  };
+
+  const handleClaimReward = async () => {
+    const copied = await copyToClipboard(couponCode);
+    closeRewardModal();
+
+    showNotification({
+      title: "Reward claimed 🎉",
+      message: copied
+        ? `Coupon ${couponCode} copied. It will be applied automatically at checkout.`
+        : "Your reward is saved and will be applied automatically at checkout.",
+      color: "green",
+    });
   };
 
   const wonSegment =
@@ -655,6 +908,117 @@ const SpinWheelLauncher = () => {
               <div className="text-[11px] text-[#5C6B57]">{offerHint(result.segment)}</div>
             </div>
           )}
+        </div>
+      </Modal>
+
+      <Modal
+        opened={rewardOpened}
+        onClose={closeRewardModal}
+        centered
+        withCloseButton={false}
+        size={isMobile ? "100%" : 440}
+        radius="lg"
+        padding={0}
+        styles={{
+          body: { padding: 0 },
+          content: { overflow: "hidden", background: "#12082B" },
+          inner: { padding: isMobile ? 10 : 24 },
+        }}
+      >
+        <div
+          className="relative overflow-hidden"
+          style={{
+            background:
+              "radial-gradient(circle at 50% 0%, #4C1D95 0%, #2A0F52 38%, #14082E 72%, #090415 100%)",
+          }}
+        >
+          <DiwaliCelebration />
+
+          <div className="relative z-10 px-5 pb-10 pt-6 text-center">
+            <button
+              type="button"
+              onClick={closeRewardModal}
+              aria-label="Close reward popup"
+              className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full"
+              style={{ background: "rgba(255,255,255,0.12)", color: CREAM }}
+            >
+              <IconX size={16} />
+            </button>
+
+            <div className="diwali-tag">🪔 Happy Diwali 🪔</div>
+
+            <h2 className="mt-3 text-2xl font-black uppercase leading-tight tracking-[0.06em] text-white">
+              You won!
+            </h2>
+            <p className="mt-1 text-[12px] text-[#E4D4FF]">
+              {spinner.eventName ? `${spinner.eventName} special reward` : "A Diwali surprise, just for you"}
+            </p>
+
+            <div className="diwali-reward mt-4">
+              <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[#FFE9A8]">
+                Your reward
+              </div>
+              <div className="mt-1 text-2xl font-black uppercase text-white">
+                {wonSegment ? rewardDisplay(wonSegment) : "Special offer"}
+              </div>
+              <div className="mt-1 text-[11px] text-[#F5E8C8]">
+                {wonSegment ? offerHint(wonSegment) : "On your next order"}
+              </div>
+            </div>
+
+            <div className="diwali-coupon mt-4">
+              <div className="text-[10px] font-extrabold uppercase tracking-[0.3em] text-[#7A3E00]">
+                Your coupon code
+              </div>
+              <div className="mt-2 flex items-center justify-center gap-2">
+                <span className="diwali-code">{couponCode || "DIWALI"}</span>
+                <button
+                  type="button"
+                  onClick={handleCopyCode}
+                  aria-label="Copy coupon code"
+                  className="diwali-copy"
+                >
+                  {codeCopied ? <IconCheck size={15} /> : <IconCopy size={15} />}
+                </button>
+              </div>
+              <div className="mt-1 text-[10px] font-semibold text-[#8A5A1A]">
+                {codeCopied ? "Copied to clipboard!" : "Tap the copy icon to save the code"}
+              </div>
+            </div>
+
+            <Button
+              fullWidth
+              radius="xl"
+              size="md"
+              mt="md"
+              onClick={handleClaimReward}
+              leftSection={<IconTicket size={18} />}
+              styles={{
+                root: {
+                  background: "linear-gradient(135deg, #FFD700, #FFA000)",
+                  color: DARK_GREEN,
+                  fontWeight: 900,
+                  letterSpacing: "0.08em",
+                  border: "2px solid #FFF3C4",
+                  boxShadow: "0 10px 24px rgba(255, 170, 0, 0.35)",
+                },
+              }}
+            >
+              CLAIM MY REWARD
+            </Button>
+
+            <p className="mt-3 text-[10px] leading-relaxed text-[#C9B6E4]">
+              Saved to your account and applied automatically at checkout on your next order.
+            </p>
+
+            <button
+              type="button"
+              onClick={closeRewardModal}
+              className="mt-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#E4D4FF] opacity-70"
+            >
+              Maybe later
+            </button>
+          </div>
         </div>
       </Modal>
 
