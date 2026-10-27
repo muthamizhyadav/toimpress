@@ -98,7 +98,7 @@ export default function ProductPage() {
   const [openSizeDrawer, setOpenSizeDrawer] = useState(false);
   const [dataWithColor, setDataWithColor] = useState<any[]>([null]);
   const [drawerProduct, setDrawerProduct] = useState<any | null>(null);
-  const [coupon, setCoupon] = useState<any | null>(null);
+  const [coupon, setCoupon] = useState<any[]>([]);
 
   const [addingMap, setAddingMap] = useState<Record<string, boolean>>({});
 
@@ -132,7 +132,7 @@ export default function ProductPage() {
         const detail = resp?.data?.product;
         const sims = resp?.data?.similerProducts || resp?.data?.similarProducts;
         const couponData = resp?.data?.coupon;
-        setCoupon(couponData || null);
+        setCoupon(Array.isArray(couponData) ? couponData : []);
         console.log(detail, "detail");
         await pageLogCreation();
         setProductDetails(detail);
@@ -689,57 +689,78 @@ export default function ProductPage() {
     <Container size="xl" py="md">
       <Grid>
         <Grid.Col span={{ base: 12, md: 6 }} style={{ position: "relative" }}>
-          {coupon.map((item: any, index: number) => (
-            <React.Fragment key={index}>
-              {/* Coupon Badge */}
-              <Badge
-                size="lg"
-                radius="sm"
-                style={{
-                  backgroundColor: LIGHT_GREEN,
-                  color: "#ffffff",
-                  fontWeight: 700,
-                  fontSize: "12px",
-                  padding: "6px 12px",
-                  textTransform: "none",
-                  whiteSpace: "normal",
-                  lineHeight: 1.2,
-                  alignSelf: "flex-end",
-                }}
-              >
-                Buy ₹{item.discount} Get {item.offerDiscount}% OFF
-              </Badge>
+          {coupon.map((item: any, index: number) => {
+            const isPercentage = item.type === "percentage";
+            const couponLabel =
+              item.couponFor === "auto"
+                ? Number(item.offerDiscount) > 0
+                  ? `Buy ₹${item.discount} Get ${item.offerDiscount}% OFF`
+                  : `₹${item.discount} OFF`
+                : isPercentage
+                  ? `${item.discount}% OFF`
+                  : `₹${item.discount} OFF`;
 
-              {/* OR Divider */}
-              {index < coupon.length - 1 && (
-                <Box
+            return (
+              <React.Fragment key={item._id ?? item.code ?? index}>
+                {/* Coupon Badge */}
+                <Badge
+                  size="lg"
+                  radius="sm"
+                  title={
+                    item.code
+                      ? `Coupon ${item.code} is applied automatically at checkout`
+                      : "This offer is applied automatically at checkout"
+                  }
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    padding: "4px 8px",
+                    backgroundColor: LIGHT_GREEN,
+                    color: "#ffffff",
+                    fontWeight: 700,
+                    fontSize: "12px",
+                    padding: "6px 12px",
+                    textTransform: "none",
+                    whiteSpace: "normal",
+                    lineHeight: 1.2,
                     alignSelf: "flex-end",
-                    width: "fit-content",
                   }}
                 >
-                  <Text
-                    size="xs"
-                    fw={700}
-                    c="dark"
-                    style={{
-                      whiteSpace: "nowrap",
-                      padding: "0 6px",
-                      color: "#94a3b8",
+                  {couponLabel}
+                  {item.code ? ` • Code ${item.code}` : ""}
+                  <span style={{ display: "block", fontSize: "10px", fontWeight: 500 }}>
+                    Applied automatically at checkout
+                  </span>
+                </Badge>
 
-                      paddingLeft: 67,
+                {/* OR Divider */}
+                {index < coupon.length - 1 && (
+                  <Box
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      padding: "4px 8px",
+                      alignSelf: "flex-end",
+                      width: "fit-content",
                     }}
                   >
-                    <span style={{ color: "#133215" }}>( or )</span>
-                  </Text>
-                </Box>
-              )}
-            </React.Fragment>
-          ))}
+                    <Text
+                      size="xs"
+                      fw={700}
+                      c="dark"
+                      style={{
+                        whiteSpace: "nowrap",
+                        padding: "0 6px",
+                        color: "#94a3b8",
+
+                        paddingLeft: 67,
+                      }}
+                    >
+                      <span style={{ color: "#133215" }}>( or )</span>
+                    </Text>
+                  </Box>
+                )}
+              </React.Fragment>
+            );
+          })}
 
           <Image
             src={mainImage}

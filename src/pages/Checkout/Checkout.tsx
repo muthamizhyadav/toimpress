@@ -383,12 +383,6 @@ export default function Checkout() {
 
   const [user, setUser] = useState<any>(null);
   const [storedUserAddress, setStoredUserAddress] = useState<any>(null);
-  const [offerAmount, setOfferAmount] = useState<number>(0);
-  const [couponCode, setCouponCode] = useState<string>("");
-  const [appliedCoupon, setAppliedCoupon] = useState<{
-    code: string;
-    discount: number;
-  } | null>(null);
 
   const [savedScheme, setSavedScheme] = useState<any>(null);
   const [spinnerReward, setSpinnerReward] = useState<SpinnerReward | null>(
@@ -417,45 +411,6 @@ export default function Checkout() {
       alive = false;
     };
   }, [isAuthenticated]);
-
-  const getCouponDetails = async (data: any) => {
-    const resp = await axiosInstance.post(
-      "coupons/by-product-and-amount",
-      data,
-    );
-    if (resp.data) {
-      console.log(resp.data, "finalResult");
-      setOfferAmount(resp.data.totalDiscount);
-    }
-  };
-
-  useEffect(() => {
-    if (!items.length) return;
-    console.log(items, "items");
-
-    if (savedScheme && savedScheme.isDiscountApplicable) {
-      setOfferAmount(Math.round(savedScheme.minusValue || 0));
-      return;
-    }
-
-    const grouped = Object.values(
-      items.reduce((acc: any, item: any) => {
-        if (!acc[item.category]) {
-          acc[item.category] = {
-            category: item.category,
-            ids: [],
-            total: 0,
-          };
-        }
-        acc[item.category].ids.push(item.id);
-        acc[item.category].total += item.price * item.qty;
-
-        return acc;
-      }, {}),
-    );
-
-    getCouponDetails(grouped);
-  }, [items, savedScheme]);
 
   const verifyAndCompletePayment = async (paymentData: any) => {
     try {
@@ -851,7 +806,7 @@ export default function Checkout() {
     }
 
     const shipping = paymentMethod === "COD" ? COD_SHIPPING : 0;
-    const totalDiscounts = Math.round(offerAmount);
+    const totalDiscounts = 0;
     const grandTotal = Math.round(localSubtotal - totalDiscounts + shipping);
 
     return {
@@ -860,7 +815,7 @@ export default function Checkout() {
       shipping,
       grandTotal,
     };
-  }, [items, savedScheme, paymentMethod, offerAmount]);
+  }, [items, savedScheme, paymentMethod]);
 
   // Spin & Win reward, calculated on the cart total (product value).
   const spinnerDiscount = useMemo(
@@ -875,7 +830,7 @@ export default function Checkout() {
     return Math.ceil(minOrderAmount - totals.subtotal);
   }, [spinnerReward, totals.subtotal]);
 
-  const totalDiscountAmount = offerAmount + spinnerDiscount;
+  const totalDiscountAmount = totals.totalDiscounts + spinnerDiscount;
   const payableAmount = Math.max(
     0,
     totals.subtotal + totals.shipping - totalDiscountAmount,
@@ -914,6 +869,30 @@ export default function Checkout() {
 
     return null;
   }, [savedScheme, items]);
+
+  const schemeCouponLabel = useMemo(() => {
+    if (!savedScheme) return "";
+
+    if (savedScheme.couponFor === "product") {
+      const value =
+        savedScheme.type === "percentage"
+          ? `${savedScheme.discountvalue}%`
+          : `₹${Math.round(Number(savedScheme.minusValue ?? 0))}`;
+      const code = savedScheme.couponCode
+        ? ` (${savedScheme.couponCode})`
+        : "";
+      return `${value} OFF on eligible products${code}`;
+    }
+
+    const percent = Number(savedScheme.discountvalue ?? 0);
+    if (percent > 0) {
+      return `Buy above ₹${Math.round(
+        Number(savedScheme.couponAmount ?? 0),
+      )} and get flat ${percent}% off`;
+    }
+
+    return `₹${Math.round(Number(savedScheme.minusValue ?? 0))} off applied`;
+  }, [savedScheme]);
 
   const flatUserAddress = storedUserAddress;
 
@@ -2045,9 +2024,7 @@ export default function Checkout() {
                       }}
                     >
                       <Text size="sm" fw={700} style={{ color: DARK_GREEN }}>
-                        Buy above ₹
-                        {Math.round(Number(savedScheme.couponAmount ?? 0))} and
-                        get flat {savedScheme.discountvalue}% off
+                        {schemeCouponLabel}
                       </Text>
                       <Text size="xs" c="dimmed" mt={6}>
                         Scheme applied:{" "}
@@ -2087,7 +2064,13 @@ export default function Checkout() {
                   {savedScheme && savedScheme.isDiscountApplicable ? (
                     <Group justify="space-between" mb="xs">
                       <Text c="dimmed">
-                        Scheme Discount ({savedScheme.discountvalue}% off)
+                        {savedScheme.couponFor === "product"
+                          ? `Coupon Discount${
+                              savedScheme.couponCode
+                                ? ` (${savedScheme.couponCode})`
+                                : ""
+                            }`
+                          : `Scheme Discount (${savedScheme.discountvalue}% off)`}
                       </Text>
                       <Text style={{ color: LIGHT_GREEN, fontWeight: 700 }}>
                         -₹{Math.round(Number(savedScheme.minusValue ?? 0))}
@@ -2231,9 +2214,7 @@ export default function Checkout() {
                         size="xs"
                         style={{ color: DARK_GREEN, marginTop: 4 }}
                       >
-                        Buy above ₹
-                        {Math.round(Number(savedScheme.couponAmount ?? 0))} —
-                        flat {savedScheme.discountvalue}% off applied
+                        {schemeCouponLabel} applied
                       </Text>
                     ) : promo && !promo.applied ? (
                       <Text
