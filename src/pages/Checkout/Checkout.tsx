@@ -785,17 +785,41 @@ export default function Checkout() {
   //   };
   // }, [items, paymentMethod, appliedCoupon]);
 
+  const cartSubtotal = useMemo(
+    () =>
+      items.reduce(
+        (sum, i) => sum + (i.salePrice ?? i.price ?? 0) * (i.qty ?? 1),
+        0,
+      ),
+    [items],
+  );
+
+  // A saved coupon/scheme is only valid while the cart still meets its
+  // minimum order threshold. The API can keep returning the old scheme after
+  // a quantity change, so re-validate it against the live cart total.
+  // Product-specific coupons don't expose a cart minimum here, so only guard
+  // cart-level coupons/schemes that advertise a "Buy above ₹X" threshold.
+  const schemeThreshold =
+    savedScheme?.couponFor === "product"
+      ? 0
+      : Number(savedScheme?.couponAmount ?? 0);
+
+  const isSchemeApplicable = Boolean(
+    savedScheme?.isDiscountApplicable &&
+      (schemeThreshold <= 0 || cartSubtotal >= schemeThreshold),
+  );
+
+  // Single source of truth for every screen and order payload.
+  const activeScheme = isSchemeApplicable ? savedScheme : null;
+
   const totals = useMemo(() => {
-    const localSubtotal = items.reduce(
-      (sum, i) => sum + (i.salePrice ?? i.price ?? 0) * (i.qty ?? 1),
-      0,
-    );
+    const localSubtotal = cartSubtotal;
 
     // If scheme discount is active → use scheme values
-    if (savedScheme?.isDiscountApplicable) {
-      const schemeDiscount = Math.round(Number(savedScheme.minusValue ?? 0));
+    if (activeScheme) {
+      const schemeDiscount = Math.round(Number(activeScheme.minusValue ?? 0));
       const shipping = paymentMethod === "COD" ? COD_SHIPPING : 0;
-      const grand = Math.round((savedScheme.finalAmount ?? 0) + shipping);
+      const grand = Math.round((activeScheme.finalAmount ?? 0) + shipping);
 
       return {
         subtotal: localSubtotal,
@@ -815,7 +839,7 @@ export default function Checkout() {
       shipping,
       grandTotal,
     };
-  }, [items, savedScheme, paymentMethod]);
+  }, [cartSubtotal, activeScheme, paymentMethod]);
 
   // Spin & Win reward, calculated on the cart total (product value).
   const spinnerDiscount = useMemo(
@@ -847,7 +871,7 @@ export default function Checkout() {
       const discountPercent = Number(
         savedScheme.discountvalue ?? savedScheme.couponOfferDiscount ?? 0,
       );
-      const applied = Boolean(savedScheme.isDiscountApplicable);
+      const applied = isSchemeApplicable;
       if (threshold > 0 && discountPercent > 0)
         return { threshold, discountPercent, applied };
       return null;
@@ -861,14 +885,16 @@ export default function Checkout() {
       const discountPercent = Number(
         raw.couponOfferDiscount ?? raw.discountvalue ?? raw.couponPercent ?? 0,
       );
-      const applied = Boolean(raw.isDiscountApplicable ?? false);
+      const applied =
+        Boolean(raw.isDiscountApplicable ?? false) &&
+        (threshold <= 0 || cartSubtotal >= threshold);
       if (threshold > 0 && discountPercent > 0) {
         return { threshold, discountPercent, applied };
       }
     }
 
     return null;
-  }, [savedScheme, items]);
+  }, [savedScheme, items, isSchemeApplicable, cartSubtotal]);
 
   const schemeCouponLabel = useMemo(() => {
     if (!savedScheme) return "";
@@ -1026,10 +1052,7 @@ export default function Checkout() {
               }
             : {}),
           meta: {
-            savedScheme:
-              savedScheme && savedScheme.isDiscountApplicable
-                ? savedScheme
-                : null,
+            savedScheme: activeScheme,
             prePayment: true,
             // pixelEventId: buildPixelEventId(serverOrderId),
           },
@@ -1134,7 +1157,7 @@ export default function Checkout() {
       const amountToCollect = Math.max(
         0,
         Math.round(
-          (savedScheme?.finalAmount ?? totals.grandTotal) - spinnerDiscount,
+          (activeScheme?.finalAmount ?? totals.grandTotal) - spinnerDiscount,
         ),
       );
       const amountPaise = (totals.subtotal - totalDiscountAmount) * 100;
@@ -1178,7 +1201,7 @@ export default function Checkout() {
         items: items,
         totals: totals,
         flatUserAddress: flatUserAddress,
-        savedScheme: savedScheme,
+        savedScheme: activeScheme,
         timestamp: Date.now(),
         status: "initiated",
         localOrderId: localOrderId,
@@ -1408,8 +1431,8 @@ export default function Checkout() {
       console.log("Using orderId for COD:", localOrderId);
 
       const baseFinal =
-        (savedScheme && savedScheme.isDiscountApplicable
-          ? Number(savedScheme.finalAmount ?? totals.grandTotal)
+        (activeScheme
+          ? Number(activeScheme.finalAmount ?? totals.grandTotal)
           : totals.grandTotal) - spinnerDiscount;
 
       const orderTotal = Math.round(baseFinal + COD_SHIPPING);
@@ -1430,10 +1453,7 @@ export default function Checkout() {
             localOrderId: localOrderId,
             meta: {
               immediateCOD: true,
-              savedScheme:
-                savedScheme && savedScheme.isDiscountApplicable
-                  ? savedScheme
-                  : null,
+              savedScheme: activeScheme,
               orderConfirmed: true,
               pixelEventId: buildPixelEventId(localOrderId),
             },
@@ -1549,10 +1569,7 @@ export default function Checkout() {
                 localOrderId: localOrderId,
                 meta: {
                   razorpay: resp,
-                  savedScheme:
-                    savedScheme && savedScheme.isDiscountApplicable
-                      ? savedScheme
-                      : null,
+                  savedScheme: activeScheme,
                   orderConfirmed: true,
                   pixelEventId: buildPixelEventId(localOrderId),
                 },
@@ -2013,7 +2030,7 @@ export default function Checkout() {
                     </Paper>
                   )}
 
-                  {savedScheme && savedScheme.isDiscountApplicable && (
+                  {activeScheme && (
                     <Paper
                       radius="md"
                       p="12px"
@@ -2035,7 +2052,7 @@ export default function Checkout() {
                     </Paper>
                   )}
 
-                  {!savedScheme && promo && !promo.applied && (
+                  {promo && !promo.applied && (
                     <Paper
                       radius="md"
                       p="12px"
@@ -2061,19 +2078,19 @@ export default function Checkout() {
                     <Text>₹{totals.subtotal}</Text>
                   </Group>
 
-                  {savedScheme && savedScheme.isDiscountApplicable ? (
+                  {activeScheme ? (
                     <Group justify="space-between" mb="xs">
                       <Text c="dimmed">
-                        {savedScheme.couponFor === "product"
+                        {activeScheme.couponFor === "product"
                           ? `Coupon Discount${
-                              savedScheme.couponCode
-                                ? ` (${savedScheme.couponCode})`
+                              activeScheme.couponCode
+                                ? ` (${activeScheme.couponCode})`
                                 : ""
                             }`
-                          : `Scheme Discount (${savedScheme.discountvalue}% off)`}
+                          : `Scheme Discount (${activeScheme.discountvalue}% off)`}
                       </Text>
                       <Text style={{ color: LIGHT_GREEN, fontWeight: 700 }}>
-                        -₹{Math.round(Number(savedScheme.minusValue ?? 0))}
+                        -₹{Math.round(Number(activeScheme.minusValue ?? 0))}
                       </Text>
                     </Group>
                   ) : (
@@ -2143,8 +2160,8 @@ export default function Checkout() {
                       <div>
                         <Text size="sm" style={{ color: DARK_GREEN }}>
                           Your Savings ₹
-                          {(savedScheme && savedScheme.isDiscountApplicable
-                            ? Math.round(savedScheme.minusValue)
+                          {(activeScheme
+                            ? Math.round(activeScheme.minusValue)
                             : totals.totalDiscounts) + spinnerDiscount}
                         </Text>
                         {/* <Text size="xs" c="dimmed">
@@ -2209,7 +2226,7 @@ export default function Checkout() {
                       View Price Details
                     </Text>
 
-                    {savedScheme && savedScheme.isDiscountApplicable ? (
+                    {activeScheme ? (
                       <Text
                         size="xs"
                         style={{ color: DARK_GREEN, marginTop: 4 }}
@@ -2231,8 +2248,8 @@ export default function Checkout() {
                     <Text size="sm">Your Savings</Text>
                     <Text fw={700} style={{ color: LIGHT_GREEN }}>
                       ₹
-                      {(savedScheme && savedScheme.isDiscountApplicable
-                        ? Math.round(savedScheme.minusValue)
+                      {(activeScheme
+                        ? Math.round(activeScheme.minusValue)
                         : totals.totalDiscounts) + spinnerDiscount}
                     </Text>
                   </div>
