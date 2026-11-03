@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import type { CouponResult } from "./cartThunks";
 
 const normalizeColor = (c?: string) =>
   (c ?? "").toString().trim().toLowerCase();
@@ -39,9 +40,9 @@ type UpdateQtyPayload = {
   qty: number;
 };
 
-type CartState = { items: CartItem[]; isOpen: boolean };
+type CartState = { items: CartItem[]; isOpen: boolean; appliedCoupon: CouponResult | null; couponDiscount: number };
 
-const initialState: CartState = { items: [], isOpen: false };
+const initialState: CartState = { items: [], isOpen: false, appliedCoupon: null, couponDiscount: 0 };
 
 // ---------------------------
 // Variant matcher (ID + Size + Color)
@@ -185,6 +186,22 @@ const cartSlice = createSlice({
     },
 
     // -------------------------
+    // SET COUPON
+    // -------------------------
+    setAppliedCoupon(state, action: PayloadAction<{ coupon: CouponResult; discount: number }>) {
+      state.appliedCoupon = action.payload.coupon;
+      state.couponDiscount = action.payload.discount;
+    },
+
+    // -------------------------
+    // CLEAR COUPON
+    // -------------------------
+    clearAppliedCoupon(state) {
+      state.appliedCoupon = null;
+      state.couponDiscount = 0;
+    },
+
+    // -------------------------
     // CLEAR CART
     // -------------------------
     clearCart(state) {
@@ -204,7 +221,9 @@ export const {
   decreaseQty,
   removeFromCart,
   clearCart,
-  updateCartItemQuantity, // REQUIRED for Checkout
+  updateCartItemQuantity,
+  setAppliedCoupon,
+  clearAppliedCoupon,
 } = cartSlice.actions;
 
 export default cartSlice.reducer;

@@ -1,7 +1,7 @@
 // redux/features/cartThunks.ts
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import axiosInstance from "../../api/axiosInstance";
-import { API_ADD_TO_CART } from "../../api/api"; // define in api/api.ts
+import { API_ADD_TO_CART, COUPON_VALIDATE, COUPON_APPLY } from "../../api/api";
 
 type RootState = any;
 
@@ -41,4 +41,44 @@ export const addOrUpdateCartLine = createAsyncThunk<
 
   await axiosInstance.post(API_ADD_TO_CART, payload);
   return { ok: true };
+});
+
+export type CouponValidateInput = {
+  code: string;
+  cartTotal: number;
+  productIds: string[];
+};
+
+export type CouponApplyInput = {
+  code: string;
+  cartTotal: number;
+  productIds: string[];
+};
+
+export type CouponResult = {
+  couponCode: string;
+  discountType: string;
+  discountValue: number;
+  discountAmount: number;
+  originalAmount: number;
+  finalAmount: number;
+  savings: number;
+};
+
+export const validateCouponThunk = createAsyncThunk<
+  CouponResult,
+  CouponValidateInput,
+  { state: RootState }
+>("cart/validateCoupon", async (input, _thunkApi) => {
+  const response = await axiosInstance.post(COUPON_VALIDATE, input);
+  return response.data;
+});
+
+export const applyCouponThunk = createAsyncThunk<
+  CouponResult,
+  CouponApplyInput,
+  { state: RootState }
+>("cart/applyCoupon", async (input, _thunkApi) => {
+  const response = await axiosInstance.post(COUPON_APPLY, input);
+  return response.data;
 });

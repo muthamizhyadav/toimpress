@@ -16,6 +16,7 @@ import {
   Badge,
   Paper,
   Modal,
+  Input,
 } from "@mantine/core";
 import {
   IconMinus,
@@ -32,7 +33,7 @@ import { loadRazorpay } from "../../utils/loadRazorpay";
 import { showNotification } from "@mantine/notifications";
 import { IconCheck, IconX } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
-import { API_GET_UPDATE, API_CART, API_SPINNER_REWARD } from "../../api/api";
+import { API_GET_UPDATE, API_CART, API_SPINNER_REWARD, COUPON_VALIDATE, COUPON_APPLY } from "../../api/api";
 import { useSelector, useDispatch } from "react-redux";
 
 import * as storeModule from "../../redux/store";
@@ -41,7 +42,10 @@ import {
   clearCart,
   removeFromCart,
   updateCartItemQuantity,
+  setAppliedCoupon,
+  clearAppliedCoupon,
 } from "../../redux/slices/cartSlice";
+import { validateCouponThunk, applyCouponThunk } from "../../redux/features/cartThunks";
 import { useAuth } from "../../assets/hooks/useAuth";
 import { useDisclosure } from "@mantine/hooks";
 import LoginOtpModal from "../../components/LoginOtpModal";
@@ -389,6 +393,18 @@ export default function Checkout() {
     null,
   );
 
+  // Coupon state
+  const [couponCode, setCouponCode] = useState("");
+  const [couponError, setCouponError] = useState("");
+  const [couponSuccess, setCouponSuccess] = useState(false);
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
+  const reduxCartCoupon = useSelector(
+    (state: any) => state.cart?.appliedCoupon ?? null,
+  );
+  const reduxCouponDiscount = useSelector(
+    (state: any) => state.cart?.couponDiscount ?? 0,
+  );
+
   // Load the customer's unused spin reward so checkout can apply it to the total.
   useEffect(() => {
     if (!isAuthenticated) {
@@ -411,6 +427,74 @@ export default function Checkout() {
       alive = false;
     };
   }, [isAuthenticated]);
+
+  // Validate coupon code via backend API
+  const handleValidateCoupon = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const code = couponCode.trim();
+    if (!code) {
+      setCouponError("Please enter a coupon code");
+      return;
+    }
+
+    setIsValidatingCoupon(true);
+    setCouponError("");
+    setCouponSuccess(false);
+
+    try {
+      // Build product IDs from cart items
+      const productIds = items.map((item) => String(item.id));
+      const cartTotal = items.reduce(
+        (sum, i) => sum + (i.salePrice ?? i.price ?? 0) * (i.qty ?? 1),
+        0,
+      );
+
+      const result = await axiosInstance.post(COUPON_VALIDATE, {
+        code,
+        cartTotal,
+        productIds,
+      });
+
+      if (result.data && result.data.discountAmount) {
+        setCouponSuccess(true);
+        setCouponError("");
+        dispatch(
+          setAppliedCoupon({
+            coupon: result.data,
+            discount: result.data.discountAmount,
+          }),
+        );
+        showNotification({
+          title: "Coupon applied",
+          message: `₹${result.data.discountAmount} off applied`,
+          color: "green",
+        });
+      } else {
+        setCouponError("Invalid coupon code");
+        setCouponSuccess(false);
+      }
+    } catch (err: any) {
+      setCouponError(
+        err.response?.data?.message || "Invalid coupon code",
+      );
+      setCouponSuccess(false);
+    } finally {
+      setIsValidatingCoupon(false);
+    }
+  };
+
+  // Clear applied coupon
+  const handleClearCoupon = () => {
+    setCouponCode("");
+    setCouponError("");
+    setCouponSuccess(false);
+    dispatch(clearAppliedCoupon());
+    showNotification({
+      title: "Coupon removed",
+      message: "Coupon has been removed from your order",
+      color: "blue",
+    });
+  };
 
   const verifyAndCompletePayment = async (paymentData: any) => {
     try {
@@ -854,7 +938,7 @@ export default function Checkout() {
     return Math.ceil(minOrderAmount - totals.subtotal);
   }, [spinnerReward, totals.subtotal]);
 
-  const totalDiscountAmount = totals.totalDiscounts + spinnerDiscount;
+  const totalDiscountAmount = totals.totalDiscounts + spinnerDiscount + reduxCouponDiscount;
   const payableAmount = Math.max(
     0,
     totals.subtotal + totals.shipping - totalDiscountAmount,
@@ -2114,7 +2198,58 @@ export default function Checkout() {
                   )}
 
                   <Group justify="space-between" mb="xs">
-                    <Text c="dimmed">Cart Subtotal</Text>
+                    {/* COUPON SECTION START */}
+                  {couponSuccess && reduxCartCoupon ? (
+                    <>
+                      <Group justify="space-between" mb="xs">
+                        <Text c="dimmed">
+                          Coupon ({reduxCartCoupon.couponCode})
+                        </Text>
+                        <Text style={{ color: LIGHT_GREEN, fontWeight: 700 }}>
+                          -₹{reduxCouponDiscount}
+                        </Text>
+                        <ActionIcon
+                          size="xs"
+                          variant="outline"
+                          color="red"
+                          onClick={handleClearCoupon}
+                        >
+                          <IconX size={14} />
+                        </ActionIcon>
+                      </Group>
+                    </>
+                  ) : (
+                    <Box>
+                      <Input
+                        placeholder="Enter coupon code"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value)}
+                        size="sm"
+                      />
+                      {isValidatingCoupon ? (
+                        <Loader size="xs" />
+                      ) : (
+                        <Button
+                          size="xs"
+                          variant="fill"
+                          color="#122F15"
+                          onClick={handleValidateCoupon}
+                          fullWidth
+                          mt="xs"
+                          disabled={!couponCode.trim()}
+                        >
+                          Apply
+                        </Button>
+                      )}
+                      {couponError && (
+                        <Text size="xs" c="red" mt="xs">
+                          {couponError}
+                        </Text>
+                      )}
+                    </Box>
+                  )}
+                  {/* COUPON SECTION END */}
+                  <Text c="dimmed">Cart Subtotal</Text>
                     <Text>₹{Math.max(0, totals.subtotal - totalDiscountAmount)}</Text>
                   </Group>
 

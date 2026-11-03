@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import type { CouponResult } from "../features/cartThunks";
 
 export interface CartItem {
   id: string | number;
@@ -14,10 +15,14 @@ export interface CartItem {
 
 interface CartState {
   items: CartItem[];
+  appliedCoupon: CouponResult | null;
+  couponDiscount: number;
 }
 
 const initialState: CartState = {
   items: [],
+  appliedCoupon: null,
+  couponDiscount: 0,
 };
 
 const normalize = (v?: string | number) =>
@@ -84,10 +89,20 @@ export const cartSlice = createSlice({
     clearCart: (state) => {
       state.items = [];
     },
+
+    setAppliedCoupon: (state, action: PayloadAction<{ coupon: CouponResult; discount: number }>) => {
+      state.appliedCoupon = action.payload.coupon;
+      state.couponDiscount = action.payload.discount;
+    },
+
+    clearAppliedCoupon: (state) => {
+      state.appliedCoupon = null;
+      state.couponDiscount = 0;
+    },
   },
 });
 
-export const { addToCart, removeFromCart, updateCartItemQuantity, clearCart } =
+export const { addToCart, removeFromCart, updateCartItemQuantity, clearCart, setAppliedCoupon, clearAppliedCoupon } =
   cartSlice.actions;
 
 export default cartSlice.reducer;
