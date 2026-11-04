@@ -455,18 +455,33 @@ export default function Checkout() {
         productIds,
       });
 
-      if (result.data && result.data.discountAmount) {
+      const couponObj = result.data?.coupon || result.data;
+      const discountVal =
+        result.data?.discountAmount ??
+        result.data?.discount ??
+        (couponObj?.type === "percentage"
+          ? Math.round((cartTotal * (Number(couponObj?.discount) || 0)) / 100)
+          : Number(couponObj?.discount) || 0);
+
+      const isValid = Boolean(
+        result.data?.valid ||
+        result.data?.discountAmount ||
+        result.data?.coupon ||
+        (couponObj && (couponObj.code || couponObj.discount))
+      );
+
+      if (isValid) {
         setCouponSuccess(true);
         setCouponError("");
         dispatch(
           setAppliedCoupon({
-            coupon: result.data,
-            discount: result.data.discountAmount,
+            coupon: couponObj,
+            discount: discountVal,
           }),
         );
         showNotification({
           title: "Coupon applied",
-          message: `₹${result.data.discountAmount} off applied`,
+          message: `₹${discountVal} off applied`,
           color: "green",
         });
       } else {
