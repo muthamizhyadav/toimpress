@@ -1074,8 +1074,11 @@ export default function Checkout() {
         discount: discount ?? 0,
         amountToChargeOnDelivery: amountToChargeOnDelivery ?? null,
         // The backend verifies and calculates the spin reward from the cart total.
-        ...(spinnerId
-          ? { spinnerId, spinnerSegmentIndex: spinnerSegmentIndex ?? 0 }
+        ...((spinnerId ?? (spinnerDiscount > 0 ? spinnerReward?.spinnerId : undefined)
+          ? {
+              spinnerId: spinnerId ?? spinnerReward?.spinnerId,
+              spinnerSegmentIndex: spinnerSegmentIndex ?? spinnerReward?.segmentIndex ?? 0,
+            }
           : {}),
         meta: {
           ...(meta ?? {}),
