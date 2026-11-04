@@ -575,8 +575,35 @@ export default function ProductPage() {
       });
       return;
     }
-    const payload = makeCartPayload(selectedSize, 1);
-    // await addToCartApi(payload, undefined, "current");
+    const reduxItem = {
+      id: String(productId),
+      productId: String(productId),
+      imageUrl: mainImage || galleryImages?.[0] || "",
+      title: productDetails?.productTitle || "",
+      productName: productDetails?.productTitle || "",
+      price: productDetails?.salePrice ?? productDetails?.price,
+      originalPrice: productDetails?.price,
+      rating: 0,
+      qty: 1,
+      size: selectedSize,
+      color: selectedColor,
+      category: productDetails?.category,
+      silent: true,
+    };
+    dispatch(addToCart(reduxItem));
+
+    try {
+      const token = localStorage.getItem("token");
+      if (token) {
+        axiosInstance.post(API_CART, {
+          productId: String(productId),
+          quantity: 1,
+          selectedSize,
+          selectedColor,
+        }).catch(() => {});
+      }
+    } catch (e) {}
+
     navigate("/checkout");
   };
 

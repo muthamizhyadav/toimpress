@@ -42,3 +42,4 @@ export const API_SPINNERS = API_URL + "spinners";
 export const API_SPINNER_REWARD = API_URL + "spinners/reward";
 export const COUPON_VALIDATE = API_URL + "coupons/validate";
 export const COUPON_APPLY = API_URL + "coupons/apply";
+export const COUPONS_BY_PRODUCT_AND_AMOUNT = API_URL + "coupons/by-product-and-amount";

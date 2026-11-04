@@ -8,7 +8,7 @@ import {
   updateCartItemQuantity,
 } from "../../redux/slices/cartSlice";
 import axiosInstance from "../../api/axiosInstance";
-import { PAGEIMPRESSIONS } from "../../api/api";
+import { PAGEIMPRESSIONS, API_CART } from "../../api/api";
 import { trackPixel } from "../../utils/metaPixel";
 
 const normalize = (v?: string | number) =>
@@ -101,6 +101,18 @@ const handleAdd = async () => {
     })
   );
 
+  try {
+    const token = localStorage.getItem("token");
+    if (token) {
+      axiosInstance.post(API_CART, {
+        productId: String(id),
+        quantity: 1,
+        selectedSize: size,
+        selectedColor: color,
+      }).catch(() => {});
+    }
+  } catch (e) {}
+
   await delay();
   await pageLogCreation();
 
@@ -110,6 +122,19 @@ const handleAdd = async () => {
   const handlePlus = async () => {
     setLoading(true);
     dispatch(updateCartItemQuantity({ id, size, color, qty: qty + 1, category }));
+
+    try {
+      const token = localStorage.getItem("token");
+      if (token) {
+        axiosInstance.post(API_CART, {
+          productId: String(id),
+          quantity: qty + 1,
+          selectedSize: size,
+          selectedColor: color,
+        }).catch(() => {});
+      }
+    } catch (e) {}
+
     await delay();
     setLoading(false);
   };
@@ -118,6 +143,7 @@ const handleAdd = async () => {
     setLoading(true);
     console.log(category, "category");
 
+    const newQty = Math.max(0, qty - 1);
     if (qty <= 1) {
       dispatch(removeFromCart({ id, size, color }));
     } else {
@@ -126,11 +152,23 @@ const handleAdd = async () => {
           id,
           size,
           color,
-          qty: qty - 1,
+          qty: newQty,
           category: category,
         })
       );
     }
+
+    try {
+      const token = localStorage.getItem("token");
+      if (token) {
+        axiosInstance.post(API_CART, {
+          productId: String(id),
+          quantity: newQty,
+          selectedSize: size,
+          selectedColor: color,
+        }).catch(() => {});
+      }
+    } catch (e) {}
 
     await delay();
     setLoading(false);

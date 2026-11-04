@@ -33,7 +33,7 @@ import { loadRazorpay } from "../../utils/loadRazorpay";
 import { showNotification } from "@mantine/notifications";
 import { IconCheck, IconX } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
-import { API_GET_UPDATE, API_CART, API_SPINNER_REWARD, COUPON_VALIDATE, COUPON_APPLY } from "../../api/api";
+import { API_GET_UPDATE, API_CART, API_SPINNER_REWARD, COUPON_VALIDATE, COUPON_APPLY, COUPONS_BY_PRODUCT_AND_AMOUNT } from "../../api/api";
 import { useSelector, useDispatch } from "react-redux";
 
 import * as storeModule from "../../redux/store";
@@ -299,7 +299,7 @@ function CheckoutItemBox({
           }}
         >
           <Text size="xs" style={{ color: DARK_GREEN, fontWeight: 700 }}>
-            Buy above ₹{promo.threshold} — flat {promo.discountPercent}% off
+            {promo.discountName || `Buy ₹${promo.threshold} Get ${promo.discountPercent}% OFF`}
           </Text>
           <Text size="xs" c="dimmed">
             Add ₹{remaining} more to get the offer
@@ -608,78 +608,128 @@ export default function Checkout() {
   const fetchCart = useCallback(async () => {
     try {
       setLoading(true);
-      const resp = await axiosInstance.get(API_GET_UPDATE);
 
-      const root = resp?.data ?? resp;
-      if (root && typeof root.isDiscountApplicable !== "undefined") {
-        const parsed = {
-          ...root,
-          totalSalesPrice: Number(
-            root.totalSalesPrice ?? root.total_sales_price ?? 0,
-          ),
-          minusValue: Number(
-            root.minusValue ?? root.minus_value ?? root.discountAmount ?? 0,
-          ),
-          finalAmount: Number(root.finalAmount ?? root.final_amount ?? 0),
-          gst: Math.round(Number(root.gst ?? 0)),
-          couponAmount: Number(root.couponAmount ?? root.coupon_amount ?? 0),
-          discountvalue:
-            root.discountvalue ??
-            root.discount_value ??
-            root.couponOfferDiscount ??
-            root.discountvalue ??
-            0,
-          isDiscountApplicable: Boolean(root.isDiscountApplicable),
-        };
-        console.log(parsed, "parsed");
+      let foundScheme: any = null;
 
-        setSavedScheme(parsed);
-      } else if (
-        root &&
-        root.scheme &&
-        typeof root.scheme.isDiscountApplicable !== "undefined"
-      ) {
-        const s = root.scheme;
-        const parsed = {
-          ...s,
-          totalSalesPrice: Number(
-            s.totalSalesPrice ?? s.total_sales_price ?? 0,
-          ),
-          minusValue: Number(
-            s.minusValue ?? s.minus_value ?? s.discountAmount ?? 0,
-          ),
-          finalAmount: Number(s.finalAmount ?? s.final_amount ?? 0),
-          gst: Math.round(Number(s.gst ?? 0)),
-          couponAmount: Number(s.couponAmount ?? s.coupon_amount ?? 0),
-          discountvalue:
-            s.discountvalue ??
-            s.discount_value ??
-            s.couponOfferDiscount ??
-            s.discountvalue ??
-            0,
-          isDiscountApplicable: Boolean(s.isDiscountApplicable),
-        };
-        setSavedScheme(parsed);
-      } else {
-        setSavedScheme(null);
+      // 1. If user is authenticated, check backend cart
+      const token =
+        (reduxUser &&
+          (reduxUser.token ?? reduxUser.accessToken ?? reduxUser.authToken)) ??
+        localStorage.getItem("token");
+
+      if (token) {
+        try {
+          const resp = await axiosInstance.get(API_GET_UPDATE);
+          const root = resp?.data ?? resp;
+          const target = root?.scheme ?? root;
+          if (
+            target &&
+            target.isDiscountApplicable &&
+            Number(target.minusValue ?? target.discountAmount ?? 0) > 0
+          ) {
+            foundScheme = {
+              ...target,
+              totalSalesPrice: Number(
+                target.totalSalesPrice ?? target.total_sales_price ?? 0,
+              ),
+              minusValue: Number(
+                target.minusValue ?? target.minus_value ?? target.discountAmount ?? 0,
+              ),
+              finalAmount: Number(target.finalAmount ?? target.final_amount ?? 0),
+              gst: Math.round(Number(target.gst ?? 0)),
+              couponAmount: Number(target.couponAmount ?? target.coupon_amount ?? 0),
+              discountvalue: Number(
+                target.discountvalue ??
+                target.discount_value ??
+                target.couponOfferDiscount ??
+                0,
+              ),
+              isDiscountApplicable: true,
+            };
+          }
+        } catch {
+          // ignore, fallback to calculation below
+        }
       }
+
+      // 2. If no server scheme applied, calculate directly from current checkout items
+      if (!foundScheme && items.length > 0) {
+        try {
+          const grouped: Record<string, { category: string; ids: string[]; total: number }> = {};
+          items.forEach((it: any) => {
+            const cat =
+              it.category ||
+              (/pant/i.test(it.title || it.productName || "")
+                ? "Panties"
+                : "Brassiere");
+            if (!grouped[cat]) {
+              grouped[cat] = { category: cat, ids: [], total: 0 };
+            }
+            const pId = String(it.productId ?? it.id);
+            if (!grouped[cat].ids.includes(pId)) {
+              grouped[cat].ids.push(pId);
+            }
+            const price = Number(it.salePrice ?? it.price ?? 0);
+            const qty = Number(it.qty ?? 1);
+            grouped[cat].total += price * qty;
+          });
+
+          const reqBody = Object.values(grouped);
+          if (reqBody.length > 0) {
+            const schemeResp = await axiosInstance.post(
+              COUPONS_BY_PRODUCT_AND_AMOUNT,
+              reqBody,
+            );
+
+            const details = schemeResp.data?.coupenDetails;
+            const totalDisc = Number(schemeResp.data?.totalDiscount ?? 0);
+
+            if (Array.isArray(details) && details.length > 0) {
+              const bestDetail = details[0];
+              const subtotal = items.reduce(
+                (sum, i) =>
+                  sum + (Number(i.salePrice ?? i.price ?? 0) * (Number(i.qty) || 1)),
+                0,
+              );
+              const isApplicable = Boolean(bestDetail.isDiscountApplicable ?? (totalDisc > 0));
+
+              foundScheme = {
+                totalSalesPrice: subtotal,
+                minusValue: totalDisc,
+                discountAmount: totalDisc,
+                finalAmount: Math.max(0, subtotal - totalDisc),
+                gst: 0,
+                couponAmount: Number(
+                  bestDetail.threshold ?? bestDetail.couponAmount ?? 0,
+                ),
+                discountvalue: Number(
+                  bestDetail.discount ?? bestDetail.offerDiscount ?? 0,
+                ),
+                discountName: bestDetail.discountName || "",
+                couponFor: bestDetail.couponFor || "auto",
+                type: bestDetail.type || "percentage",
+                couponCode: bestDetail.couponCode || "",
+                isDiscountApplicable: isApplicable,
+              };
+            }
+          }
+        } catch (calcErr) {
+          console.error("Auto coupon calculation failed:", calcErr);
+        }
+      }
+
+      setSavedScheme(foundScheme);
     } catch (err: any) {
       console.error("Fetch cart failed", err);
-      // showNotification({
-      //   title: "Unable to load cart",
-      //   message: err?.response?.data?.message ?? "Please try again later",
-      //   color: "red",
-      //   icon: <IconX size={16} />,
-      // });
       setSavedScheme(null);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [items, reduxUser]);
 
   useEffect(() => {
     fetchCart();
-  }, [fetchCart]);
+  }, [fetchCart, cartSubtotal]);
 
   const updateLineQuantity = async (line: CartItem, newQuantity: number) => {
     try {
@@ -704,29 +754,40 @@ export default function Checkout() {
         );
       }
 
-      // Then sync with backend
-      const body = {
-        productId: String(line.productId ?? line.id),
-        quantity: newQuantity,
-        selectedSize: line.size,
-        selectedColor: line.color,
-      };
+      // Then sync with backend if token exists
+      const token =
+        (reduxUser &&
+          (reduxUser.token ?? reduxUser.accessToken ?? reduxUser.authToken)) ??
+        localStorage.getItem("token");
 
-      const resp = await axiosInstance.post(API_CART, body, {
-        headers: { "Content-Type": "application/json" },
-      });
+      if (token) {
+        try {
+          const body = {
+            productId: String(line.productId ?? line.id),
+            quantity: newQuantity,
+            selectedSize: line.size,
+            selectedColor: line.color,
+          };
 
-      // Show feedback
-      showNotification({
-        title: newQuantity === 0 ? "Removed" : "Updated",
-        message:
-          resp?.data?.message ??
-          (newQuantity === 0
-            ? "Item removed"
-            : `Quantity updated to ${newQuantity}`),
-        color: "green",
-        icon: <IconCheck size={16} />,
-      });
+          const resp = await axiosInstance.post(API_CART, body, {
+            headers: { "Content-Type": "application/json" },
+          });
+
+          // Show feedback
+          showNotification({
+            title: newQuantity === 0 ? "Removed" : "Updated",
+            message:
+              resp?.data?.message ??
+              (newQuantity === 0
+                ? "Item removed"
+                : `Quantity updated to ${newQuantity}`),
+            color: "green",
+            icon: <IconCheck size={16} />,
+          });
+        } catch {
+          // ignore backend sync failure for guest/network
+        }
+      }
 
       // refresh discount scheme
       await fetchCart();
@@ -972,7 +1033,7 @@ export default function Checkout() {
       );
       const applied = isSchemeApplicable;
       if (threshold > 0 && discountPercent > 0)
-        return { threshold, discountPercent, applied };
+        return { threshold, discountPercent, applied, discountName: savedScheme.discountName };
       return null;
     }
 
@@ -988,7 +1049,7 @@ export default function Checkout() {
         Boolean(raw.isDiscountApplicable ?? false) &&
         (threshold <= 0 || cartSubtotal >= threshold);
       if (threshold > 0 && discountPercent > 0) {
-        return { threshold, discountPercent, applied };
+        return { threshold, discountPercent, applied, discountName: raw.discountName };
       }
     }
 
@@ -1009,11 +1070,15 @@ export default function Checkout() {
       return `${value} OFF on eligible products${code}`;
     }
 
+    if (savedScheme.discountName) {
+      return savedScheme.discountName;
+    }
+
     const percent = Number(savedScheme.discountvalue ?? 0);
     if (percent > 0) {
-      return `Buy above ₹${Math.round(
+      return `Buy ₹${Math.round(
         Number(savedScheme.couponAmount ?? 0),
-      )} and get flat ${percent}% off`;
+      )} Get ${percent}% OFF`;
     }
 
     return `₹${Math.round(Number(savedScheme.minusValue ?? 0))} off applied`;
@@ -2165,8 +2230,7 @@ export default function Checkout() {
                       }}
                     >
                       <Text size="sm" fw={700} style={{ color: DARK_GREEN }}>
-                        Buy above ₹{Math.round(Number(promo.threshold))} and get
-                        flat {promo.discountPercent}% off
+                        {promo.discountName || `Buy ₹${Math.round(Number(promo.threshold))} Get ${promo.discountPercent}% OFF`}
                       </Text>
                       <Text size="xs" c="dimmed" mt={6}>
                         Add ₹{Math.max(0, promo.threshold - totals.subtotal)}{" "}
@@ -2391,8 +2455,7 @@ export default function Checkout() {
                         size="xs"
                         style={{ color: DARK_GREEN, marginTop: 4 }}
                       >
-                        Buy above ₹{Math.round(Number(promo.threshold))} — flat{" "}
-                        {promo.discountPercent}% off available
+                        {promo.discountName || `Buy ₹${Math.round(Number(promo.threshold))} Get ${promo.discountPercent}% OFF`} available
                       </Text>
                     ) : null}
                   </div>
