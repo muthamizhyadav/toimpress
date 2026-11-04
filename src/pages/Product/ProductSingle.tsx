@@ -689,78 +689,115 @@ export default function ProductPage() {
     <Container size="xl" py="md">
       <Grid>
         <Grid.Col span={{ base: 12, md: 6 }} style={{ position: "relative" }}>
-          {coupon.map((item: any, index: number) => {
-            const isPercentage = item.type === "percentage";
-            const couponLabel =
-              item.couponFor === "auto"
-                ? Number(item.offerDiscount) > 0
-                  ? `Buy ₹${item.discount} Get ${item.offerDiscount}% OFF`
-                  : `₹${item.discount} OFF`
-                : isPercentage
-                  ? `${item.discount}% OFF`
-                  : `₹${item.discount} OFF`;
+          {coupon.length > 0 && (
+            <Box
+              mb="sm"
+              style={{
+                width: "100%",
+                overflowX: "auto",
+                overflowY: "hidden",
+                scrollbarWidth: "thin",
+              }}
+            >
+              <Group
+                gap="xs"
+                wrap="nowrap"
+                align="center"
+                style={{
+                  width: "max-content",
+                  minWidth: "100%",
+                }}
+              >
+                {coupon.map((item: any, index: number) => {
+                  const isPercentage = item.type === "percentage";
+                  const isAutoOffer = item.couponFor === "auto";
 
-            return (
-              <React.Fragment key={item._id ?? item.code ?? index}>
-                {/* Coupon Badge */}
-                <Badge
-                  size="lg"
-                  radius="sm"
-                  title={
-                    item.code
-                      ? `Coupon ${item.code} is applied automatically at checkout`
-                      : "This offer is applied automatically at checkout"
-                  }
-                  style={{
-                    backgroundColor: LIGHT_GREEN,
-                    color: "#ffffff",
-                    fontWeight: 700,
-                    fontSize: "12px",
-                    padding: "6px 12px",
-                    textTransform: "none",
-                    whiteSpace: "normal",
-                    lineHeight: 1.2,
-                    alignSelf: "flex-end",
-                  }}
-                >
-                  {couponLabel}
-                  {item.code ? ` • Code ${item.code}` : ""}
-                  <span style={{ display: "block", fontSize: "10px", fontWeight: 500 }}>
-                    Applied automatically at checkout
-                  </span>
-                </Badge>
+                  const couponLabel = isAutoOffer
+                    ? Number(item.offerDiscount) > 0
+                      ? `Buy ₹${item.discount} Get ${item.offerDiscount}% OFF`
+                      : `₹${item.discount} OFF`
+                    : isPercentage
+                      ? `${item.discount}% OFF`
+                      : `₹${item.discount} OFF`;
 
-                {/* OR Divider */}
-                {index < coupon.length - 1 && (
-                  <Box
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      padding: "4px 8px",
-                      alignSelf: "flex-end",
-                      width: "fit-content",
-                    }}
-                  >
-                    <Text
-                      size="xs"
-                      fw={700}
-                      c="dark"
-                      style={{
-                        whiteSpace: "nowrap",
-                        padding: "0 6px",
-                        color: "#94a3b8",
+                  return (
+                    <React.Fragment key={item._id ?? item.code ?? index}>
+                      {/* Coupon Card */}
+                      <Box
+                        title={
+                          item.code ? `Coupon ${item.code}` : "Automatic offer"
+                        }
+                        style={{
+                          backgroundColor: LIGHT_GREEN,
+                          color: "#ffffff",
+                          borderRadius: 6,
+                          padding: "8px 12px",
+                          minWidth: 150,
+                          flexShrink: 0,
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          textAlign: "center",
+                          gap: 3,
+                          boxSizing: "border-box",
+                        }}
+                      >
+                        {/* Offer Title */}
+                        <Text
+                          component="div"
+                          style={{
+                            color: "#ffffff",
+                            fontSize: 12,
+                            fontWeight: 700,
+                            lineHeight: 1.4,
+                            whiteSpace: "nowrap",
+                            textAlign: "center",
+                          }}
+                        >
+                          {couponLabel}
+                          {item.code ? ` • Code ${item.code}` : ""}
+                        </Text>
 
-                        paddingLeft: 67,
-                      }}
-                    >
-                      <span style={{ color: "#133215" }}>( or )</span>
-                    </Text>
-                  </Box>
-                )}
-              </React.Fragment>
-            );
-          })}
+                        {/* Coupon Subtitle - Only for manual coupon offers */}
+                        {!isAutoOffer && (
+                          <Text
+                            component="div"
+                            style={{
+                              color: "#ffffff",
+                              fontSize: 10,
+                              fontWeight: 500,
+                              lineHeight: 1.4,
+                              whiteSpace: "nowrap",
+                              textAlign: "center",
+                            }}
+                          >
+                            Enter the code & Unlock offer!
+                          </Text>
+                        )}
+                      </Box>
+
+                      {/* OR Divider */}
+                      {index < coupon.length - 1 && (
+                        <Text
+                          size="xs"
+                          fw={700}
+                          style={{
+                            color: DARK_GREEN,
+                            whiteSpace: "nowrap",
+                            flexShrink: 0,
+                            padding: "0 4px",
+                          }}
+                        >
+                          ( OR )
+                        </Text>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </Group>
+            </Box>
+          )}
 
           <Image
             src={mainImage}
@@ -1060,43 +1097,51 @@ export default function ProductPage() {
         )}
 
         <Tabs.Panel value="description" pt="xs">
-          <Group
+          <Box
             mt="sm"
-            wrap="nowrap"
-            gap="sm"
-            style={{ overflowX: isMobile ? "auto" : "unset" }}
+            style={{
+              width: "100%",
+              overflowX: "auto",
+              overflowY: "hidden",
+            }}
           >
-            {(productDetails?.Descriptionimages ?? []).length > 0 && (
-              <>
-                {(productDetails?.Descriptionimages ?? []).map((img, idx) => (
-                  <>
-                    <Stack key={idx} align="center" style={{ flexShrink: 0 }}>
-                      <Image
-                        src={img}
-                        alt={`description-${idx}`}
-                        radius="md"
-                        w={"100%"}
-                        h={isMobile ? 120 : 150}
-                      />
-                      <div>
-                        <Text size="sm">
-                          {productDetails?.braAttributes[idx]}
-                        </Text>
-                      </div>
-                    </Stack>
-                  </>
-                ))}
-              </>
-            )}
-          </Group>
+            <Group
+              wrap="nowrap"
+              gap="md"
+              align="flex-start"
+              style={{
+                width: "max-content",
+                minWidth: "100%",
+              }}
+            >
+              {(productDetails?.Descriptionimages ?? []).map(
+                (img: string, idx: number) => (
+                  <Stack
+                    key={idx}
+                    align="center"
+                    spacing="xs"
+                    style={{
+                      flex: "0 0 auto",
+                      width: isMobile ? 140 : 180,
+                    }}
+                  >
+                    <Image
+                      src={img}
+                      alt={`description-${idx}`}
+                      radius="md"
+                      width="100%"
+                      height={isMobile ? 140 : 180}
+                      fit="contain"
+                    />
 
-          {/* <Box mt="md">
-            <Text fw={600}>Features:</Text>
-            <ul>
-              <li>Made with full cotton</li>
-              <li>Slim fit for any body</li>
-            </ul>
-          </Box> */}
+                    <Text size="sm" ta="center">
+                      {productDetails?.braAttributes?.[idx]}
+                    </Text>
+                  </Stack>
+                ),
+              )}
+            </Group>
+          </Box>
         </Tabs.Panel>
       </Tabs>
 
@@ -1206,9 +1251,7 @@ export default function ProductPage() {
           </Group>
         }
       >
-        <ScrollArea
-          style={{ height:"100%", paddingRight: 8 }}
-        >
+        <ScrollArea style={{ height: "100%", paddingRight: 8 }}>
           <Stack spacing="md">
             <Title order={5}>Exchange &amp; Return Policy</Title>
 
@@ -1221,9 +1264,8 @@ export default function ProductPage() {
               </Text>
 
               <Text>
-                2. Exchanges are allowed only for size issues, damaged
-                products, manufacturing defects, or incorrect products
-                received.
+                2. Exchanges are allowed only for size issues, damaged products,
+                manufacturing defects, or incorrect products received.
               </Text>
 
               <Text>
@@ -1242,9 +1284,9 @@ export default function ProductPage() {
               </Text>
 
               <Text>
-                6. Exchange is subject to product availability. If the
-                requested size is unavailable, our support team will contact
-                you with available options.
+                6. Exchange is subject to product availability. If the requested
+                size is unavailable, our support team will contact you with
+                available options.
               </Text>
 
               <Text>
@@ -1275,8 +1317,8 @@ export default function ProductPage() {
               </Text>
 
               <Text>
-                5. Products that fail the quality inspection may not be
-                eligible for a refund.
+                5. Products that fail the quality inspection may not be eligible
+                for a refund.
               </Text>
 
               <Title order={5}>Refund Policy</Title>
@@ -1298,8 +1340,8 @@ export default function ProductPage() {
               </Text>
 
               <Text>
-                4. The actual credit timeline may vary depending on your bank
-                or payment provider.
+                4. The actual credit timeline may vary depending on your bank or
+                payment provider.
               </Text>
 
               <Title order={5}>Important Notes</Title>
