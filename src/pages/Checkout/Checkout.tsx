@@ -162,6 +162,7 @@ function CheckoutItemBox({
     threshold: number;
     discountPercent: number;
     applied: boolean;
+    discountName?: string;
   } | null;
   prodId?: any;
   subtotal: number;
@@ -380,10 +381,21 @@ export default function Checkout() {
 
   // ✅ Cart items come from Redux only
   const reduxCartItems = useSelector(
-    (state: any) => state.cart?.items ?? [],
-  ) as CartItem[];
+    (state: any) => state.cart?.items,
+  );
+  const items = useMemo(
+    () => (Array.isArray(reduxCartItems) ? (reduxCartItems as CartItem[]) : []),
+    [reduxCartItems],
+  );
 
-  const items = reduxCartItems;
+  const cartSubtotal = useMemo(
+    () =>
+      items.reduce(
+        (sum, i) => sum + (Number(i.salePrice ?? i.price ?? 0) * (Number(i.qty) || 1)),
+        0,
+      ),
+    [items],
+  );
 
   const [user, setUser] = useState<any>(null);
   const [storedUserAddress, setStoredUserAddress] = useState<any>(null);
@@ -945,14 +957,7 @@ export default function Checkout() {
   //   };
   // }, [items, paymentMethod, appliedCoupon]);
 
-  const cartSubtotal = useMemo(
-    () =>
-      items.reduce(
-        (sum, i) => sum + (i.salePrice ?? i.price ?? 0) * (i.qty ?? 1),
-        0,
-      ),
-    [items],
-  );
+
 
   // A saved coupon/scheme is only valid while the cart still meets its
   // minimum order threshold. The API can keep returning the old scheme after
@@ -2053,6 +2058,7 @@ export default function Checkout() {
                                       threshold: promo.threshold,
                                       discountPercent: promo.discountPercent,
                                       applied: promo.applied,
+                                      discountName: promo.discountName,
                                     }
                                   : null
                               }
